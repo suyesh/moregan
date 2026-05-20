@@ -41,9 +41,12 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
 - `~/.claude/agents/`
   - `harness-planner.md` - Plans tasks and creates YAML roadmaps
   - `harness-architect.md` - Reviews plans for architectural impacts
+  - `harness-designer.md` - Reviews UI/UX plans and accessibility
   - `harness-generator.md` - Implements code following best practices
   - `harness-evaluator.md` - Adversarial functional evaluation
   - `harness-security-evaluator.md` - Parallel security scanning
+  - `harness-code-reviewer.md` - Reviews changed code for quality and correctness
+  - `harness-mr-readiness-analyzer.md` - Scores local branch readiness before MR creation
 
 ### Codex Installation
 - `~/.codex/skills/hooliGAN-harness/`
@@ -102,9 +105,10 @@ The framework will:
 1. Create a structured YAML plan
 2. Review architecture before coding
 3. Generate implementation with tests
-4. Run parallel security & functional evaluation
-5. Learn from any failures
-6. Auto-generate documentation
+4. Run functional, security, and changed-code evaluation
+5. Score local branch readiness before MR creation
+6. Learn from any failures
+7. Auto-generate documentation
 
 ## Advanced Configuration
 

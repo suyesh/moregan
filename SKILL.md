@@ -1,11 +1,11 @@
 ---
 name: harness
 description: Implements a high-reliability "Harness Engineering" loop with multi-generator collaboration, enterprise tool integration, and living documentation for Claude Code and Codex. Trigger when a user wants to "implement a feature," "start the harness," "use hooliGAN-harness," or "build with verification."
-version: 1.3.1
+version: 1.4.0
 ---
 ## Objective
 
-To replace one-shot code generation with a structured, self-correcting agentic loop that ensures all code is planned in YAML, implemented via best practices of coding, and verified by parallel adversarial evaluators (functional and security) with confidence-based validation levels and failure pattern learning before declared complete.
+To replace one-shot code generation with a structured, self-correcting agentic loop that ensures all code is planned in YAML, implemented via best practices of coding, and verified by adversarial evaluators, code review, security review, and MR readiness analysis with confidence-based validation levels and failure pattern learning before declared complete.
 
 ## Instructions
 
@@ -17,6 +17,7 @@ This skill is portable across Claude Code and Codex.
 * In Codex, persona files live inside this skill at `personas/*.md`; read the relevant persona file before performing that role.
 * Codex should use its native plan, terminal, file-editing, subagent, and browser tools where available. Do not require Claude-specific slash commands or agent paths when running in Codex.
 * Treat `.harness/` files as project-local working artifacts. If they do not exist in the target repository, create them from the skill defaults.
+* The MR Readiness Analyzer is local-git-only. It must not use GitLab MCP tools, `glab`, or any external service.
 
 ### Maintenance Intents
 
@@ -90,7 +91,18 @@ For these intents:
 * Secret Detection: Scan for hardcoded credentials or API keys.
 * Verdict: Return PASS or FAIL with specific security findings.
 
-Both evaluators must return PASS for the task to be considered complete.
+#### 4c. Code Review Evaluation (The Code Reviewer)
+* Changed-Code Review: Review the actual diff for correctness, maintainability, missing tests, and team-pattern violations.
+* Scope Discipline: Ignore unrelated pre-existing issues unless the Generator made them worse.
+* Verdict: Return PASS only when there are no critical or important review findings.
+
+#### 4d. MR Readiness Analysis (The MR Readiness Analyzer)
+* Local-Git Only: Use local git history and diffs to determine whether the branch is ready to become an MR.
+* Submission Hygiene: Score commit story, change scope, self-review signals, and local validation evidence.
+* External-Service Constraint: Never query GitLab, post comments, update MRs, modify labels, or use external MR tooling.
+* Verdict: Return a readiness score and concrete cleanup actions if the branch is not ready.
+
+Functional, security, and code review evaluators must PASS for the task to be considered complete. MR readiness should score at least 70/100 before opening an MR or requesting human review.
 
 ### 5. Phase 4: Remediation and Reconciliation
 
@@ -111,6 +123,8 @@ Both evaluators must return PASS for the task to be considered complete.
 * **Generator**: Focuses on defensive programming, architectural synthesis, and local verification with pattern-aware implementation.
 * **Evaluator**: Acts as the gatekeeper using a Zero-Trust approach to code quality.
 * **Security Evaluator**: Parallel security-focused evaluation for vulnerabilities and security best practices.
+* **Code Reviewer**: Reviews changed code for correctness, maintainability, test quality, and team conventions.
+* **MR Readiness Analyzer**: Scores whether the local branch is ready to become an MR using local git history, diff scope, self-review signals, and validation evidence.
 
 ### Knowledge Systems
 * **Failure Patterns**: Learning system that captures and prevents recurring failure patterns.

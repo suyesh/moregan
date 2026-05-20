@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 from urllib.request import urlopen
 
-VERSION = "1.3.1"
+VERSION = "1.4.0"
 SKILL_NAME = "hooliGAN-harness"
 DEFAULT_REPOSITORY_URL = "https://github.com/aditikilledar/hooligan-harness"
 INSTALL_MANIFEST_PATH = Path(".harness") / "install-manifest.json"
@@ -29,6 +29,8 @@ CLAUDE_PERSONAS = {
     "Generator.md": "harness-generator.md",
     "Evaluator.md": "harness-evaluator.md",
     "SecurityEvaluator.md": "harness-security-evaluator.md",
+    "CodeReviewer.md": "harness-code-reviewer.md",
+    "MRReadinessAnalyzer.md": "harness-mr-readiness-analyzer.md",
 }
 CODEX_REQUIRED_FILES = ["SKILL.md", "README.md", "INSTALL.md", "install.py", ".harness", "personas"]
 CLAUDE_REQUIRED_FILES = ["SKILL.md", "README.md", "INSTALL.md", "install.py", ".harness", "personas"]
@@ -389,7 +391,7 @@ class HooliganInstaller:
             if selection is not None:
                 return selection
 
-        fallback_choices = [value for value, _ in options]
+        fallback_choices = [option[0] for option in options]
         return Prompt.ask(f"\n{message}", choices=fallback_choices, default=default)
 
     def _run_terminal_select(self, message: str, options: Sequence[tuple], default: str) -> str:
@@ -491,7 +493,7 @@ class HooliganInstaller:
     def show_features(self):
         features_panel = Panel(
             "[bold green]✨ Features to Install:[/bold green]\n\n"
-            "• [cyan]6 Personas[/cyan]: Planner, Architect, Designer, Generator, Evaluator, Security Evaluator\n"
+            "• [cyan]8 Personas[/cyan]: Planner, Architect, Designer, Generator, Evaluator, Security Evaluator, Code Reviewer, MR Readiness Analyzer\n"
             "• [cyan]Failure Pattern Memory[/cyan]: Learning from past mistakes\n"
             "• [cyan]Confidence Scoring[/cyan]: Adaptive validation levels\n"
             "• [cyan]Rollback Mechanisms[/cyan]: Automatic recovery from failures\n"
@@ -641,6 +643,7 @@ class HooliganInstaller:
                 ("SKILL.md", skills_dir / "SKILL.md"),
                 ("README.md", skills_dir / "README.md"),
                 ("INSTALL.md", skills_dir / "INSTALL.md"),
+                ("install.py", skills_dir / "install.py"),
                 (".harness", skills_dir / ".harness"),
                 ("personas", skills_dir / "personas"),
             ]

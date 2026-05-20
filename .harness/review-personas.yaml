@@ -1,0 +1,50 @@
+nickname: review-personas
+feature: Add code review and local MR readiness personas
+created: "2026-05-20"
+status: done
+context: Add two harness personas for changed-code review and local-git MR readiness analysis, without external MR tooling or install-time backend selection.
+tasks:
+  - id: "1"
+    title: Add code review and local MR readiness personas
+    status: done
+    acceptance_criteria:
+      - personas/CodeReviewer.md defines a changed-code review persona with PASS/FAIL output.
+      - personas/MRReadinessAnalyzer.md defines a local-git-only readiness analyzer and forbids GitLab MCP and glab usage.
+      - personas/references/mr-readiness-scoring-rubrics.md provides local-git readiness scoring guidance.
+    files:
+      - personas/CodeReviewer.md
+      - personas/MRReadinessAnalyzer.md
+      - personas/references/mr-readiness-scoring-rubrics.md
+    depends_on: []
+  - id: "2"
+    title: Wire new personas into installation and documentation
+    status: done
+    acceptance_criteria:
+      - Claude installations copy the new persona files into ~/.claude/agents.
+      - Codex installations include the new persona files in the bundled personas directory.
+      - Codex installations include install.py, matching the required-file doctor checks.
+      - README.md, INSTALL.md, SKILL.md, and default configuration mention the new personas.
+      - The installer does not prompt for or persist MR readiness backend options.
+    files:
+      - install.py
+      - README.md
+      - INSTALL.md
+      - SKILL.md
+      - .harness/defaults.yaml
+      - pyproject.toml
+      - uv.lock
+      - setup.sh
+      - setup.bat
+      - tests/test_install.py
+    depends_on: ["1"]
+  - id: "3"
+    title: Verify installer and syntax behavior
+    status: done
+    acceptance_criteria:
+      - Unit tests pass with the new persona installation expectations.
+      - install.py and tests/test_install.py compile successfully.
+      - install.py --help shows no MR readiness backend option.
+    files:
+      - tests/test_install.py
+      - install.py
+    depends_on: ["2"]

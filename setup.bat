@@ -7,7 +7,7 @@ setlocal enabledelayedexpansion
 echo.
 echo ╔══════════════════════════════════════════════╗
 echo ║        hooliGAN-harness Installer           ║
-echo ║              Version 1.3.1                  ║
+echo ║              Version 1.4.0                  ║
 echo ╚══════════════════════════════════════════════╝
 echo.
 

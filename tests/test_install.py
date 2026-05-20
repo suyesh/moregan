@@ -76,11 +76,29 @@ class HooliganInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "install.py").exists())
         self.assertTrue((skill_dir / "INSTALL.md").exists())
         self.assertTrue((skill_dir / "personas" / "Planner.md").exists())
+        self.assertTrue((skill_dir / "personas" / "CodeReviewer.md").exists())
+        self.assertTrue((skill_dir / "personas" / "MRReadinessAnalyzer.md").exists())
+        self.assertTrue((self.installer.claude_path["global_agents"] / "harness-code-reviewer.md").exists())
+        self.assertTrue((self.installer.claude_path["global_agents"] / "harness-mr-readiness-analyzer.md").exists())
 
         manifest = json.loads((skill_dir / install.INSTALL_MANIFEST_PATH).read_text(encoding="utf-8"))
         self.assertEqual(manifest["target"], "claude")
         self.assertEqual(Path(manifest["source_checkout"]).resolve(), self.source_dir.resolve())
         self.assertIn("repository_url", manifest)
+
+    def test_codex_install_copies_installer_and_new_personas(self):
+        (self.source_dir / ".git").mkdir()
+        self.installer.install_targets = ["codex"]
+
+        self.assertTrue(self.installer.install_files())
+
+        skill_dir = self.installer.codex_path["global_skills"]
+        self.assertTrue((skill_dir / "install.py").exists())
+        self.assertTrue((skill_dir / "personas" / "CodeReviewer.md").exists())
+        self.assertTrue((skill_dir / "personas" / "MRReadinessAnalyzer.md").exists())
+
+        manifest = json.loads((skill_dir / install.INSTALL_MANIFEST_PATH).read_text(encoding="utf-8"))
+        self.assertEqual(manifest["target"], "codex")
 
     def test_create_backup_uses_hidden_backup_root_not_skills_sibling(self):
         skill_dir = self.installer.claude_path["global_skills"]

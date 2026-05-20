@@ -17,3 +17,39 @@
 - Removed `update` and `doctor` from the already-installed installer action menu so maintenance stays skill-only.
 - Replaced the final install `y/n` confirmation with the same styled selector flow used for other installer choices.
 - Verified with `./.venv/bin/python -m unittest discover -s tests`, `./.venv/bin/python install.py --help`, and `python3 -m py_compile install.py tests/test_install.py`.
+
+---
+timestamp: "2026-05-20T14:25:20-07:00"
+status: SUCCESS
+task_nickname: review-personas
+summary: "Added Code Reviewer and local-git-only MR Readiness Analyzer personas to hooliGAN-harness."
+git_hash: "4c8e473"
+updates:
+  - file: "personas/CodeReviewer.md"
+    action: "Added changed-code review persona with PASS/FAIL verdict format."
+  - file: "personas/MRReadinessAnalyzer.md"
+    action: "Added local-git-only MR readiness analyzer with no GitLab MCP or glab usage."
+  - file: "personas/references/mr-readiness-scoring-rubrics.md"
+    action: "Added local git scoring rubric for commit story, scope, self-review, and validation evidence."
+  - file: "install.py"
+    action: "Registered new personas for Claude agent installation and Codex bundled installation; also copied install.py for Codex."
+  - file: "tests/test_install.py"
+    action: "Added coverage for new persona installation behavior."
+verification_evidence: "./.venv/bin/python -m unittest discover -s tests passed 10 tests; ./.venv/bin/python -m py_compile install.py tests/test_install.py passed; ./.venv/bin/python install.py --help showed no MR readiness backend option."
+next_step: "Ask for approval before committing or pushing these changes."
+notes: "MR readiness is intentionally local-git-only per user direction; installer no longer prompts for backend selection."
+---
+
+---
+timestamp: "2026-05-20T14:26:53-07:00"
+status: SUCCESS
+task_nickname: review-personas
+summary: "Tightened the Code Reviewer persona to a strict senior/staff-level production review gate."
+git_hash: "4c8e473"
+updates:
+  - file: "personas/CodeReviewer.md"
+    action: "Expanded review standards across correctness, design, security, reliability, performance, tests, JavaScript/TypeScript/React, Java/Spring, Python/FastAPI, SQL/database, and infrastructure."
+verification_evidence: "./.venv/bin/python -m unittest discover -s tests passed 10 tests."
+next_step: "Ask for approval before committing or pushing these changes."
+notes: "The reviewer now defaults to skepticism, fails on critical or important issues, and requires concrete file/line findings with impact and fixes."
+---

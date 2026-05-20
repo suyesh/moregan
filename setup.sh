@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 echo -e "${MAGENTA}${BOLD}"
 echo "╔══════════════════════════════════════════════╗"
 echo "║        hooliGAN-harness Installer           ║"
-echo "║              Version 1.3.1                  ║"
+echo "║              Version 1.4.0                  ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 

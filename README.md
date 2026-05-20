@@ -1,4 +1,4 @@
-# Harness Engineering: hooliGAN-harness v1.3.1
+# Harness Engineering: hooliGAN-harness v1.4.0
 
 **Stop guessing if your agent’s code works. Force it to survive the loop.**
 
@@ -54,12 +54,14 @@ We apply this to software engineering:
 2. **The Evaluator** assumes the code is buggy until proven otherwise
 3. **The Security Evaluator** hunts for vulnerabilities in parallel
 4. **The Architect** reviews designs before implementation begins
+5. **The Code Reviewer** reviews the changed code like a senior teammate
+6. **The MR Readiness Analyzer** checks whether the submission is ready for human review
 
 This competitive loop continues until the output is indistinguishable from senior-level production code.
 
 ---
 
-## 🎭 The Six Personas
+## 🎭 The Eight Personas
 
 | Persona | Role | Responsibility |
 |---------|------|----------------|
@@ -69,6 +71,8 @@ This competitive loop continues until the output is indistinguishable from senio
 | **Generator** | 💻 Builder | Implements using SOLID principles, defensive programming, and pattern awareness |
 | **Evaluator** | 🔍 Gatekeeper | Zero-trust verification with professional disdain for lazy code |
 | **Security Evaluator** | 🛡️ Guardian | Parallel OWASP Top 10 scanning and vulnerability detection |
+| **Code Reviewer** | 🧾 Reviewer | Reviews the changed code for correctness, maintainability, test quality, and team conventions |
+| **MR Readiness Analyzer** | 📊 Reviewer | Scores local branch readiness using commit story, diff scope, self-review signals, and validation evidence |
 
 ---
 
@@ -102,6 +106,7 @@ Claude Code:
 │   └── hooliGAN-harness/
 │       ├── SKILL.md                    # Main skill definition
 │       ├── README.md                   # This file
+│       ├── install.py                  # Maintenance commands
 │       └── .harness/
 │           ├── knowledge/              # Failure patterns & confidence scoring
 │           ├── evolution/              # Cross-session learning patterns
@@ -114,7 +119,9 @@ Claude Code:
     ├── harness-architect.md           # Design review persona
     ├── harness-generator.md           # Code implementation persona
     ├── harness-evaluator.md           # Functional evaluation persona
-    └── harness-security-evaluator.md # Security scanning persona
+    ├── harness-security-evaluator.md  # Security scanning persona
+    ├── harness-code-reviewer.md       # Changed-code review persona
+    └── harness-mr-readiness-analyzer.md # MR readiness scoring persona
 ```
 
 Codex:
@@ -125,6 +132,7 @@ Codex:
     └── hooliGAN-harness/
         ├── SKILL.md                    # Main skill definition
         ├── README.md                   # This file
+        ├── install.py                  # Maintenance commands
         ├── personas/                   # Persona instructions loaded by the skill
         └── .harness/                   # Configuration and knowledge base
 ```
@@ -337,6 +345,7 @@ The framework tracks:
 - **v1.2.0**: Added Architect, rollback mechanisms, cross-session learning
 - **v1.3.0**: Added multi-generator mode, enterprise integrations, living docs
 - **v1.3.1**: Added Codex skill installation support
+- **v1.4.0**: Added Code Reviewer and local-git MR Readiness Analyzer personas
 
 ---
 
