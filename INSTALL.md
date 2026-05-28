@@ -185,8 +185,8 @@ Or manually remove:
 
 ## Support
 
-- **Repository**: https://github.com/aditikilledar/hooligan-harness
-- **Issues**: https://github.com/aditikilledar/hooligan-harness/issues
+- **Repository**: https://github.com/suyesh/hooligan-harness
+- **Issues**: https://github.com/suyesh/hooligan-harness/issues
 - **Documentation**: See README.md for framework details
 
 ## License

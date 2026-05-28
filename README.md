@@ -25,7 +25,7 @@ Just install and use - that's it!
 
 ```bash
 # Clone the repository
-git clone https://github.com/aditikilledar/hooligan-harness.git
+git clone https://github.com/suyesh/hooligan-harness.git
 cd hooligan-harness
 
 # Run the installer (macOS/Linux)

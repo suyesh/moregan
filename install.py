@@ -20,7 +20,7 @@ from urllib.request import urlopen
 
 VERSION = "1.4.0"
 SKILL_NAME = "hooliGAN-harness"
-DEFAULT_REPOSITORY_URL = "https://github.com/aditikilledar/hooligan-harness"
+DEFAULT_REPOSITORY_URL = "https://github.com/suyesh/hooligan-harness"
 INSTALL_MANIFEST_PATH = Path(".harness") / "install-manifest.json"
 CLAUDE_PERSONAS = {
     "Planner.md": "harness-planner.md",

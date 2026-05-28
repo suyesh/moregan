@@ -153,6 +153,9 @@ class HooliganInstallerTests(unittest.TestCase):
         self.installer._git_output = fake_output
         self.assertEqual(self.installer._get_repository_url(), "https://github.com/suyesh/hooligan-harness")
 
+    def test_default_repository_url_points_to_canonical_repo(self):
+        self.assertEqual(install.DEFAULT_REPOSITORY_URL, "https://github.com/suyesh/hooligan-harness")
+
     def test_update_uses_downloaded_archive_source(self):
         installed_codex_skill = self.installer.codex_path["global_skills"]
         installed_codex_skill.mkdir(parents=True)
