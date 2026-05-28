@@ -59,47 +59,108 @@ thresholds:
 
 # Default Persona Configuration
 personas:
-  # All personas active by default
+  # All non-Designer personas are mandatory for every feature-work task.
   planner:
     enabled: true
+    required_for_every_feature_task: true
     auto_decompose_large_tasks: true
     max_task_size: "session"  # Tasks sized for one session
 
   architect:
     enabled: true
-    review_threshold: 3  # Review if task affects >3 files
+    required_for_every_feature_task: true
+    review_threshold: "always"
     pattern_suggestion: true
 
   designer:
     enabled: true
+    execution: "conditional"
     auto_trigger_on_frontend: true
+    decision_required_for_every_feature_task: true
     accessibility_level: "WCAG 2.1 AA"
 
   generator:
     enabled: true
+    required_for_every_feature_task: true
     defensive_programming: true
     pattern_aware: true
     principle_of_least_change: true
 
   evaluator:
     enabled: true
+    required_for_every_feature_task: true
     zero_trust_mode: true
     instant_fail_on_todos: true
 
   security_evaluator:
     enabled: true
+    required_for_every_feature_task: true
     parallel_execution: true
     owasp_top_10_scan: true
 
   code_reviewer:
     enabled: true
+    required_for_every_feature_task: true
     review_changed_code_only: true
     fail_on_critical_or_important_findings: true
 
+  production_readiness_reviewer:
+    enabled: true
+    required_for_every_feature_task: true
+    runs_after: "code_reviewer"
+    runs_before: "mr_readiness_analyzer"
+    fail_on_critical_or_important_findings: true
+    focus:
+      - "deployability"
+      - "rollback safety"
+      - "observability"
+      - "configuration safety"
+      - "data safety"
+      - "performance risk"
+      - "operational failure modes"
+      - "release hygiene"
+
   mr_readiness_analyzer:
     enabled: true
+    required_for_every_feature_task: true
     local_git_only: true
     minimum_ready_score: 70
+    show_result_in_final_response: true
+
+persona_execution:
+  mandatory_for_every_feature_task:
+    - planner
+    - architect
+    - generator
+    - evaluator
+    - security_evaluator
+    - code_reviewer
+    - production_readiness_reviewer
+    - mr_readiness_analyzer
+  conditional:
+    designer:
+      decision_required: true
+      run_when:
+        - "frontend UI changes"
+        - "UX or interaction behavior changes"
+        - "visual design, layout, or design-system changes"
+        - "accessibility changes"
+        - "user-facing copy that affects experience"
+      record_not_needed_rationale: true
+  final_output:
+    include_persona_execution_summary: true
+    include_mr_readiness_result: true
+    use_colored_status_markers: true
+    status_markers:
+      pass: "🟢"
+      not_needed: "⚪"
+      warning: "🟡"
+      fail: "🔴"
+      not_ready: "🔴"
+    mr_readiness_colors:
+      ready: "🟢"       # 70-100
+      warning: "🟡"     # 50-69
+      not_ready: "🔴"   # 0-49
 
 # Multi-Generator Settings (Optimally Configured)
 multi_generator:

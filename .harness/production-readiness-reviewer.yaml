@@ -1,0 +1,46 @@
+nickname: production-readiness
+feature: Add Production Readiness Reviewer persona as a mandatory final production safety gate
+created: "2026-05-28"
+status: done
+context: Add a mandatory Production Readiness Reviewer after Code Reviewer and before MR Readiness Analyzer. The persona should be stricter than normal code review for production safety, deployability, rollback, observability, configuration, data migration, performance, and operational risk.
+tasks:
+  - id: "1"
+    title: Add Production Readiness Reviewer persona
+    status: done
+    acceptance_criteria:
+      - personas/ProductionReadinessReviewer.md defines a strict production safety gate with PASS/FAIL output.
+      - The persona focuses on deployability, rollback, observability, configuration, migrations, data safety, performance, and operational failure modes.
+      - The persona is distinct from Code Reviewer and Security Evaluator.
+    files:
+      - personas/ProductionReadinessReviewer.md
+    depends_on: []
+  - id: "2"
+    title: Wire Production Readiness Reviewer into the mandatory harness workflow
+    status: done
+    acceptance_criteria:
+      - install.py installs the new persona for Claude and bundles it for Codex.
+      - SKILL.md lists Production Readiness Reviewer as mandatory after Code Reviewer and before MR Readiness Analyzer.
+      - .harness/defaults.yaml includes production_readiness_reviewer in mandatory persona execution and final output settings.
+      - README.md and INSTALL.md document the new mandatory gate.
+    files:
+      - install.py
+      - SKILL.md
+      - .harness/defaults.yaml
+      - README.md
+      - INSTALL.md
+    depends_on: ["1"]
+  - id: "3"
+    title: Add regression coverage and verify the new persona contract
+    status: done
+    acceptance_criteria:
+      - tests/test_install.py verifies Claude and Codex installation includes ProductionReadinessReviewer.md.
+      - tests/test_install.py verifies SKILL.md and defaults include the mandatory Production Readiness Reviewer contract.
+      - python3 -m unittest discover -s tests passes.
+      - python3 -m py_compile install.py tests/test_install.py passes.
+      - git diff --check passes.
+      - Final response includes the colorful Production Readiness Reviewer result and MR readiness score.
+    files:
+      - tests/test_install.py
+      - .harness/production-readiness-reviewer.yaml
+      - .harness/progress.md
+    depends_on: ["2"]

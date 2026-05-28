@@ -30,6 +30,7 @@ CLAUDE_PERSONAS = {
     "Evaluator.md": "harness-evaluator.md",
     "SecurityEvaluator.md": "harness-security-evaluator.md",
     "CodeReviewer.md": "harness-code-reviewer.md",
+    "ProductionReadinessReviewer.md": "harness-production-readiness-reviewer.md",
     "MRReadinessAnalyzer.md": "harness-mr-readiness-analyzer.md",
 }
 CODEX_REQUIRED_FILES = ["SKILL.md", "README.md", "INSTALL.md", "install.py", ".harness", "personas"]
@@ -493,7 +494,8 @@ class HooliganInstaller:
     def show_features(self):
         features_panel = Panel(
             "[bold green]✨ Features to Install:[/bold green]\n\n"
-            "• [cyan]8 Personas[/cyan]: Planner, Architect, Designer, Generator, Evaluator, Security Evaluator, Code Reviewer, MR Readiness Analyzer\n"
+            "• [cyan]9 Personas[/cyan]: Planner, Architect, Designer, Generator, Evaluator, Security Evaluator, "
+            "Code Reviewer, Production Readiness Reviewer, MR Readiness Analyzer\n"
             "• [cyan]Failure Pattern Memory[/cyan]: Learning from past mistakes\n"
             "• [cyan]Confidence Scoring[/cyan]: Adaptive validation levels\n"
             "• [cyan]Rollback Mechanisms[/cyan]: Automatic recovery from failures\n"

@@ -35,6 +35,45 @@ For these intents:
 * `doctor` should execute the installer doctor flow, which scans for duplicate or broken installations and repairs them.
 * Only fall back to the feature-work phases below when the request is clearly about implementing or modifying application code.
 
+### Mandatory Persona Execution
+
+For every feature-work task, the harness must run these personas and record their results before declaring the task complete:
+
+1. Planner
+2. Architect
+3. Generator
+4. Evaluator
+5. Security Evaluator
+6. Code Reviewer
+7. Production Readiness Reviewer
+8. MR Readiness Analyzer
+
+Designer is the only conditional persona. The agent must decide whether Designer is needed from the task type and record the decision. Run Designer when the task touches frontend UI, UX, visual design, interaction behavior, accessibility, layout, copy that affects user experience, or design-system concerns. Record `Designer: not needed` with a short rationale for non-frontend or non-UX tasks.
+
+The final user-facing response for feature work must include a persona execution summary and the MR Readiness Analyzer result.
+
+Format the persona execution summary with colored status markers:
+
+* `🟢 PASS` for personas that completed successfully.
+* `⚪ Not needed` for Designer when the task has no frontend, UX, accessibility, or design impact.
+* `🟡 Warning` for advisory states, including MR readiness scores from 50 to 69.
+* `🔴 FAIL` or `🔴 Not ready` for failed gates and MR readiness scores below 50.
+
+Example:
+
+```text
+Persona Execution:
+- 🟢 Planner: PASS
+- 🟢 Architect: PASS
+- ⚪ Designer: Not needed - no frontend/UX surface changed
+- 🟢 Generator: PASS
+- 🟢 Evaluator: PASS
+- 🟢 Security Evaluator: PASS
+- 🟢 Code Reviewer: PASS
+- 🟢 Production Readiness Reviewer: PASS
+- 🔴 MR Readiness Analyzer: 20/100 - Not ready
+```
+
 ### 1. Phase 0: Initialization
 
 * Read the repository README.md to understand the environment.
@@ -54,15 +93,17 @@ For these intents:
 * Identify design patterns from .harness/evolution/patterns.yaml that apply.
 * Assess risks and propose alternative approaches.
 * Define rollback strategy based on task complexity.
-* Must APPROVE before Generator can proceed for tasks affecting >3 files.
+* Must run and APPROVE before Generator can proceed for every feature-work task.
 
-### 2.6. Phase 1.6: Design Review (The Designer) - For Frontend Tasks
+### 2.6. Phase 1.6: Design Decision and Optional Review (The Designer)
 
+* Decide whether Designer is needed for the task and record the rationale.
 * Create UI/UX specifications for frontend components.
 * Define design tokens, spacing, typography, and color systems.
 * Specify interaction patterns and user flows.
 * Ensure accessibility standards (WCAG 2.1 AA).
-* Must APPROVE design before Frontend Generator proceeds.
+* If Designer is needed, Designer must APPROVE design before Frontend Generator proceeds.
+* If Designer is not needed, record `Designer: not needed` and continue to Generator.
 
 ### 3. Phase 2: Implementation (The Generator)
 
@@ -96,13 +137,19 @@ For these intents:
 * Scope Discipline: Ignore unrelated pre-existing issues unless the Generator made them worse.
 * Verdict: Return PASS only when there are no critical or important review findings.
 
-#### 4d. MR Readiness Analysis (The MR Readiness Analyzer)
+#### 4d. Production Readiness Evaluation (The Production Readiness Reviewer)
+* Production Safety Review: Review the change for deployability, rollback safety, observability, configuration safety, data safety, performance risk, operational failure modes, and release hygiene.
+* Scope Discipline: Do not duplicate broad code review or security review; focus on whether the change can safely run, fail, be diagnosed, and be recovered in production.
+* Verdict: Return PASS only when there are no critical or important production readiness risks.
+
+#### 4e. MR Readiness Analysis (The MR Readiness Analyzer)
 * Local-Git Only: Use local git history and diffs to determine whether the branch is ready to become an MR.
 * Submission Hygiene: Score commit story, change scope, self-review signals, and local validation evidence.
 * External-Service Constraint: Never query GitLab, post comments, update MRs, modify labels, or use external MR tooling.
 * Verdict: Return a readiness score and concrete cleanup actions if the branch is not ready.
 
-Functional, security, and code review evaluators must PASS for the task to be considered complete. MR readiness should score at least 70/100 before opening an MR or requesting human review.
+Functional, security, code review, and production readiness evaluators must PASS for the task to be considered complete. MR readiness should score at least 70/100 before opening an MR or requesting human review.
+MR readiness must always be run and its score must always be shown in the final response, even when the score is below 70 or the branch is not intended to become an MR yet.
 
 ### 5. Phase 4: Remediation and Reconciliation
 
@@ -113,6 +160,7 @@ Functional, security, and code review evaluators must PASS for the task to be co
 * Confidence Adjustment: Decrease confidence score for similar future tasks based on failure type.
 * Reconciliation: Once PASS is achieved, update the YAML task status to done and log the verification evidence including the git hash and test results in progress.md.
 * Success Learning: Increase confidence scores and update pattern effectiveness metrics for successful implementations.
+* Final Reporting: Include the execution status for Planner, Architect, Designer decision, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer. Include the MR readiness score and a concise readiness interpretation.
 
 ## Reference
 
@@ -124,6 +172,7 @@ Functional, security, and code review evaluators must PASS for the task to be co
 * **Evaluator**: Acts as the gatekeeper using a Zero-Trust approach to code quality.
 * **Security Evaluator**: Parallel security-focused evaluation for vulnerabilities and security best practices.
 * **Code Reviewer**: Reviews changed code for correctness, maintainability, test quality, and team conventions.
+* **Production Readiness Reviewer**: Reviews deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes.
 * **MR Readiness Analyzer**: Scores whether the local branch is ready to become an MR using local git history, diff scope, self-review signals, and validation evidence.
 
 ### Knowledge Systems

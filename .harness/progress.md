@@ -53,3 +53,105 @@ verification_evidence: "./.venv/bin/python -m unittest discover -s tests passed 
 next_step: "Ask for approval before committing or pushing these changes."
 notes: "The reviewer now defaults to skepticism, fails on critical or important issues, and requires concrete file/line findings with impact and fixes."
 ---
+
+---
+timestamp: "2026-05-28T09:34:43-07:00"
+status: SUCCESS
+task_nickname: mandatory-personas
+summary: "Required all non-Designer harness personas for every feature task and required final MR readiness output."
+git_hash: "3d96c3d"
+updates:
+  - file: "SKILL.md"
+    action: "Added a mandatory persona execution contract, conditional Designer decision rules, and final MR readiness reporting requirement."
+  - file: ".harness/defaults.yaml"
+    action: "Encoded mandatory non-Designer persona execution, conditional Designer execution, and final output settings."
+  - file: "README.md"
+    action: "Updated workflow documentation to show mandatory non-Designer personas, conditional Designer routing, and MR readiness output."
+  - file: "INSTALL.md"
+    action: "Updated usage summary to reflect mandatory Architect, conditional Designer, and final MR readiness result."
+  - file: "tests/test_install.py"
+    action: "Added regression coverage for the mandatory persona contract."
+  - file: ".harness/mandatory-personas.yaml"
+    action: "Marked all acceptance criteria done."
+verification_evidence: "python3 -m unittest discover -s tests passed 11 tests; python3 -m py_compile install.py tests/test_install.py passed; git diff --check passed."
+persona_execution:
+  planner: PASS
+  architect: PASS
+  designer: "not needed - documentation/config/test workflow change with no frontend or UX surface"
+  generator: PASS
+  evaluator: PASS
+  security_evaluator: PASS
+  code_reviewer: PASS
+  mr_readiness_analyzer: "20/100 - capped because work is on main with uncommitted local changes"
+next_step: "Move changes to a feature branch and commit before opening an MR."
+notes: "This task intentionally made Architect mandatory for every feature task. Designer remains conditional and must always have a recorded decision."
+---
+
+---
+timestamp: "2026-05-28T09:39:15-07:00"
+status: SUCCESS
+task_nickname: mandatory-personas
+summary: "Added colored status markers to final persona execution output."
+git_hash: "3d96c3d"
+updates:
+  - file: "SKILL.md"
+    action: "Added a colorful persona execution summary template with green, gray, yellow, and red status markers."
+  - file: ".harness/defaults.yaml"
+    action: "Added final output settings for colored status markers and MR readiness color bands."
+  - file: "README.md"
+    action: "Added a colorful persona execution example."
+  - file: "tests/test_install.py"
+    action: "Extended regression coverage to assert the colorful output contract."
+  - file: ".harness/mandatory-personas.yaml"
+    action: "Added and completed colorful output acceptance criteria."
+verification_evidence: "python3 -m unittest discover -s tests passed 11 tests; python3 -m py_compile install.py tests/test_install.py passed; git diff --check passed."
+persona_execution:
+  planner: "🟢 PASS"
+  architect: "🟢 PASS"
+  designer: "⚪ Not needed - documentation/config/test workflow change with no frontend or UX surface"
+  generator: "🟢 PASS"
+  evaluator: "🟢 PASS"
+  security_evaluator: "🟢 PASS"
+  code_reviewer: "🟢 PASS"
+  mr_readiness_analyzer: "🔴 20/100 - Not ready because work is on main with uncommitted local changes"
+next_step: "Move changes to a feature branch and commit before opening an MR."
+notes: "The color markers are Markdown-friendly and do not depend on renderer-specific HTML styling."
+---
+
+---
+timestamp: "2026-05-28T09:46:21-07:00"
+status: SUCCESS
+task_nickname: production-readiness
+summary: "Added Production Readiness Reviewer as a mandatory post-code-review gate."
+git_hash: "3d96c3d"
+updates:
+  - file: "personas/ProductionReadinessReviewer.md"
+    action: "Added a production safety persona focused on deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes."
+  - file: "install.py"
+    action: "Registered the new persona for Claude agent installation and Codex bundled installation."
+  - file: "SKILL.md"
+    action: "Inserted Production Readiness Reviewer after Code Reviewer and before MR Readiness Analyzer in the mandatory workflow."
+  - file: ".harness/defaults.yaml"
+    action: "Added production_readiness_reviewer to mandatory persona execution settings."
+  - file: "README.md"
+    action: "Documented the ninth persona, workflow position, install tree, and final colorful output example."
+  - file: "INSTALL.md"
+    action: "Documented the Claude agent file and production readiness evaluation step."
+  - file: "tests/test_install.py"
+    action: "Added installation and mandatory-contract assertions for Production Readiness Reviewer."
+  - file: ".harness/production-readiness-reviewer.yaml"
+    action: "Marked all acceptance criteria done."
+verification_evidence: "python3 -m unittest discover -s tests passed 11 tests; python3 -m py_compile install.py tests/test_install.py passed; git diff --check passed."
+persona_execution:
+  planner: "🟢 PASS"
+  architect: "🟢 PASS"
+  designer: "⚪ Not needed - documentation/config/test workflow change with no frontend or UX surface"
+  generator: "🟢 PASS"
+  evaluator: "🟢 PASS"
+  security_evaluator: "🟢 PASS"
+  code_reviewer: "🟢 PASS"
+  production_readiness_reviewer: "🟢 PASS"
+  mr_readiness_analyzer: "🔴 20/100 - Not ready because work is on main with uncommitted local changes"
+next_step: "Move changes to a feature branch and commit before opening an MR."
+notes: "Production Readiness Reviewer is intentionally mandatory because production safety concerns can exist in docs, installer, config, and test changes, not only runtime application code."
+---

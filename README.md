@@ -55,13 +55,14 @@ We apply this to software engineering:
 3. **The Security Evaluator** hunts for vulnerabilities in parallel
 4. **The Architect** reviews designs before implementation begins
 5. **The Code Reviewer** reviews the changed code like a senior teammate
-6. **The MR Readiness Analyzer** checks whether the submission is ready for human review
+6. **The Production Readiness Reviewer** checks whether the change can safely run in production
+7. **The MR Readiness Analyzer** checks whether the submission is ready for human review
 
 This competitive loop continues until the output is indistinguishable from senior-level production code.
 
 ---
 
-## 🎭 The Eight Personas
+## 🎭 The Nine Personas
 
 | Persona | Role | Responsibility |
 |---------|------|----------------|
@@ -72,7 +73,42 @@ This competitive loop continues until the output is indistinguishable from senio
 | **Evaluator** | 🔍 Gatekeeper | Zero-trust verification with professional disdain for lazy code |
 | **Security Evaluator** | 🛡️ Guardian | Parallel OWASP Top 10 scanning and vulnerability detection |
 | **Code Reviewer** | 🧾 Reviewer | Reviews the changed code for correctness, maintainability, test quality, and team conventions |
+| **Production Readiness Reviewer** | 🚦 Reviewer | Reviews deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes |
 | **MR Readiness Analyzer** | 📊 Reviewer | Scores local branch readiness using commit story, diff scope, self-review signals, and validation evidence |
+
+Every feature task runs Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer. Designer is conditional: the agent records whether it is needed and runs it for UI, UX, accessibility, interaction, visual design, layout, or design-system work. Final task output always includes the MR readiness result.
+
+### Mandatory Execution Contract
+
+For feature work, these personas are required and blocking:
+
+1. **Planner** creates the task plan and acceptance criteria.
+2. **Architect** approves the approach before implementation.
+3. **Generator** implements and verifies locally.
+4. **Evaluator** checks acceptance criteria and test quality.
+5. **Security Evaluator** checks security risks.
+6. **Code Reviewer** checks correctness, maintainability, and team conventions.
+7. **Production Readiness Reviewer** checks deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes.
+8. **MR Readiness Analyzer** produces the final local-git readiness score.
+
+If Evaluator, Security Evaluator, Code Reviewer, or Production Readiness Reviewer returns `FAIL`, the harness must remediate and rerun the failed gate until it passes. MR Readiness is always shown at the end; a low score gives cleanup actions before requesting human review.
+
+Designer is the only conditional persona. The agent must explicitly record either `Designer: needed` or `Designer: not needed` for every feature task.
+
+Final persona output uses colored status markers:
+
+```text
+Persona Execution:
+- 🟢 Planner: PASS
+- 🟢 Architect: PASS
+- ⚪ Designer: Not needed - no frontend/UX surface changed
+- 🟢 Generator: PASS
+- 🟢 Evaluator: PASS
+- 🟢 Security Evaluator: PASS
+- 🟢 Code Reviewer: PASS
+- 🟢 Production Readiness Reviewer: PASS
+- 🔴 MR Readiness Analyzer: 20/100 - Not ready
+```
 
 ---
 
@@ -117,10 +153,12 @@ Claude Code:
 └── agents/
     ├── harness-planner.md             # Task planning persona
     ├── harness-architect.md           # Design review persona
+    ├── harness-designer.md            # Conditional UI/UX design persona
     ├── harness-generator.md           # Code implementation persona
     ├── harness-evaluator.md           # Functional evaluation persona
     ├── harness-security-evaluator.md  # Security scanning persona
     ├── harness-code-reviewer.md       # Changed-code review persona
+    ├── harness-production-readiness-reviewer.md # Production safety review persona
     └── harness-mr-readiness-analyzer.md # MR readiness scoring persona
 ```
 
@@ -201,13 +239,19 @@ Use hooliGAN-harness to run doctor
 ```mermaid
 graph LR
     A[User Request] --> B[Planner]
-    B --> C[Architect Review]
-    C --> D[Generator]
-    D --> E[Parallel Evaluation]
-    E --> F{Pass?}
-    F -->|No| G[Rollback & Learn]
-    G --> D
-    F -->|Yes| H[Update Docs & Complete]
+    B --> C[Architect]
+    C --> D{Designer Needed?}
+    D -->|Yes| E[Designer]
+    D -->|No| F[Record Designer Decision]
+    E --> G[Generator]
+    F --> G
+    G --> H[Evaluator + Security Evaluator + Code Reviewer]
+    H --> I[Production Readiness Reviewer]
+    I --> J[MR Readiness Analyzer]
+    J --> K{Pass?}
+    K -->|No| L[Rollback & Learn]
+    L --> G
+    K -->|Yes| M[Show MR Readiness & Complete]
 ```
 
 ### Detailed Flow:
@@ -217,21 +261,32 @@ graph LR
    - Initializes progress tracking in `.harness/progress.md`
 
 2. **Architectural Review**
-   - Architect validates design before implementation
+   - Architect runs on every feature task before implementation
    - Identifies patterns from `.harness/evolution/patterns.yaml`
    - Defines rollback strategy
 
-3. **Implementation Phase**
+3. **Designer Decision**
+   - The agent records whether Designer is needed
+   - Designer runs for UI, UX, accessibility, interaction, visual design, layout, or design-system work
+   - Non-design tasks record the rationale and continue
+
+4. **Implementation Phase**
    - Generator creates snapshot for rollback
    - Applies learned patterns and avoids known failures
    - Implements with SOLID, DRY, KISS principles
 
-4. **Parallel Evaluation**
+5. **Parallel Evaluation**
    - Functional Evaluator checks all acceptance criteria
    - Security Evaluator scans for vulnerabilities
-   - Both must PASS for task completion
+   - Code Reviewer reviews the changed code
+   - Production Readiness Reviewer checks deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes
+   - Functional, security, code review, and production readiness gates must PASS for task completion
 
-5. **Learning & Documentation**
+6. **MR Readiness and Final Output**
+   - MR Readiness Analyzer scores local branch readiness using local git only
+   - Final output shows the MR readiness result and persona execution summary
+
+7. **Learning & Documentation**
    - Updates failure patterns and confidence scores
    - Evolves successful patterns for reuse
    - Auto-generates API docs, diagrams, changelogs
@@ -345,7 +400,7 @@ The framework tracks:
 - **v1.2.0**: Added Architect, rollback mechanisms, cross-session learning
 - **v1.3.0**: Added multi-generator mode, enterprise integrations, living docs
 - **v1.3.1**: Added Codex skill installation support
-- **v1.4.0**: Added Code Reviewer and local-git MR Readiness Analyzer personas
+- **v1.4.0**: Added Code Reviewer, Production Readiness Reviewer, and local-git MR Readiness Analyzer personas
 
 ---
 

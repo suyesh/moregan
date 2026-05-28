@@ -46,6 +46,7 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
   - `harness-evaluator.md` - Adversarial functional evaluation
   - `harness-security-evaluator.md` - Parallel security scanning
   - `harness-code-reviewer.md` - Reviews changed code for quality and correctness
+  - `harness-production-readiness-reviewer.md` - Reviews deployability, rollback, observability, and operational safety
   - `harness-mr-readiness-analyzer.md` - Scores local branch readiness before MR creation
 
 ### Codex Installation
@@ -103,12 +104,13 @@ Use hooliGAN-harness to run doctor
 
 The framework will:
 1. Create a structured YAML plan
-2. Review architecture before coding
-3. Generate implementation with tests
-4. Run functional, security, and changed-code evaluation
-5. Score local branch readiness before MR creation
-6. Learn from any failures
-7. Auto-generate documentation
+2. Run Architect before coding on every feature task
+3. Decide whether Designer is needed, and run Designer for UI/UX/accessibility/design work
+4. Generate implementation with tests
+5. Run functional, security, changed-code, and production readiness evaluation
+6. Score local branch readiness before MR creation and show the result in final output
+7. Learn from any failures
+8. Auto-generate documentation
 
 ## Advanced Configuration
 
