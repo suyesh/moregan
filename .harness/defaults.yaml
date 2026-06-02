@@ -3,7 +3,7 @@
 # You can start using the framework immediately without any configuration
 # Modify these settings only if you need to customize behavior
 
-version: 1.4.0
+version: 1.5.0
 framework:
   name: "hooliGAN-harness"
   description: "High-reliability engineering framework with adversarial evaluation"
@@ -127,6 +127,23 @@ personas:
     minimum_ready_score: 70
     show_result_in_final_response: true
 
+  learning_curator:
+    enabled: true
+    required_for_every_feature_task: true
+    runs_after: "mr_readiness_analyzer"
+    evidence_only: true
+    retrospective_buffer: ".harness/knowledge/retrospectives.yaml"
+    promotion_thresholds:
+      observation: 1
+      candidate_pattern: 2
+      promoted_pattern: 3
+    write_targets:
+      - ".harness/knowledge/retrospectives.yaml"
+      - ".harness/knowledge/failure-patterns.yaml"
+      - ".harness/evolution/patterns.yaml"
+      - ".harness/knowledge/confidence-scoring.yaml"
+      - ".harness/progress.md"
+
 persona_execution:
   mandatory_for_every_feature_task:
     - planner
@@ -137,6 +154,7 @@ persona_execution:
     - code_reviewer
     - production_readiness_reviewer
     - mr_readiness_analyzer
+    - learning_curator
   conditional:
     designer:
       decision_required: true
@@ -150,6 +168,7 @@ persona_execution:
   final_output:
     include_persona_execution_summary: true
     include_mr_readiness_result: true
+    include_learning_curator_result: true
     use_colored_status_markers: true
     status_markers:
       pass: "🟢"
@@ -183,6 +202,12 @@ learning:
   learn_from_failures: true
   learn_from_successes: true
   pattern_confidence_threshold: 0.75  # Use patterns with >75% success rate
+  retrospective_buffer: ".harness/knowledge/retrospectives.yaml"
+  evidence_only_learning: true
+  promotion_thresholds:
+    observation: 1
+    candidate_pattern: 2
+    promoted_pattern: 3
 
   # Auto-evolution
   promote_patterns_to_standard: true
@@ -242,7 +267,8 @@ notice: |
   ✅ Create designs (for UI tasks)
   ✅ Generate code with tests
   ✅ Run security scans
-  ✅ Learn from the experience
+  ✅ Score MR readiness
+  ✅ Curate evidence-backed learning
   ✅ Document everything
 
   Customize settings only if you have specific requirements.

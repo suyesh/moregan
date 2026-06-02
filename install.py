@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 from urllib.request import urlopen
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 SKILL_NAME = "hooliGAN-harness"
 DEFAULT_REPOSITORY_URL = "https://github.com/suyesh/hooligan-harness"
 INSTALL_MANIFEST_PATH = Path(".harness") / "install-manifest.json"
@@ -32,6 +32,7 @@ CLAUDE_PERSONAS = {
     "CodeReviewer.md": "harness-code-reviewer.md",
     "ProductionReadinessReviewer.md": "harness-production-readiness-reviewer.md",
     "MRReadinessAnalyzer.md": "harness-mr-readiness-analyzer.md",
+    "LearningCurator.md": "harness-learning-curator.md",
 }
 CODEX_REQUIRED_FILES = ["SKILL.md", "README.md", "INSTALL.md", "install.py", ".harness", "personas"]
 CLAUDE_REQUIRED_FILES = ["SKILL.md", "README.md", "INSTALL.md", "install.py", ".harness", "personas"]
@@ -494,8 +495,8 @@ class HooliganInstaller:
     def show_features(self):
         features_panel = Panel(
             "[bold green]✨ Features to Install:[/bold green]\n\n"
-            "• [cyan]9 Personas[/cyan]: Planner, Architect, Designer, Generator, Evaluator, Security Evaluator, "
-            "Code Reviewer, Production Readiness Reviewer, MR Readiness Analyzer\n"
+            "• [cyan]10 Personas[/cyan]: Planner, Architect, Designer, Generator, Evaluator, Security Evaluator, "
+            "Code Reviewer, Production Readiness Reviewer, MR Readiness Analyzer, Learning Curator\n"
             "• [cyan]Failure Pattern Memory[/cyan]: Learning from past mistakes\n"
             "• [cyan]Confidence Scoring[/cyan]: Adaptive validation levels\n"
             "• [cyan]Rollback Mechanisms[/cyan]: Automatic recovery from failures\n"

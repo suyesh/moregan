@@ -1,4 +1,4 @@
-# Harness Engineering: hooliGAN-harness v1.4.0
+# Harness Engineering: hooliGAN-harness v1.5.0
 
 **Stop guessing if your agent’s code works. Force it to survive the loop.**
 
@@ -57,12 +57,13 @@ We apply this to software engineering:
 5. **The Code Reviewer** reviews the changed code like a senior teammate
 6. **The Production Readiness Reviewer** checks whether the change can safely run in production
 7. **The MR Readiness Analyzer** checks whether the submission is ready for human review
+8. **The Learning Curator** captures evidence-backed lessons for future work
 
 This competitive loop continues until the output is indistinguishable from senior-level production code.
 
 ---
 
-## 🎭 The Nine Personas
+## 🎭 The Ten Personas
 
 | Persona | Role | Responsibility |
 |---------|------|----------------|
@@ -75,8 +76,9 @@ This competitive loop continues until the output is indistinguishable from senio
 | **Code Reviewer** | 🧾 Reviewer | Reviews the changed code for correctness, maintainability, test quality, and team conventions |
 | **Production Readiness Reviewer** | 🚦 Reviewer | Reviews deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes |
 | **MR Readiness Analyzer** | 📊 Reviewer | Scores local branch readiness using commit story, diff scope, self-review signals, and validation evidence |
+| **Learning Curator** | 🧠 Curator | Captures evidence-backed lessons, records observations, and promotes recurring patterns into future guardrails |
 
-Every feature task runs Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer. Designer is conditional: the agent records whether it is needed and runs it for UI, UX, accessibility, interaction, visual design, layout, or design-system work. Final task output always includes the MR readiness result.
+Every feature task runs Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, MR Readiness Analyzer, and Learning Curator. Designer is conditional: the agent records whether it is needed and runs it for UI, UX, accessibility, interaction, visual design, layout, or design-system work. Final task output always includes the MR readiness result and Learning Curator result.
 
 ### Mandatory Execution Contract
 
@@ -90,8 +92,10 @@ For feature work, these personas are required and blocking:
 6. **Code Reviewer** checks correctness, maintainability, and team conventions.
 7. **Production Readiness Reviewer** checks deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes.
 8. **MR Readiness Analyzer** produces the final local-git readiness score.
+9. **Learning Curator** captures evidence-backed observations and future guardrails after MR readiness.
 
 If Evaluator, Security Evaluator, Code Reviewer, or Production Readiness Reviewer returns `FAIL`, the harness must remediate and rerun the failed gate until it passes. MR Readiness is always shown at the end; a low score gives cleanup actions before requesting human review.
+Learning Curator runs even when a task fails or is not MR-ready so useful lessons are preserved without over-promoting one-off observations.
 
 Designer is the only conditional persona. The agent must explicitly record either `Designer: needed` or `Designer: not needed` for every feature task.
 
@@ -108,6 +112,7 @@ Persona Execution:
 - 🟢 Code Reviewer: PASS
 - 🟢 Production Readiness Reviewer: PASS
 - 🔴 MR Readiness Analyzer: 20/100 - Not ready
+- 🟢 Learning Curator: PASS
 ```
 
 ---
@@ -144,7 +149,7 @@ Claude Code:
 │       ├── README.md                   # This file
 │       ├── install.py                  # Maintenance commands
 │       └── .harness/
-│           ├── knowledge/              # Failure patterns & confidence scoring
+│           ├── knowledge/              # Failure patterns, retrospectives & confidence scoring
 │           ├── evolution/              # Cross-session learning patterns
 │           ├── rollback/               # Automatic rollback strategies
 │           ├── collaboration/          # Multi-generator configuration
@@ -159,7 +164,8 @@ Claude Code:
     ├── harness-security-evaluator.md  # Security scanning persona
     ├── harness-code-reviewer.md       # Changed-code review persona
     ├── harness-production-readiness-reviewer.md # Production safety review persona
-    └── harness-mr-readiness-analyzer.md # MR readiness scoring persona
+    ├── harness-mr-readiness-analyzer.md # MR readiness scoring persona
+    └── harness-learning-curator.md    # Evidence-backed learning persona
 ```
 
 Codex:
@@ -170,6 +176,7 @@ Codex:
     └── hooliGAN-harness/
         ├── SKILL.md                    # Main skill definition
         ├── README.md                   # This file
+        ├── INSTALL.md                  # Installation guide
         ├── install.py                  # Maintenance commands
         ├── personas/                   # Persona instructions loaded by the skill
         └── .harness/                   # Configuration and knowledge base
@@ -248,10 +255,11 @@ graph LR
     G --> H[Evaluator + Security Evaluator + Code Reviewer]
     H --> I[Production Readiness Reviewer]
     I --> J[MR Readiness Analyzer]
-    J --> K{Pass?}
-    K -->|No| L[Rollback & Learn]
-    L --> G
-    K -->|Yes| M[Show MR Readiness & Complete]
+    J --> K[Learning Curator]
+    K --> L{Pass?}
+    L -->|No| M[Rollback & Learn]
+    M --> G
+    L -->|Yes| N[Show MR Readiness, Learning Result & Complete]
 ```
 
 ### Detailed Flow:
@@ -284,11 +292,12 @@ graph LR
 
 6. **MR Readiness and Final Output**
    - MR Readiness Analyzer scores local branch readiness using local git only
-   - Final output shows the MR readiness result and persona execution summary
+   - Final output shows the MR readiness result, Learning Curator result, and persona execution summary
 
 7. **Learning & Documentation**
-   - Updates failure patterns and confidence scores
-   - Evolves successful patterns for reuse
+   - Learning Curator records first-occurrence observations in `.harness/knowledge/retrospectives.yaml`
+   - Promotes recurring failure and success patterns only after evidence thresholds are met
+   - Updates failure patterns, successful patterns, and confidence scores when justified
    - Auto-generates API docs, diagrams, changelogs
 
 ---
@@ -337,6 +346,7 @@ The framework tracks:
 - **Failure Prevention**: Reduction in recurring failures
 - **Confidence Evolution**: Improvement in prediction accuracy
 - **Collaboration Efficiency**: Multi-generator coordination metrics
+- **Retrospective Observations**: Evidence-backed lessons waiting for recurrence before promotion
 
 ---
 
@@ -401,6 +411,7 @@ The framework tracks:
 - **v1.3.0**: Added multi-generator mode, enterprise integrations, living docs
 - **v1.3.1**: Added Codex skill installation support
 - **v1.4.0**: Added Code Reviewer, Production Readiness Reviewer, and local-git MR Readiness Analyzer personas
+- **v1.5.0**: Added Learning Curator persona and retrospective learning buffer
 
 ---
 

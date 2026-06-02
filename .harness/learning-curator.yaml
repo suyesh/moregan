@@ -1,0 +1,68 @@
+nickname: learning-curator
+feature: Add a Learning Curator persona that captures evidence-based lessons for future harness work
+created: "2026-06-02"
+status: done
+context: The user wants a new persona whose sole purpose is to learn from past tasks and improve future planning, implementation, evaluation, and readiness work. The persona should run after the existing review gates and preserve only evidence-backed lessons.
+confidence:
+  score: 70
+  level: production
+  rationale: The change is documentation/config/test-heavy, but it alters the mandatory harness workflow and installation payload.
+designer_decision:
+  status: not_needed
+  rationale: This is a CLI/skill workflow change with no frontend, UX, accessibility, layout, visual design, or design-system surface.
+architectural_review:
+  verdict: APPROVED
+  notes:
+    - Add Learning Curator after MR Readiness Analyzer so it can learn from final task evidence, including failures and readiness issues.
+    - Keep the persona non-gating for code quality but mandatory for every feature task so learning is consistently captured.
+    - Use .harness/knowledge/retrospectives.yaml as a buffer for observations before promotion into failure-pattern or evolution-pattern memory.
+rollback_strategy:
+  approach: Revert the persona file, installer mapping, docs/defaults/tests updates, and harness learning artifacts as one patch if validation fails.
+tasks:
+  - id: "1"
+    title: Define the Learning Curator persona and learning memory buffer
+    status: done
+    acceptance_criteria:
+      - personas/LearningCurator.md defines a post-task persona focused only on evidence-based learning.
+      - The persona explains learning inputs, classification, promotion thresholds, memory write targets, and output format.
+      - .harness/knowledge/retrospectives.yaml exists as the observation buffer for unproven lessons.
+    files:
+      - personas/LearningCurator.md
+      - .harness/knowledge/retrospectives.yaml
+    depends_on: []
+  - id: "2"
+    title: Wire Learning Curator into installation and mandatory workflow contracts
+    status: done
+    acceptance_criteria:
+      - install.py installs LearningCurator.md into Claude agents and bundles it for Codex.
+      - SKILL.md lists Learning Curator as mandatory after MR Readiness Analyzer.
+      - .harness/defaults.yaml includes learning_curator in persona configuration, mandatory execution, and final output settings.
+    files:
+      - install.py
+      - SKILL.md
+      - .harness/defaults.yaml
+    depends_on: ["1"]
+  - id: "3"
+    title: Update user-facing documentation and examples
+    status: done
+    acceptance_criteria:
+      - README.md describes the Learning Curator persona, workflow position, install tree, final output example, learning behavior, and version history.
+      - INSTALL.md lists the installed Claude agent and explains that Learning Curator captures durable lessons after MR readiness.
+    files:
+      - README.md
+      - INSTALL.md
+    depends_on: ["2"]
+  - id: "4"
+    title: Add regression coverage and verify the contract
+    status: done
+    acceptance_criteria:
+      - tests/test_install.py verifies Claude and Codex installations include LearningCurator.md.
+      - tests/test_install.py verifies SKILL.md and defaults include the Learning Curator mandatory persona contract.
+      - Unit tests pass locally.
+      - install.py and tests/test_install.py compile successfully.
+      - git diff --check passes.
+    files:
+      - tests/test_install.py
+      - .harness/learning-curator.yaml
+      - .harness/progress.md
+    depends_on: ["3"]

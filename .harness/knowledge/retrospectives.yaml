@@ -1,0 +1,28 @@
+# Retrospective Learning Buffer
+# Captures evidence-backed observations before they are promoted into durable
+# failure patterns, evolution patterns, or confidence-scoring changes.
+
+version: 1.0.0
+last_updated: "2026-06-02"
+
+promotion_policy:
+  observation:
+    threshold: 1
+    action: "Record as an evidence-backed observation only."
+  candidate_pattern:
+    threshold: 2
+    action: "Mark as a candidate and watch for recurrence."
+  promoted_pattern:
+    threshold: 3
+    action: "Promote to failure-patterns.yaml or evolution/patterns.yaml when root cause, prevention, and future test guidance are clear."
+
+learning_categories:
+  - failure_pattern
+  - successful_pattern
+  - project_convention
+  - verification_lesson
+  - confidence_adjustment
+  - unresolved_risk
+  - user_preference
+
+observations: []

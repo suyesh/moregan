@@ -12,7 +12,11 @@
 4. Run the test suite:
    `uv run python -m unittest discover -s tests`
 
+## Development server
+
+This repository is a Python CLI installer and skill bundle, not a web app. There is no development server to start. Downstream agents should use the local CLI and test commands above.
+
 ## Notes
 
-- `update` expects this repository checkout to be the canonical source and refreshes it from `origin/main`.
+- `update` downloads the configured GitHub repository archive over HTTPS for the requested ref, then reinstalls from the downloaded source.
 - `doctor` repairs installed files, deduplicates Claude registry entries, and removes duplicate install directories.

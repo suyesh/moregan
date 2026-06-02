@@ -30,7 +30,7 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
   - `SKILL.md` - Main skill definition
   - `README.md` - Documentation
   - `.harness/` - Configuration and knowledge base
-    - `knowledge/` - Failure patterns and confidence scoring
+    - `knowledge/` - Failure patterns, retrospectives, and confidence scoring
     - `evolution/` - Cross-session learning patterns
     - `rollback/` - Rollback strategies
     - `collaboration/` - Multi-generator configuration
@@ -48,6 +48,7 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
   - `harness-code-reviewer.md` - Reviews changed code for quality and correctness
   - `harness-production-readiness-reviewer.md` - Reviews deployability, rollback, observability, and operational safety
   - `harness-mr-readiness-analyzer.md` - Scores local branch readiness before MR creation
+  - `harness-learning-curator.md` - Captures evidence-backed lessons for future harness work
 
 ### Codex Installation
 - `~/.codex/skills/hooliGAN-harness/`
@@ -63,6 +64,7 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
 - **Failure Pattern Memory**: Learns from past failures to prevent recurrence
 - **Confidence Scoring**: Adapts validation rigor (0-100% confidence)
 - **Cross-Session Learning**: Discovers and refines patterns over time
+- **Learning Curator**: Records retrospectives and promotes recurring lessons into future guardrails
 
 ### 🛡️ Reliability Layer
 - **Architect Review**: Pre-implementation design validation
@@ -109,8 +111,9 @@ The framework will:
 4. Generate implementation with tests
 5. Run functional, security, changed-code, and production readiness evaluation
 6. Score local branch readiness before MR creation and show the result in final output
-7. Learn from any failures
-8. Auto-generate documentation
+7. Run Learning Curator to capture evidence-backed lessons after MR readiness
+8. Learn from failures and successful patterns without over-promoting one-off observations
+9. Auto-generate documentation
 
 ## Advanced Configuration
 

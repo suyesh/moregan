@@ -79,11 +79,13 @@ class HooliganInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "personas" / "CodeReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "ProductionReadinessReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "MRReadinessAnalyzer.md").exists())
+        self.assertTrue((skill_dir / "personas" / "LearningCurator.md").exists())
         self.assertTrue((self.installer.claude_path["global_agents"] / "harness-code-reviewer.md").exists())
         self.assertTrue(
             (self.installer.claude_path["global_agents"] / "harness-production-readiness-reviewer.md").exists()
         )
         self.assertTrue((self.installer.claude_path["global_agents"] / "harness-mr-readiness-analyzer.md").exists())
+        self.assertTrue((self.installer.claude_path["global_agents"] / "harness-learning-curator.md").exists())
 
         manifest = json.loads((skill_dir / install.INSTALL_MANIFEST_PATH).read_text(encoding="utf-8"))
         self.assertEqual(manifest["target"], "claude")
@@ -101,6 +103,7 @@ class HooliganInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "personas" / "CodeReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "ProductionReadinessReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "MRReadinessAnalyzer.md").exists())
+        self.assertTrue((skill_dir / "personas" / "LearningCurator.md").exists())
 
         manifest = json.loads((skill_dir / install.INSTALL_MANIFEST_PATH).read_text(encoding="utf-8"))
         self.assertEqual(manifest["target"], "codex")
@@ -244,22 +247,43 @@ class HooliganInstallerTests(unittest.TestCase):
             "Code Reviewer",
             "Production Readiness Reviewer",
             "MR Readiness Analyzer",
+            "Learning Curator",
         ]:
             self.assertIn(persona_name, skill_text)
 
         self.assertIn("Designer is the only conditional persona", skill_text)
         self.assertIn("MR readiness must always be run and its score must always be shown", skill_text)
+        self.assertIn("Learning Curator must always run after MR readiness", skill_text)
         self.assertIn("Format the persona execution summary with colored status markers", skill_text)
         self.assertIn("🟢 PASS", skill_text)
         self.assertIn("🟢 Production Readiness Reviewer", skill_text)
         self.assertIn("🔴 MR Readiness Analyzer", skill_text)
+        self.assertIn("🟢 Learning Curator", skill_text)
         self.assertIn("mandatory_for_every_feature_task:", defaults_text)
         self.assertIn("production_readiness_reviewer", defaults_text)
         self.assertIn("mr_readiness_analyzer", defaults_text)
+        self.assertIn("learning_curator", defaults_text)
         self.assertIn("decision_required_for_every_feature_task: true", defaults_text)
         self.assertIn("include_mr_readiness_result: true", defaults_text)
+        self.assertIn("include_learning_curator_result: true", defaults_text)
         self.assertIn("use_colored_status_markers: true", defaults_text)
         self.assertIn('not_ready: "🔴"', defaults_text)
+
+    def test_learning_curator_persona_defines_conservative_learning_contract(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        persona_text = (repo_root / "personas" / "LearningCurator.md").read_text(encoding="utf-8")
+        retrospectives_text = (
+            repo_root / ".harness" / "knowledge" / "retrospectives.yaml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("sole purpose is to learn from past work", persona_text)
+        self.assertIn("Run after the MR Readiness Analyzer", persona_text)
+        self.assertIn(".harness/knowledge/retrospectives.yaml", persona_text)
+        self.assertIn("First occurrence", persona_text)
+        self.assertIn("Third occurrence", persona_text)
+        self.assertIn("Learning Curator Verdict: PASS|FAIL", persona_text)
+        self.assertIn("promotion_policy:", retrospectives_text)
+        self.assertIn("observations: []", retrospectives_text)
 
 
 if __name__ == "__main__":

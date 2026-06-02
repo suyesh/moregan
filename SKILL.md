@@ -1,11 +1,11 @@
 ---
 name: harness
 description: Implements a high-reliability "Harness Engineering" loop with multi-generator collaboration, enterprise tool integration, and living documentation for Claude Code and Codex. Trigger when a user wants to "implement a feature," "start the harness," "use hooliGAN-harness," or "build with verification."
-version: 1.4.0
+version: 1.5.0
 ---
 ## Objective
 
-To replace one-shot code generation with a structured, self-correcting agentic loop that ensures all code is planned in YAML, implemented via best practices of coding, and verified by adversarial evaluators, code review, security review, and MR readiness analysis with confidence-based validation levels and failure pattern learning before declared complete.
+To replace one-shot code generation with a structured, self-correcting agentic loop that ensures all code is planned in YAML, implemented via best practices of coding, verified by adversarial evaluators, code review, security review, and MR readiness analysis, then captured by evidence-based learning with confidence-based validation levels before declared complete.
 
 ## Instructions
 
@@ -47,10 +47,13 @@ For every feature-work task, the harness must run these personas and record thei
 6. Code Reviewer
 7. Production Readiness Reviewer
 8. MR Readiness Analyzer
+9. Learning Curator
 
 Designer is the only conditional persona. The agent must decide whether Designer is needed from the task type and record the decision. Run Designer when the task touches frontend UI, UX, visual design, interaction behavior, accessibility, layout, copy that affects user experience, or design-system concerns. Record `Designer: not needed` with a short rationale for non-frontend or non-UX tasks.
 
-The final user-facing response for feature work must include a persona execution summary and the MR Readiness Analyzer result.
+Learning Curator runs after MR Readiness Analyzer for every feature-work task. It learns only from local evidence, records unproven observations in `.harness/knowledge/retrospectives.yaml`, and promotes lessons into failure patterns, evolution patterns, or confidence scoring only when the promotion rules are satisfied.
+
+The final user-facing response for feature work must include a persona execution summary, the MR Readiness Analyzer result, and the Learning Curator result.
 
 Format the persona execution summary with colored status markers:
 
@@ -72,6 +75,7 @@ Persona Execution:
 - 🟢 Code Reviewer: PASS
 - 🟢 Production Readiness Reviewer: PASS
 - 🔴 MR Readiness Analyzer: 20/100 - Not ready
+- 🟢 Learning Curator: PASS
 ```
 
 ### 1. Phase 0: Initialization
@@ -148,8 +152,16 @@ Persona Execution:
 * External-Service Constraint: Never query GitLab, post comments, update MRs, modify labels, or use external MR tooling.
 * Verdict: Return a readiness score and concrete cleanup actions if the branch is not ready.
 
+#### 4f. Learning Capture (The Learning Curator)
+* Evidence-Only Learning: Read task plans, progress notes, evaluator verdicts, review findings, MR readiness output, local git status, and existing harness memory.
+* Retrospective Buffer: Record first-occurrence observations in `.harness/knowledge/retrospectives.yaml` rather than promoting them directly into durable memory.
+* Promotion Rules: Promote to failure patterns or evolution patterns only after enough recurring evidence exists and root cause, prevention strategy, and future validation guidance are clear.
+* Future Guardrails: State how Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer should use the lesson in later work.
+* Verdict: Return PASS when learning is evidence-backed and memory updates are safe; return FAIL for unsupported, duplicate, vague, or contradictory memory.
+
 Functional, security, code review, and production readiness evaluators must PASS for the task to be considered complete. MR readiness should score at least 70/100 before opening an MR or requesting human review.
 MR readiness must always be run and its score must always be shown in the final response, even when the score is below 70 or the branch is not intended to become an MR yet.
+Learning Curator must always run after MR readiness and its result must always be shown in the final response, even when there are no durable lessons to record. Learning Curator PASS is required for memory capture validity, but it is not a substitute for any code-quality or production-readiness gate.
 
 ### 5. Phase 4: Remediation and Reconciliation
 
@@ -160,7 +172,8 @@ MR readiness must always be run and its score must always be shown in the final 
 * Confidence Adjustment: Decrease confidence score for similar future tasks based on failure type.
 * Reconciliation: Once PASS is achieved, update the YAML task status to done and log the verification evidence including the git hash and test results in progress.md.
 * Success Learning: Increase confidence scores and update pattern effectiveness metrics for successful implementations.
-* Final Reporting: Include the execution status for Planner, Architect, Designer decision, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer. Include the MR readiness score and a concise readiness interpretation.
+* Learning Capture: Run Learning Curator to capture evidence-backed observations, candidate patterns, promoted lessons, and future guardrails.
+* Final Reporting: Include the execution status for Planner, Architect, Designer decision, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, MR Readiness Analyzer, and Learning Curator. Include the MR readiness score, a concise readiness interpretation, and the Learning Curator result.
 
 ## Reference
 
@@ -174,6 +187,7 @@ MR readiness must always be run and its score must always be shown in the final 
 * **Code Reviewer**: Reviews changed code for correctness, maintainability, test quality, and team conventions.
 * **Production Readiness Reviewer**: Reviews deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes.
 * **MR Readiness Analyzer**: Scores whether the local branch is ready to become an MR using local git history, diff scope, self-review signals, and validation evidence.
+* **Learning Curator**: Captures evidence-backed lessons from completed or failed tasks and turns them into future guardrails without over-promoting one-off observations.
 
 ### Knowledge Systems
 * **Failure Patterns**: Learning system that captures and prevents recurring failure patterns.

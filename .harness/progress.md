@@ -155,3 +155,76 @@ persona_execution:
 next_step: "Move changes to a feature branch and commit before opening an MR."
 notes: "Production Readiness Reviewer is intentionally mandatory because production safety concerns can exist in docs, installer, config, and test changes, not only runtime application code."
 ---
+
+---
+timestamp: "2026-06-02T09:39:24-07:00"
+status: SUCCESS
+task_nickname: codebase-understanding
+summary: "Mapped the hooliGAN-harness repository structure, installer runtime, harness configuration, personas, and local verification surface."
+git_hash: "1767da0"
+updates:
+  - file: ".harness/codebase-understanding.yaml"
+    action: "Added a completed reconnaissance roadmap with acceptance criteria and repository summary."
+  - file: ".harness/dev_init.md"
+    action: "Clarified that this CLI repository has no development server and corrected the update command behavior."
+verification_evidence: "./.venv/bin/python -m unittest discover -s tests passed 12 tests; ./.venv/bin/python -m py_compile install.py tests/test_install.py passed; git diff --check passed."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - no frontend, UX, accessibility, layout, copy, or design-system surface changed"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "20/100 - Not ready because this reconnaissance is on main with uncommitted local harness artifact changes"
+notes: "No application code was changed. The main risk discovered is that update downloads and extracts a GitHub archive, so future hardening should consider archive path validation."
+---
+
+---
+timestamp: "2026-06-02T10:01:34-07:00"
+status: SUCCESS
+task_nickname: learning-curator
+summary: "Added Learning Curator as a mandatory final persona and added a retrospective learning buffer."
+git_hash: "1767da0"
+updates:
+  - file: "personas/LearningCurator.md"
+    action: "Added a post-task persona focused only on evidence-backed learning, conservative promotion rules, memory write targets, and future guardrails."
+  - file: ".harness/knowledge/retrospectives.yaml"
+    action: "Added the observation buffer for first-occurrence lessons and candidate patterns."
+  - file: "install.py"
+    action: "Registered LearningCurator.md for Claude agent installation and Codex bundled installation."
+  - file: "SKILL.md"
+    action: "Added Learning Curator to mandatory feature-work execution after MR Readiness Analyzer."
+  - file: ".harness/defaults.yaml"
+    action: "Configured learning_curator as mandatory and added learning promotion thresholds."
+  - file: "README.md"
+    action: "Updated persona count, workflow, install tree, final output example, learning behavior, and version history."
+  - file: "INSTALL.md"
+    action: "Documented the installed Learning Curator agent and post-MR-readiness learning step."
+  - file: "tests/test_install.py"
+    action: "Added regression coverage for Learning Curator installation and workflow-contract requirements."
+  - file: "pyproject.toml"
+    action: "Bumped package version to 1.5.0."
+  - file: "uv.lock"
+    action: "Bumped locked project version to 1.5.0."
+  - file: "setup.sh"
+    action: "Updated setup banner to 1.5.0."
+  - file: "setup.bat"
+    action: "Updated setup banner to 1.5.0."
+  - file: ".harness/learning-curator.yaml"
+    action: "Marked all task acceptance criteria done."
+verification_evidence: "./.venv/bin/python -m unittest discover -s tests passed 13 tests; ./.venv/bin/python -m py_compile install.py tests/test_install.py passed; git diff --check passed."
+persona_execution:
+  planner: "🟢 PASS"
+  architect: "🟢 PASS"
+  designer: "⚪ Not needed - CLI/skill workflow change with no frontend or UX surface"
+  generator: "🟢 PASS"
+  evaluator: "🟢 PASS"
+  security_evaluator: "🟢 PASS"
+  code_reviewer: "🟢 PASS"
+  production_readiness_reviewer: "🟢 PASS"
+  mr_readiness_analyzer: "🔴 20/100 - Not ready because work is on main with uncommitted local changes"
+  learning_curator: "🟢 PASS - initialized the retrospective buffer; no recurring pattern was promoted"
+notes: "Learning Curator is mandatory for feature tasks but does not replace any existing code-quality, security, production-readiness, or MR-readiness gate."
+---

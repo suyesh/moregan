@@ -1,0 +1,80 @@
+nickname: codebase-understanding
+feature: Understand the hooliGAN-harness repository structure, runtime workflow, and verification surface
+created: "2026-06-02"
+status: done
+context: This is a reconnaissance task, not feature implementation. The goal is to map the repository enough for future harness work and document local operating assumptions for downstream agents.
+confidence:
+  score: 95
+  level: verified
+  rationale: Documentation-only reconnaissance over a compact Python CLI repository with existing tests and no runtime app server.
+designer_decision:
+  status: not_needed
+  rationale: No frontend, UX, accessibility, layout, copy, or design-system surface was changed.
+tasks:
+  - id: "1"
+    title: Inspect repository structure and harness metadata
+    status: done
+    acceptance_criteria:
+      - README.md and INSTALL.md have been read for project intent and local workflow.
+      - .harness defaults, confidence scoring, failure patterns, rollback strategy, and progress history have been inspected.
+      - Architecture.jpg has been inspected for the documented planner/generator/evaluator flow.
+    files:
+      - README.md
+      - INSTALL.md
+      - Architecture.jpg
+      - .harness/defaults.yaml
+      - .harness/knowledge/failure-patterns.yaml
+      - .harness/knowledge/confidence-scoring.yaml
+      - .harness/rollback/rollback-strategy.yaml
+      - .harness/progress.md
+    depends_on: []
+  - id: "2"
+    title: Map installer and persona behavior
+    status: done
+    acceptance_criteria:
+      - install.py command flow and major helper methods have been inspected.
+      - pyproject.toml dependencies, scripts, and Python version requirement have been inspected.
+      - tests/test_install.py coverage areas have been inspected.
+      - Persona files and MR readiness rubric have been inventoried.
+    files:
+      - install.py
+      - pyproject.toml
+      - tests/test_install.py
+      - personas/
+    depends_on: ["1"]
+  - id: "3"
+    title: Record downstream-agent run instructions
+    status: done
+    acceptance_criteria:
+      - .harness/dev_init.md states that there is no dev server for this CLI repository.
+      - .harness/dev_init.md lists dependency sync, installer, maintenance, and test commands.
+      - .harness/dev_init.md describes the current update behavior accurately.
+    files:
+      - .harness/dev_init.md
+      - .harness/codebase-understanding.yaml
+    depends_on: ["2"]
+  - id: "4"
+    title: Verify local test surface
+    status: done
+    acceptance_criteria:
+      - Unit tests pass locally.
+      - install.py and tests/test_install.py compile successfully.
+      - git diff --check passes.
+    files:
+      - install.py
+      - tests/test_install.py
+      - .harness/dev_init.md
+      - .harness/codebase-understanding.yaml
+      - .harness/progress.md
+    depends_on: ["3"]
+summary:
+  repository_type: Python CLI installer and Codex/Claude skill bundle
+  primary_runtime_entrypoint: install.py
+  package_manager: uv
+  tests: Python unittest in tests/test_install.py
+  no_dev_server: true
+  core_assets:
+    - SKILL.md defines harness workflow and mandatory persona contract.
+    - install.py installs, updates, repairs, and uninstalls the skill for Claude Code and Codex.
+    - personas/ contains the role instructions installed into Claude or bundled for Codex.
+    - .harness/ contains default policy, knowledge, rollback, collaboration, integration, documentation, and progress artifacts.
