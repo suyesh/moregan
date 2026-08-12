@@ -260,12 +260,24 @@ completed_work:
       - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.5.0.tar.gz and dist/moregan-1.5.0-py3-none-any.whl."
       - "Wheel inspection found required runtime and skill assets with no .moregan/runs or .moregan/backups files."
       - "Temp venv wheel smoke test installed moregan-1.5.0 and confirmed `moregan --help` plus `moregan setup --help`."
+  - id: remediation-loop
+    phase: v2.5
+    status: done
+    acceptance_criteria:
+      - "Failed deterministic checks and worker findings are fed back to the generator."
+      - "Runtime supports bounded remediation attempts."
+      - "Only failed gates and required downstream gates are rerun when practical."
+      - "Unresolved failures produce a clear final remediation report."
+    verification:
+      - "Targeted runtime tests passed for deterministic remediation success, worker-finding remediation context, remediation exhaustion, generator provider failure, and agent worker normalization."
+      - "Runtime writes remediation.json and attempt-specific stage artifacts such as generator.attempt2.json and deterministic_evidence.attempt2.json."
+      - "CLI exposes --max-remediation-attempts."
 current_work:
-  id: remediation-loop
-  phase: v2.5
+  id: safer-execution-isolation
+  phase: v2.6
   status: next
   acceptance_criteria:
-    - "Failed deterministic checks and worker findings are fed back to the generator."
-    - "Runtime supports bounded remediation attempts."
-    - "Only failed gates and required downstream gates are rerun when practical."
-    - "Unresolved failures produce a clear final remediation report."
+    - "Generator and remediation attempts can run in isolated worktrees or guarded execution contexts."
+    - "No-write worker stages are protected from accidental repository writes where practical."
+    - "Trace artifacts record the execution context used for each write-enabled attempt."
+    - "Failed isolated attempts can be inspected without corrupting the base checkout."

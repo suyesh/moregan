@@ -89,19 +89,138 @@ class MoreGANRuntimeTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        result = MoreGANRuntime(self.root).run("Update service tests")
+        result = MoreGANRuntime(self.root, max_remediation_attempts=1).run("Update service tests")
         run_dir = Path(result.trace_path)
 
         self.assertEqual(result.status, "fail")
         stage = json.loads((run_dir / "stages" / "deterministic_evidence.json").read_text(encoding="utf-8"))
         self.assertEqual(stage["verdict"], "fail")
+        self.assertEqual(stage["attempt"], 2)
         self.assertEqual(stage["findings"][0]["category"], "deterministic_check_failed")
         self.assertEqual(stage["findings"][0]["severity"], "high")
         self.assertIn("unit_tests", stage["findings"][0]["description"])
+        self.assertTrue((run_dir / "stages" / "deterministic_evidence.attempt1.json").exists())
+        self.assertTrue((run_dir / "stages" / "deterministic_evidence.attempt2.json").exists())
+        self.assertTrue((run_dir / "stages" / "remediation.attempt2.json").exists())
+        remediation = json.loads((run_dir / "remediation.json").read_text(encoding="utf-8"))
+        self.assertEqual(remediation["attempts"][0]["failed_stage"], "deterministic_evidence")
+        self.assertEqual(remediation["attempts"][0]["deterministic_evidence"][0]["name"], "unit_tests")
 
         state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
         self.assertEqual(state["current_state"], "failed")
-        self.assertEqual(state["history"][-1]["reason"], "blocking deterministic checks failed")
+        self.assertEqual(state["remediation_attempts"], 1)
+        self.assertIn("remediation", [snapshot["state"] for snapshot in state["history"]])
+        self.assertEqual(state["history"][-1]["reason"], "blocking deterministic checks failed after remediation attempts")
+
+    def test_deterministic_failure_can_pass_after_generator_remediation(self):
+        moregan_dir = self.root / ".moregan"
+        moregan_dir.mkdir()
+        tests_dir = self.root / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test_marker.py").write_text(
+            "import pathlib\n"
+            "import unittest\n\n"
+            "class MarkerTest(unittest.TestCase):\n"
+            "    def test_marker_exists(self):\n"
+            "        self.assertTrue(pathlib.Path('fixed.txt').exists())\n",
+            encoding="utf-8",
+        )
+        code = (
+            "import json, os, pathlib; "
+            "root = pathlib.Path.cwd(); "
+            "attempt = int(os.environ.get('MOREGAN_ATTEMPT', '1')); "
+            "context = os.environ.get('MOREGAN_REMEDIATION_CONTEXT', '{}'); "
+            "(root / 'fixed.txt').write_text(context) if attempt > 1 else None; "
+            "print(json.dumps({'stage': 'generator', 'verdict': 'pass', 'confidence': 1.0, "
+            "'findings': [], 'evidence': [{'kind': 'attempt', 'name': 'generator_attempt', "
+            "'summary': str(attempt)}]}))"
+        )
+        command = json.dumps([sys.executable, "-c", code])
+        (moregan_dir / "workers.yaml").write_text(
+            "version: 1\n"
+            "workers:\n"
+            "  - stage: generator\n"
+            f"    command: {command}\n"
+            "    timeout_seconds: 10\n"
+            "    no_write: false\n",
+            encoding="utf-8",
+        )
+
+        result = MoreGANRuntime(self.root, max_remediation_attempts=2).run("Update service tests")
+        run_dir = Path(result.trace_path)
+
+        self.assertEqual(result.status, "pass")
+        self.assertTrue((self.root / "fixed.txt").exists())
+        self.assertIn("unit_tests", (self.root / "fixed.txt").read_text(encoding="utf-8"))
+        self.assertEqual(
+            json.loads((run_dir / "stages" / "deterministic_evidence.attempt1.json").read_text(encoding="utf-8"))[
+                "verdict"
+            ],
+            "fail",
+        )
+        self.assertEqual(
+            json.loads((run_dir / "stages" / "deterministic_evidence.attempt2.json").read_text(encoding="utf-8"))[
+                "verdict"
+            ],
+            "pass",
+        )
+        state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["remediation_attempts"], 1)
+        self.assertEqual(state["current_state"], "completed")
+
+    def test_worker_finding_is_passed_to_generator_remediation_context(self):
+        moregan_dir = self.root / ".moregan"
+        moregan_dir.mkdir()
+        generator_code = (
+            "import json, os, pathlib; "
+            "attempt = int(os.environ.get('MOREGAN_ATTEMPT', '1')); "
+            "context = os.environ.get('MOREGAN_REMEDIATION_CONTEXT', '{}'); "
+            "(pathlib.Path.cwd() / 'remediation-context.json').write_text(context) if attempt > 1 else None; "
+            "print(json.dumps({'stage': 'generator', 'verdict': 'pass', 'confidence': 1.0, "
+            "'findings': [], 'evidence': [{'kind': 'attempt', 'name': 'generator_attempt', "
+            "'summary': str(attempt)}]}))"
+        )
+        evaluator_code = (
+            "import json, os; "
+            "attempt = int(os.environ.get('MOREGAN_ATTEMPT', '1')); "
+            "verdict = 'pass' if attempt > 1 else 'fail'; "
+            "findings = [] if verdict == 'pass' else [{'severity': 'medium', "
+            "'category': 'acceptance_criteria_gap', "
+            "'description': 'The endpoint response is missing the requested field.', "
+            "'remediation': 'Update the generator output to include the requested field.'}]; "
+            "print(json.dumps({'stage': 'evaluator', 'verdict': verdict, 'confidence': 1.0, "
+            "'findings': findings, 'evidence': [{'kind': 'attempt', 'name': 'evaluator_attempt', "
+            "'summary': str(attempt)}]}))"
+        )
+        (moregan_dir / "workers.yaml").write_text(
+            "version: 1\n"
+            "workers:\n"
+            "  - stage: generator\n"
+            f"    command: {json.dumps([sys.executable, '-c', generator_code])}\n"
+            "    timeout_seconds: 10\n"
+            "    no_write: false\n"
+            "  - stage: evaluator\n"
+            f"    command: {json.dumps([sys.executable, '-c', evaluator_code])}\n"
+            "    timeout_seconds: 10\n"
+            "    no_write: true\n",
+            encoding="utf-8",
+        )
+
+        result = MoreGANRuntime(self.root, max_remediation_attempts=2).run("Add API endpoint", run_checks=False)
+        run_dir = Path(result.trace_path)
+
+        self.assertEqual(result.status, "pass")
+        context = json.loads((self.root / "remediation-context.json").read_text(encoding="utf-8"))
+        self.assertEqual(context["failed_stage"], "evaluator")
+        self.assertEqual(context["findings"][0]["category"], "acceptance_criteria_gap")
+        self.assertEqual(
+            json.loads((run_dir / "stages" / "evaluator.attempt1.json").read_text(encoding="utf-8"))["verdict"],
+            "fail",
+        )
+        self.assertEqual(
+            json.loads((run_dir / "stages" / "evaluator.attempt2.json").read_text(encoding="utf-8"))["verdict"],
+            "pass",
+        )
 
     def test_medium_route_runs_dry_run_workers_through_state_machine(self):
         result = MoreGANRuntime(self.root).run("Add API endpoint", run_checks=False)

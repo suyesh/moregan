@@ -65,6 +65,7 @@ flowchart TD
 - Enforced workflow instead of hoping an agent remembers every instruction.
 - Structured findings, evidence, confidence, and verdicts for each stage.
 - Deterministic checks for tests, syntax, git diff validation, and repo-local commands.
+- Bounded remediation attempts that feed failed findings back to the generator.
 - Read-only replay of past runs without rerunning providers or tests.
 - Codex and Claude adapter templates that normalize provider output into JSON.
 - Local trace artifacts under `.moregan/runs/` for debugging and review.
@@ -203,6 +204,7 @@ moregan init --force
 moregan adapters codex --activate
 moregan adapters claude --activate
 moregan run "Change button copy" --no-checks
+moregan run "Fix checkout bug" --max-remediation-attempts 1
 ```
 
 ## Agent Adapters
@@ -342,7 +344,11 @@ Each run writes a directory like this. The exact `stages/*.json` files depend on
   stages/
     risk_classifier.json
     generator.json
+    generator.attempt1.json
+    generator.attempt2.json
     deterministic_evidence.json
+    deterministic_evidence.attempt1.json
+    deterministic_evidence.attempt2.json
     evaluator.json
     ...
   events.jsonl
@@ -357,6 +363,10 @@ moregan replay latest
 ```
 
 It reconstructs state transitions, stage results, findings, and deterministic evidence from existing files. It does not rerun providers or tests.
+
+When a required deterministic check or routed worker fails after generation, MoreGAN transitions through `remediation`, passes a structured remediation context to the generator, and retries from deterministic evidence when practical. The default limit is three remediation attempts.
+
+Remediation runs also write `remediation.json` plus attempt-specific stage files such as `generator.attempt2.json`.
 
 ## Skill Usage
 
@@ -412,6 +422,7 @@ Implemented in this repository:
 - state machine
 - deterministic tool layer
 - provider-backed worker command contract
+- bounded remediation loop
 - run replay
 - Codex and Claude adapter templates
 - PyPI trusted-publishing workflow
@@ -420,7 +431,6 @@ Implemented in this repository:
 
 Next production-readiness work:
 
-- remediation loop
 - safer execution model with isolated worktrees
 - stricter config validation and doctor checks
 - stack-specific deterministic tool presets

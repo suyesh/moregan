@@ -47,6 +47,12 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="create a MoreGAN run trace")
     run_parser.add_argument("request", help="engineering request to classify and trace")
     run_parser.add_argument("--no-checks", action="store_true", help="create trace without running deterministic checks")
+    run_parser.add_argument(
+        "--max-remediation-attempts",
+        type=int,
+        default=3,
+        help="maximum number of generator remediation retries after failed gates",
+    )
 
     subparsers.add_parser("status", help="show the latest MoreGAN run")
 
@@ -111,7 +117,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return int(installer_main(installer_args) or 0)
 
     if args.command == "run":
-        result = MoreGANRuntime(root).run(args.request, run_checks=not args.no_checks)
+        result = MoreGANRuntime(root, max_remediation_attempts=args.max_remediation_attempts).run(
+            args.request,
+            run_checks=not args.no_checks,
+        )
         print(f"MoreGAN run {result.status.upper()}: {result.run_id}")
         print(f"Risk: {result.risk.level}")
         print(f"Trace: {result.trace_path}")

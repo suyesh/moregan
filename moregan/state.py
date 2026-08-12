@@ -55,7 +55,7 @@ ALLOWED_TRANSITIONS: Dict[str, Set[str]] = {
     TaskState.SECURITY_EVALUATION: {TaskState.CODE_REVIEW, TaskState.REMEDIATION, TaskState.FAILED},
     TaskState.CODE_REVIEW: {TaskState.PRODUCTION_REVIEW, TaskState.REMEDIATION, TaskState.COMPLETED, TaskState.FAILED},
     TaskState.PRODUCTION_REVIEW: {TaskState.MR_READINESS, TaskState.REMEDIATION, TaskState.FAILED},
-    TaskState.MR_READINESS: {TaskState.LEARNING, TaskState.FAILED},
+    TaskState.MR_READINESS: {TaskState.LEARNING, TaskState.REMEDIATION, TaskState.FAILED},
     TaskState.LEARNING: {TaskState.COMPLETED, TaskState.FAILED},
     TaskState.REMEDIATION: {TaskState.GENERATION, TaskState.FAILED},
     TaskState.COMPLETED: set(),

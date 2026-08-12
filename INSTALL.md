@@ -155,9 +155,17 @@ moregan replay latest
 
 `init` creates `.moregan/tools.yaml`, `.moregan/workers.yaml`, `.moregan/runs/`, and a `.gitignore` entry for local run traces. Existing config files are preserved unless `--force` is used.
 The runtime writes auditable artifacts under `.moregan/runs/`, including `state.json`, `states.jsonl`, `tool_suggestions.json`, and structured stage files in `stages/*.json`.
+When a required deterministic check or routed worker fails after generation, the runtime can run bounded remediation attempts and writes `remediation.json` plus attempt-specific stage artifacts.
 Repository-local deterministic checks are configured in `.moregan/tools.yaml`.
 Worker stages are recorded as dry-run `SKIP` results until a provider command is configured in `.moregan/workers.yaml`.
 Codex and Claude can read the installed skill instructions directly, but these executable runtime and maintenance commands need local Python 3.8+.
+
+Useful runtime flags:
+
+```bash
+moregan run "Fix checkout bug" --max-remediation-attempts 1
+moregan run "Inspect current branch" --no-checks
+```
 
 Adapter templates:
 

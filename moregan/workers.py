@@ -51,6 +51,8 @@ class WorkerContext:
     request: str
     risk: RiskClassification
     route: List[str]
+    attempt: int = 1
+    remediation_context: Optional[Dict[str, object]] = None
 
 
 @dataclass
@@ -97,6 +99,7 @@ class DryRunWorker:
                     summary=f"Run route: {', '.join(context.route)}",
                 ),
             ],
+            attempt=context.attempt,
             started_at=_timestamp(),
             completed_at=_timestamp(),
             duration_ms=_duration_ms(started),
@@ -121,6 +124,8 @@ class CommandWorker:
                 "MOREGAN_RISK_LEVEL": context.risk.level,
                 "MOREGAN_ROUTE": json.dumps(context.route),
                 "MOREGAN_NO_WRITE": "1" if self.command.no_write else "0",
+                "MOREGAN_ATTEMPT": str(context.attempt),
+                "MOREGAN_REMEDIATION_CONTEXT": json.dumps(context.remediation_context or {}, sort_keys=True),
             }
         )
 
@@ -137,6 +142,7 @@ class CommandWorker:
         except subprocess.TimeoutExpired as exc:
             return self._failure_result(
                 started,
+                context.attempt,
                 description=f"{self.stage} worker timed out after {self.command.timeout_seconds}s.",
                 remediation="Increase timeout_seconds or fix the worker command so it completes.",
                 stdout_tail=exc.stdout or "",
@@ -146,6 +152,7 @@ class CommandWorker:
         if result.returncode != 0:
             return self._failure_result(
                 started,
+                context.attempt,
                 description=f"{self.stage} worker command exited with {result.returncode}.",
                 remediation="Fix the worker command or its provider configuration.",
                 stdout_tail=result.stdout,
@@ -157,19 +164,21 @@ class CommandWorker:
         except json.JSONDecodeError:
             return self._failure_result(
                 started,
+                context.attempt,
                 description=f"{self.stage} worker did not emit valid JSON on stdout.",
                 remediation="Make the worker command print one StageResult-compatible JSON object.",
                 stdout_tail=result.stdout,
                 stderr_tail=result.stderr,
             )
 
-        return self._stage_result_from_payload(payload, started)
+        return self._stage_result_from_payload(payload, started, context.attempt)
 
-    def _stage_result_from_payload(self, payload: Dict[str, object], started: float) -> StageResult:
+    def _stage_result_from_payload(self, payload: Dict[str, object], started: float, attempt: int) -> StageResult:
         stage = str(payload.get("stage", self.stage))
         if stage != self.stage:
             return self._failure_result(
                 started,
+                attempt,
                 description=f"worker emitted stage {stage!r}, expected {self.stage!r}.",
                 remediation="Fix the worker output so stage matches the routed MoreGAN stage.",
             )
@@ -178,6 +187,7 @@ class CommandWorker:
         if verdict not in {"pass", "fail", "skip"}:
             return self._failure_result(
                 started,
+                attempt,
                 description=f"{self.stage} worker emitted invalid verdict {verdict!r}.",
                 remediation="Use one of: pass, fail, skip.",
             )
@@ -197,6 +207,7 @@ class CommandWorker:
                     command=self.command.command,
                 ),
             ],
+            attempt=int(payload.get("attempt") or attempt),
             started_at=str(payload.get("started_at") or _timestamp()),
             completed_at=str(payload.get("completed_at") or _timestamp()),
             duration_ms=int(payload.get("duration_ms") or _duration_ms(started)),
@@ -205,6 +216,7 @@ class CommandWorker:
     def _failure_result(
         self,
         started: float,
+        attempt: int,
         description: str,
         remediation: str,
         stdout_tail: str = "",
@@ -248,6 +260,7 @@ class CommandWorker:
                 )
             ],
             evidence=evidence,
+            attempt=attempt,
             started_at=_timestamp(),
             completed_at=_timestamp(),
             duration_ms=_duration_ms(started),
@@ -308,6 +321,7 @@ class ConfigErrorWorker:
                     path=".moregan/workers.yaml",
                 )
             ],
+            attempt=context.attempt,
             started_at=_timestamp(),
             completed_at=_timestamp(),
             duration_ms=_duration_ms(started),

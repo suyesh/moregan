@@ -116,6 +116,8 @@ Goal: turn failed evidence into bounded repair attempts.
 - Rerun only failed gates plus required downstream gates.
 - Preserve failure reports when remediation cannot resolve blockers.
 
+Status: the first remediation loop is implemented. Required deterministic failures and routed worker failures after generation are converted into remediation context, the generator is rerun with `MOREGAN_REMEDIATION_CONTEXT`, attempts are bounded with `--max-remediation-attempts`, and traces preserve `remediation.json` plus attempt-specific stage artifacts.
+
 ### v2.6: Adaptive Routing
 
 Goal: spend rigor where risk justifies it.
@@ -154,4 +156,4 @@ Goal: let evidence tune the harness.
 
 ## Current Branch Focus
 
-This branch starts v1.6 through v2.4. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, and read-only run replay. The next implementation step is the remediation loop.
+This branch starts v1.6 through v2.5. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, and bounded remediation attempts. The next implementation step is safer execution with isolated worktrees.

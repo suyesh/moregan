@@ -667,3 +667,47 @@ persona_execution:
   learning_curator: "PASS - recorded PyPI package, console setup bridge, and artifact verification evidence"
 notes: "The PyPI project is not published until the GitHub release/workflow successfully publishes it; local packaging now builds the intended `moregan` wheel."
 ---
+
+---
+timestamp: "2026-08-12T00:26:04-07:00"
+status: SUCCESS
+task_nickname: moregan-remediation-loop
+summary: "Implemented bounded remediation attempts that feed failed gate evidence back to the generator."
+branch: "main"
+updates:
+  - file: "moregan/runtime.py"
+    action: "Replaced the single-pass route loop with bounded remediation, retry-from-deterministic behavior, remediation.json records, attempt-specific stage artifacts, and richer final reports."
+  - file: "moregan/schemas.py"
+    action: "Added attempt metadata to StageResult and CommandEvidence."
+  - file: "moregan/workers.py"
+    action: "Passed MOREGAN_ATTEMPT and MOREGAN_REMEDIATION_CONTEXT to provider-backed worker commands."
+  - file: "moregan/agent_worker.py"
+    action: "Included attempt and remediation context in Codex/Claude provider prompt runtime context."
+  - file: "moregan/state.py"
+    action: "Allowed MR readiness failures to enter remediation."
+  - file: "moregan/cli.py"
+    action: "Added --max-remediation-attempts to `moregan run`."
+  - file: "tests/test_moregan_runtime.py"
+    action: "Added coverage for deterministic remediation success, remediation exhaustion, worker-finding feedback to the generator, and attempt artifacts."
+  - file: "README.md"
+    action: "Documented bounded remediation, attempt-specific artifacts, remediation.json, and the new CLI flag."
+  - file: "INSTALL.md"
+    action: "Documented remediation traces and runtime flags."
+  - file: "ROADMAP.md"
+    action: "Marked v2.5 remediation loop implemented and moved next work to safer execution."
+  - file: ".moregan/roadmap.yaml"
+    action: "Marked remediation-loop done and set safer-execution-isolation as current_work."
+verification_evidence: "python3 -m unittest discover -s tests -v passed 41 tests; python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/adapters.py moregan/agent_worker.py moregan/init.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py moregan/replay.py passed; git diff --check passed; python3 -m moregan.cli run --help shows --max-remediation-attempts."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - runtime, CLI, docs, and tests only"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "not scored - local branch has intentional uncommitted implementation work before commit"
+  learning_curator: "PASS - recorded remediation evidence and next safer execution work"
+notes: "MoreGAN now retries failed post-generation gates by sending structured failure context back to the generator. Initial generator failure remains terminal because there is no successful generator to remediate from."
+---

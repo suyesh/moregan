@@ -127,6 +127,8 @@ class AgentWorkerRunner:
             "risk_level": os.environ.get("MOREGAN_RISK_LEVEL", ""),
             "route": os.environ.get("MOREGAN_ROUTE", "[]"),
             "no_write": os.environ.get("MOREGAN_NO_WRITE", "1"),
+            "attempt": os.environ.get("MOREGAN_ATTEMPT", "1"),
+            "remediation_context": os.environ.get("MOREGAN_REMEDIATION_CONTEXT", "{}"),
         }
         return (
             f"{template}\n\n"
@@ -137,6 +139,8 @@ class AgentWorkerRunner:
             f"- risk_level: {context['risk_level']}\n"
             f"- route: {context['route']}\n"
             f"- MOREGAN_NO_WRITE: {context['no_write']}\n\n"
+            f"- attempt: {context['attempt']}\n"
+            f"- remediation_context: {context['remediation_context']}\n\n"
             "Return exactly one JSON object on stdout and no markdown fences.\n"
         )
 
@@ -172,6 +176,7 @@ class AgentWorkerRunner:
             confidence=self._confidence(payload.get("confidence", 1.0)),
             findings=[self._finding_from_payload(item) for item in self._list_payload(payload.get("findings"))],
             evidence=evidence,
+            attempt=int(payload.get("attempt") or os.environ.get("MOREGAN_ATTEMPT", "1")),
             started_at=str(payload.get("started_at") or self._timestamp()),
             completed_at=str(payload.get("completed_at") or self._timestamp()),
             duration_ms=int(payload.get("duration_ms") or self._duration_ms(started)),
@@ -190,6 +195,7 @@ class AgentWorkerRunner:
                     path=str(self.prompt_path),
                 )
             ],
+            attempt=int(os.environ.get("MOREGAN_ATTEMPT", "1")),
             started_at=self._timestamp(),
             completed_at=self._timestamp(),
             duration_ms=self._duration_ms(started),
@@ -240,6 +246,7 @@ class AgentWorkerRunner:
                 )
             ],
             evidence=evidence,
+            attempt=int(os.environ.get("MOREGAN_ATTEMPT", "1")),
             started_at=self._timestamp(),
             completed_at=self._timestamp(),
             duration_ms=self._duration_ms(started),

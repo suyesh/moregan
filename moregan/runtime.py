@@ -152,7 +152,9 @@ class TraceWriter:
         target.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
     def write_stage(self, run_dir: Path, result: StageResult) -> None:
-        self.write_json(run_dir, f"stages/{result.stage}.json", asdict(result))
+        payload = asdict(result)
+        self.write_json(run_dir, f"stages/{result.stage}.json", payload)
+        self.write_json(run_dir, f"stages/{result.stage}.attempt{result.attempt}.json", payload)
 
     def write_state(self, run_dir: Path, state_machine: StateMachine, snapshot: StateSnapshot) -> None:
         self.write_json(run_dir, "state.json", state_machine.to_dict())
@@ -180,6 +182,8 @@ class TraceWriter:
         lines.extend(["", "## Stage Results", ""])
         for stage in result.stages:
             detail = f"{stage.verdict.upper()} ({stage.confidence:.2f} confidence)"
+            if stage.attempt > 1:
+                detail += f", attempt {stage.attempt}"
             if stage.findings:
                 detail += f", {len(stage.findings)} finding(s)"
             lines.append(f"- {stage.stage}: {detail}")
@@ -191,7 +195,10 @@ class TraceWriter:
             status = "SKIP" if item.skipped else "PASS" if item.passed else "FAIL"
             detail = item.reason or " ".join(item.command)
             required = "required" if item.required else "optional"
-            lines.append(f"- {status}: {item.name} ({item.category}, {required}, {item.duration_ms}ms) - {detail}")
+            lines.append(
+                f"- {status}: {item.name} "
+                f"(attempt {item.attempt}, {item.category}, {required}, {item.duration_ms}ms) - {detail}"
+            )
 
         (run_dir / "final_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -341,8 +348,9 @@ class DeterministicEvidenceRunner:
 class MoreGANRuntime:
     """Coordinates a deterministic MoreGAN run trace."""
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, max_remediation_attempts: int = 3):
         self.root = root.resolve()
+        self.max_remediation_attempts = max(0, max_remediation_attempts)
         self.classifier = RiskClassifier()
         self.trace_writer = TraceWriter(self.root)
         self.evidence_runner = DeterministicEvidenceRunner(self.root)
@@ -351,7 +359,12 @@ class MoreGANRuntime:
     def run(self, request: str, run_checks: bool = True) -> HarnessRunResult:
         run_dir = self.trace_writer.create_run_dir(request)
         run_id = run_dir.name
-        state_machine = StateMachine(run_id=run_id, request=request, timestamp_factory=self._timestamp)
+        state_machine = StateMachine(
+            run_id=run_id,
+            request=request,
+            max_remediation_attempts=self.max_remediation_attempts,
+            timestamp_factory=self._timestamp,
+        )
         self.trace_writer.write_state(run_dir, state_machine, state_machine.latest_snapshot)
         self.trace_writer.event(run_dir, "run.started", request=request)
 
@@ -401,26 +414,52 @@ class MoreGANRuntime:
         stages = [risk_stage]
         status = "pass"
         terminal_reason = "all routed stages completed without blocking failures"
-        worker_context = WorkerContext(
-            root=self.root,
-            run_id=run_id,
-            request=request,
-            risk=risk,
-            route=risk.route,
-        )
+        current_index = 0
+        remediation_context: Optional[Dict[str, object]] = None
 
-        for route_stage in risk.route:
+        while current_index < len(risk.route):
+            route_stage = risk.route[current_index]
+            attempt = max(1, state_machine.run_state.remediation_attempts + 1)
+            worker_context = WorkerContext(
+                root=self.root,
+                run_id=run_id,
+                request=request,
+                risk=risk,
+                route=risk.route,
+                attempt=attempt,
+                remediation_context=remediation_context,
+            )
+
             if route_stage == "deterministic_evidence":
-                evidence_stage, evidence = self._run_deterministic_evidence(
+                evidence_stage, current_evidence = self._run_deterministic_evidence(
                     run_dir=run_dir,
                     state_machine=state_machine,
                     run_checks=run_checks,
+                    attempt=attempt,
                 )
+                evidence.extend(current_evidence)
                 stages.append(evidence_stage)
                 if evidence_stage.verdict == "fail":
-                    status = "fail"
-                    terminal_reason = "blocking deterministic checks failed"
-                    break
+                    remediated = self._attempt_remediation(
+                        run_dir=run_dir,
+                        state_machine=state_machine,
+                        stages=stages,
+                        failed_stage=evidence_stage,
+                        failed_route_index=current_index,
+                        risk=risk,
+                        request=request,
+                        evidence=current_evidence,
+                    )
+                    if remediated is None:
+                        status = "fail"
+                        terminal_reason = "blocking deterministic checks failed"
+                        if state_machine.run_state.remediation_attempts:
+                            terminal_reason += " after remediation attempts"
+                        break
+                    current_index = remediated["retry_index"]  # type: ignore[assignment]
+                    remediation_context = remediated["context"]  # type: ignore[assignment]
+                    continue
+                current_index += 1
                 continue
 
             worker_stage = self._run_worker_stage(
@@ -428,12 +467,30 @@ class MoreGANRuntime:
                 state_machine=state_machine,
                 route_stage=route_stage,
                 context=worker_context,
+                attempt=attempt,
             )
             stages.append(worker_stage)
             if worker_stage.verdict == "fail":
-                status = "fail"
-                terminal_reason = f"{route_stage} worker failed"
-                break
+                remediated = self._attempt_remediation(
+                    run_dir=run_dir,
+                    state_machine=state_machine,
+                    stages=stages,
+                    failed_stage=worker_stage,
+                    failed_route_index=current_index,
+                    risk=risk,
+                    request=request,
+                    evidence=[],
+                )
+                if remediated is None:
+                    status = "fail"
+                    terminal_reason = f"{route_stage} worker failed"
+                    if route_stage != "generator" and state_machine.run_state.remediation_attempts:
+                        terminal_reason += " after remediation attempts"
+                    break
+                current_index = remediated["retry_index"]  # type: ignore[assignment]
+                remediation_context = remediated["context"]  # type: ignore[assignment]
+                continue
+            current_index += 1
 
         self._transition(
             run_dir,
@@ -463,6 +520,7 @@ class MoreGANRuntime:
         state_machine: StateMachine,
         route_stage: str,
         context: WorkerContext,
+        attempt: int,
     ) -> StageResult:
         next_state = WORKER_STAGE_TO_STATE[route_stage]
         self._transition(
@@ -472,10 +530,11 @@ class MoreGANRuntime:
             reason=f"routing {route_stage} worker",
             stage=route_stage,
         )
-        self.trace_writer.event(run_dir, "worker.started", stage=route_stage)
+        self.trace_writer.event(run_dir, "worker.started", stage=route_stage, attempt=attempt)
         result = self.worker_registry.get(route_stage).run(context)
+        result.attempt = attempt
         self.trace_writer.write_stage(run_dir, result)
-        self.trace_writer.event(run_dir, "worker.completed", stage=route_stage, verdict=result.verdict)
+        self.trace_writer.event(run_dir, "worker.completed", stage=route_stage, verdict=result.verdict, attempt=attempt)
         return result
 
     def _run_deterministic_evidence(
@@ -483,6 +542,7 @@ class MoreGANRuntime:
         run_dir: Path,
         state_machine: StateMachine,
         run_checks: bool,
+        attempt: int,
     ) -> tuple:
         self._transition(
             run_dir,
@@ -492,16 +552,19 @@ class MoreGANRuntime:
             stage="deterministic_evidence",
         )
         if run_checks:
-            self.trace_writer.event(run_dir, "deterministic_evidence.started")
+            self.trace_writer.event(run_dir, "deterministic_evidence.started", attempt=attempt)
             evidence_start = time.perf_counter()
             evidence_started_at = self._timestamp()
             evidence = self.evidence_runner.run_all()
-            evidence_stage = self._deterministic_stage(evidence, evidence_started_at, evidence_start)
+            for item in evidence:
+                item.attempt = attempt
+            evidence_stage = self._deterministic_stage(evidence, evidence_started_at, evidence_start, attempt=attempt)
             self.trace_writer.write_stage(run_dir, evidence_stage)
             self.trace_writer.event(
                 run_dir,
                 "deterministic_evidence.completed",
                 failed=[item.name for item in evidence if not item.passed],
+                attempt=attempt,
             )
             return evidence_stage, evidence
 
@@ -517,12 +580,190 @@ class MoreGANRuntime:
                     summary="Deterministic checks were skipped with --no-checks.",
                 )
             ],
+            attempt=attempt,
             started_at=self._timestamp(),
             completed_at=self._timestamp(),
             duration_ms=0,
         )
         self.trace_writer.write_stage(run_dir, skipped_stage)
         return skipped_stage, []
+
+    def _attempt_remediation(
+        self,
+        run_dir: Path,
+        state_machine: StateMachine,
+        stages: List[StageResult],
+        failed_stage: StageResult,
+        failed_route_index: int,
+        risk: RiskClassification,
+        request: str,
+        evidence: List[CommandEvidence],
+    ) -> Optional[Dict[str, object]]:
+        if not self._can_remediate(state_machine, failed_stage.stage, failed_route_index, risk.route):
+            exhausted = (
+                state_machine.run_state.remediation_attempts
+                >= state_machine.run_state.max_remediation_attempts
+            )
+            self.trace_writer.event(
+                run_dir,
+                "remediation.exhausted" if exhausted else "remediation.skipped",
+                failed_stage=failed_stage.stage,
+                remediation_attempts=state_machine.run_state.remediation_attempts,
+                max_remediation_attempts=state_machine.run_state.max_remediation_attempts,
+            )
+            return None
+
+        next_attempt = state_machine.run_state.remediation_attempts + 2
+        context = self._remediation_context(
+            failed_stage=failed_stage,
+            failed_route_index=failed_route_index,
+            route=risk.route,
+            next_attempt=next_attempt,
+            evidence=evidence,
+        )
+        self._transition(
+            run_dir,
+            state_machine,
+            TaskState.REMEDIATION,
+            reason=f"feeding {failed_stage.stage} findings back to generator",
+            stage="remediation",
+        )
+        remediation_attempt = state_machine.run_state.remediation_attempts
+        remediation_stage = StageResult(
+            stage="remediation",
+            verdict="pass",
+            confidence=1.0,
+            evidence=[
+                EvidenceReference(
+                    kind="remediation",
+                    name="failed_stage",
+                    summary=f"Attempt {remediation_attempt}: retrying after {failed_stage.stage} failed.",
+                ),
+                EvidenceReference(
+                    kind="remediation",
+                    name="retry_route",
+                    summary=f"Retry will restart at {risk.route[context['retry_index']]}.",
+                ),
+            ],
+            attempt=next_attempt,
+            started_at=self._timestamp(),
+            completed_at=self._timestamp(),
+            duration_ms=0,
+        )
+        stages.append(remediation_stage)
+        self.trace_writer.write_stage(run_dir, remediation_stage)
+        self._append_remediation_record(run_dir, context)
+        self.trace_writer.event(
+            run_dir,
+            "remediation.started",
+            failed_stage=failed_stage.stage,
+            remediation_attempt=remediation_attempt,
+            next_attempt=next_attempt,
+        )
+
+        generator_context = WorkerContext(
+            root=self.root,
+            run_id=run_dir.name,
+            request=request,
+            risk=risk,
+            route=risk.route,
+            attempt=next_attempt,
+            remediation_context=context,
+        )
+        generator_stage = self._run_worker_stage(
+            run_dir=run_dir,
+            state_machine=state_machine,
+            route_stage="generator",
+            context=generator_context,
+            attempt=next_attempt,
+        )
+        stages.append(generator_stage)
+        self.trace_writer.event(
+            run_dir,
+            "remediation.completed",
+            failed_stage=failed_stage.stage,
+            remediation_attempt=remediation_attempt,
+            generator_verdict=generator_stage.verdict,
+        )
+        if generator_stage.verdict == "fail":
+            return None
+        return {"retry_index": context["retry_index"], "context": context}
+
+    def _can_remediate(
+        self,
+        state_machine: StateMachine,
+        failed_stage: str,
+        failed_route_index: int,
+        route: List[str],
+    ) -> bool:
+        if state_machine.run_state.remediation_attempts >= state_machine.run_state.max_remediation_attempts:
+            return False
+        if failed_stage == "generator":
+            return False
+        try:
+            generator_index = route.index("generator")
+        except ValueError:
+            return False
+        return failed_route_index > generator_index
+
+    def _remediation_context(
+        self,
+        failed_stage: StageResult,
+        failed_route_index: int,
+        route: List[str],
+        next_attempt: int,
+        evidence: List[CommandEvidence],
+    ) -> Dict[str, object]:
+        return {
+            "next_attempt": next_attempt,
+            "failed_stage": failed_stage.stage,
+            "failed_verdict": failed_stage.verdict,
+            "failed_route_index": failed_route_index,
+            "retry_index": self._retry_index(route, failed_route_index),
+            "findings": [asdict(finding) for finding in failed_stage.findings],
+            "stage_evidence": [asdict(item) for item in failed_stage.evidence],
+            "deterministic_evidence": [self._command_evidence_context(item) for item in evidence if not item.passed],
+        }
+
+    def _retry_index(self, route: List[str], failed_route_index: int) -> int:
+        try:
+            deterministic_index = route.index("deterministic_evidence")
+            generator_index = route.index("generator")
+        except ValueError:
+            return failed_route_index
+        if generator_index < deterministic_index <= failed_route_index:
+            return deterministic_index
+        return failed_route_index
+
+    def _command_evidence_context(self, item: CommandEvidence) -> Dict[str, object]:
+        return {
+            "name": item.name,
+            "category": item.category,
+            "required": item.required,
+            "exit_code": item.exit_code,
+            "remediation": item.remediation,
+            "stdout_tail": item.stdout_tail[-1000:],
+            "stderr_tail": item.stderr_tail[-1000:],
+        }
+
+    def _append_remediation_record(self, run_dir: Path, context: Dict[str, object]) -> None:
+        target = run_dir / "remediation.json"
+        if target.exists():
+            payload = json.loads(target.read_text(encoding="utf-8"))
+            attempts = payload.get("attempts", [])
+            if not isinstance(attempts, list):
+                attempts = []
+        else:
+            attempts = []
+        attempts.append(context)
+        self.trace_writer.write_json(
+            run_dir,
+            "remediation.json",
+            {
+                "max_remediation_attempts": self.max_remediation_attempts,
+                "attempts": attempts,
+            },
+        )
 
     def _transition(
         self,
@@ -544,7 +785,7 @@ class MoreGANRuntime:
         )
 
     def _deterministic_stage(
-        self, evidence: List[CommandEvidence], started_at: str, started_timer: float
+        self, evidence: List[CommandEvidence], started_at: str, started_timer: float, attempt: int
     ) -> StageResult:
         failed = [item for item in evidence if not item.passed]
         blocking_failed = [item for item in failed if item.required]
@@ -554,6 +795,7 @@ class MoreGANRuntime:
             confidence=1.0,
             findings=[self._finding_from_command(item) for item in failed],
             evidence=[self._evidence_reference_from_command(item) for item in evidence],
+            attempt=attempt,
             started_at=started_at,
             completed_at=self._timestamp(),
             duration_ms=self._duration_ms(started_timer),

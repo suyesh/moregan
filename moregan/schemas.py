@@ -37,6 +37,7 @@ class StageResult:
     confidence: float
     findings: List[Finding] = field(default_factory=list)
     evidence: List[EvidenceReference] = field(default_factory=list)
+    attempt: int = 1
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     duration_ms: Optional[int] = None
@@ -61,6 +62,7 @@ class CommandEvidence:
     duration_ms: int = 0
     remediation: Optional[str] = None
     source: str = "default"
+    attempt: int = 1
     skipped: bool = False
     reason: Optional[str] = None
     stdout_tail: str = ""
