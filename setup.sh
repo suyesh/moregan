@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# hooliGAN-harness Quick Setup Script
+# MoreGAN Quick Setup Script
 # Uses uv for fast Python dependency management
 
 set -e
@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 # Banner
 echo -e "${MAGENTA}${BOLD}"
 echo "╔══════════════════════════════════════════════╗"
-echo "║        hooliGAN-harness Installer           ║"
+echo "║             MoreGAN Installer               ║"
 echo "║              Version 1.5.0                  ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -90,7 +90,7 @@ uv sync --python python3
 chmod +x install.py
 
 # Run the installer
-echo -e "${CYAN}🚀 Launching hooliGAN-harness installer...${NC}"
+echo -e "${CYAN}🚀 Launching MoreGAN installer...${NC}"
 echo ""
 uv run python install.py
 

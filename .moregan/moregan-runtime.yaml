@@ -1,0 +1,260 @@
+nickname: moregan-runtime
+feature: Rename the public brand to MoreGAN and add the first executable runtime trace foundation
+created: "2026-08-11"
+status: done
+context: The user wants to move the project toward a serious engineer-facing tool and rename it fully to MoreGAN, including the project-local workflow directory.
+confidence:
+  score: 72
+  level: production
+  rationale: The change spans docs, installer payloads, tests, project-local workflow paths, command aliases, and a new Python runtime package.
+designer_decision:
+  status: not_needed
+  rationale: This is a CLI/runtime/docs change with no frontend UI, UX, accessibility, layout, or design-system surface.
+architectural_review:
+  verdict: APPROVED
+  notes:
+    - Use MoreGAN as the public brand, skill name, install path, command prefix, package namespace, and project-local workflow directory.
+    - Add executable runtime foundations as deterministic code under moregan/ instead of burying the next product direction only in documentation.
+    - Store run traces under .moregan/runs/ and ignore them in git to avoid committing local evidence artifacts by accident.
+rollback_strategy:
+  approach: Revert the moregan package, installer payload changes, docs rename edits, test updates, and .gitignore change as one branch patch if validation fails.
+tasks:
+  - id: "1"
+    title: Create a feature branch and define rename stance
+    status: done
+    acceptance_criteria:
+      - Work happens on a branch separate from main.
+      - MoreGAN is used as the forward-facing product name.
+      - Installed skill paths are renamed to moregan.
+    files:
+      - README.md
+      - INSTALL.md
+      - SKILL.md
+      - install.py
+    depends_on: []
+  - id: "2"
+    title: Add executable runtime trace foundation
+    status: done
+    acceptance_criteria:
+      - A MoreGAN CLI can create a run trace from an engineering request.
+      - The runtime writes request, plan, event, evidence, result, and final report artifacts.
+      - Risk classification maps high-risk requests to stricter routes.
+      - Deterministic checks include git diff whitespace checks, Python compilation, and unittest discovery.
+    files:
+      - moregan/__init__.py
+      - moregan/runtime.py
+      - moregan/cli.py
+      - .gitignore
+    depends_on: ["1"]
+  - id: "3"
+    title: Wire runtime into installer and package metadata
+    status: done
+    acceptance_criteria:
+      - Claude and Codex skill installs include the moregan runtime package.
+      - MoreGAN command aliases are exposed without old command aliases.
+      - Installer output uses MoreGAN as the visible brand.
+    files:
+      - install.py
+      - pyproject.toml
+      - uv.lock
+      - tests/test_install.py
+    depends_on: ["2"]
+  - id: "4"
+    title: Verify runtime and rename contracts
+    status: done
+    acceptance_criteria:
+      - Unit tests pass.
+      - Python syntax compilation passes.
+      - git diff whitespace check passes.
+      - MoreGAN run/status/inspect smoke checks pass.
+      - A dogfood run with deterministic checks passes on this repository.
+    files:
+      - tests/test_moregan_runtime.py
+      - .moregan/moregan-runtime.yaml
+      - .moregan/progress.md
+    depends_on: ["3"]
+  - id: "5"
+    title: Add roadmap and structured stage outputs
+    status: done
+    acceptance_criteria:
+      - The repository has a human-readable MoreGAN roadmap.
+      - The project-local .moregan roadmap tracks roadmap phases in structured YAML.
+      - The runtime writes stage-level JSON artifacts for risk classification and deterministic evidence.
+      - Stage artifacts include verdict, confidence, findings, evidence, and timing fields.
+      - Failed deterministic checks are converted into structured findings with remediation guidance.
+      - The installer payload includes ROADMAP.md and moregan/schemas.py.
+    files:
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+      - moregan/schemas.py
+      - moregan/runtime.py
+      - install.py
+      - README.md
+      - INSTALL.md
+      - tests/test_install.py
+      - tests/test_moregan_runtime.py
+    depends_on: ["4"]
+  - id: "6"
+    title: Implement runtime state machine
+    status: done
+    acceptance_criteria:
+      - The runtime has explicit task states for intake, risk classification, planning, generation, deterministic evidence, evaluation, remediation, readiness, learning, completed, and failed paths.
+      - Legal transitions are enforced in code.
+      - Invalid transitions raise a dedicated error.
+      - Every run writes state.json with the current state and full transition history.
+      - Every run appends state snapshots to states.jsonl.
+      - CLI status shows the latest run state.
+    files:
+      - moregan/state.py
+      - moregan/runtime.py
+      - moregan/cli.py
+      - moregan/schemas.py
+      - tests/test_moregan_runtime.py
+      - tests/test_install.py
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+    depends_on: ["5"]
+  - id: "7"
+    title: Implement configurable deterministic tool layer
+    status: done
+    acceptance_criteria:
+      - Repository-local .moregan/tools.yaml can configure deterministic commands.
+      - Default deterministic commands still run when no tools file is present.
+      - Built-in commands support git diff validation, Python compilation, and unittest discovery.
+      - Explicit command lists can be configured without adding code.
+      - Command evidence records category, required flag, duration, source, exit code, output tails, and remediation guidance.
+      - Optional tool failures do not block the run but still create structured findings.
+      - Stack detection writes tool_suggestions.json without running extra commands implicitly.
+    files:
+      - .moregan/tools.yaml
+      - moregan/tools.py
+      - moregan/runtime.py
+      - moregan/schemas.py
+      - tests/test_moregan_runtime.py
+      - tests/test_install.py
+      - README.md
+      - INSTALL.md
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+    depends_on: ["6"]
+  - id: "8"
+    title: Implement dry-run worker orchestration
+    status: done
+    acceptance_criteria:
+      - Worker adapter interfaces exist for routed persona stages.
+      - The runtime writes dry-run StageResult artifacts for selected worker stages.
+      - Dry-run worker artifacts are honest SKIP results and state that no provider is configured.
+      - Low, medium, and high risk routes move through the StateMachine instead of bypassing worker states.
+      - Medium-risk routes can complete after code review without forcing production readiness gates.
+      - High-risk routes include architecture, security, production readiness, MR readiness, and learning states.
+    files:
+      - moregan/workers.py
+      - moregan/runtime.py
+      - moregan/state.py
+      - tests/test_moregan_runtime.py
+      - tests/test_install.py
+      - README.md
+      - INSTALL.md
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+    depends_on: ["7"]
+  - id: "9"
+    title: Implement provider-backed local command workers
+    status: done
+    acceptance_criteria:
+      - .moregan/workers.yaml can configure local provider commands for routed worker stages.
+      - Worker commands receive run context through MOREGAN_* environment variables.
+      - Worker commands must emit StageResult-compatible JSON on stdout.
+      - Provider command failures, timeouts, invalid JSON, and invalid stage output become structured findings.
+      - Provider command failures stop the route and move the StateMachine to failed.
+      - Worker commands default to no-write mode with MOREGAN_NO_WRITE=1.
+    files:
+      - .moregan/workers.yaml
+      - moregan/workers.py
+      - moregan/runtime.py
+      - moregan/state.py
+      - tests/test_moregan_runtime.py
+      - tests/test_install.py
+      - README.md
+      - INSTALL.md
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+    depends_on: ["8"]
+  - id: "10"
+    title: Implement read-only run replay
+    status: done
+    acceptance_criteria:
+      - The CLI supports `replay <run_id>` and `replay latest`.
+      - Replay renders state transitions, stage verdicts, findings, stage evidence, and deterministic evidence from existing artifacts.
+      - Replay supports JSON output for automation.
+      - Replay does not rerun providers or deterministic tools.
+      - Claude and Codex installs include the replay runtime module.
+      - Documentation explains that executable runtime commands require local Python 3.8+.
+    files:
+      - moregan/replay.py
+      - moregan/cli.py
+      - tests/test_moregan_runtime.py
+      - tests/test_install.py
+      - README.md
+      - INSTALL.md
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+    depends_on: ["9"]
+  - id: "11"
+    title: Implement safe repository initialization
+    status: done
+    acceptance_criteria:
+      - The CLI supports `init`.
+      - Init creates `.moregan/tools.yaml`, `.moregan/workers.yaml`, and `.moregan/runs/`.
+      - Init adds `.moregan/runs/` to `.gitignore` by default.
+      - Init does not overwrite existing config unless `--force` is passed.
+      - Init supports `--dry-run` without writing files.
+      - Init seeds disabled deterministic tool suggestions from detected repository stack files.
+      - Claude and Codex installs include the init runtime module.
+    files:
+      - moregan/init.py
+      - moregan/cli.py
+      - tests/test_moregan_runtime.py
+      - tests/test_install.py
+      - README.md
+      - INSTALL.md
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+    depends_on: ["10"]
+  - id: "12"
+    title: Implement Codex and Claude adapter templates
+    status: done
+    acceptance_criteria:
+      - The CLI supports `adapters codex` and `adapters claude`.
+      - Adapter scaffolding writes `.moregan/adapters/<provider>/` prompt templates.
+      - Adapter scaffolding writes `.moregan/workers.<provider>.yaml`.
+      - `--activate` writes `.moregan/workers.yaml` without overwriting existing config unless `--force` is passed.
+      - Provider prompts require StageResult JSON.
+      - The agent worker wrapper normalizes provider stdout into StageResult JSON.
+      - Review and evaluation workers default to no-write mode.
+      - Claude and Codex installs include the adapter runtime modules.
+    files:
+      - moregan/adapters.py
+      - moregan/agent_worker.py
+      - moregan/cli.py
+      - tests/test_moregan_runtime.py
+      - tests/test_install.py
+      - README.md
+      - INSTALL.md
+      - ROADMAP.md
+      - .moregan/roadmap.yaml
+    depends_on: ["11"]
+  - id: "13"
+    title: Add PyPI trusted publishing workflow
+    status: done
+    acceptance_criteria:
+      - The repository has `.github/workflows/workflow.yml`.
+      - The workflow uses `id-token: write`.
+      - The workflow uses `pypa/gh-action-pypi-publish`.
+      - README and INSTALL document that PyPI's workflow filename field should be `workflow.yml`.
+    files:
+      - .github/workflows/workflow.yml
+      - tests/test_install.py
+      - README.md
+      - INSTALL.md
+    depends_on: ["11"]

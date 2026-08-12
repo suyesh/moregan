@@ -1,5 +1,5 @@
 [project]
-name = "hooligan-harness-installer"
+name = "moregan-installer"
 version = "1.5.0"
 description = "High-reliability engineering framework for AI code generation"
 readme = "README.md"
@@ -10,9 +10,10 @@ dependencies = [
 ]
 
 [project.scripts]
-hooligan-install = "install:install_main"
-hooligan-update = "install:update_main"
-hooligan-doctor = "install:doctor_main"
+moregan = "moregan.cli:main"
+moregan-install = "install:install_main"
+moregan-update = "install:update_main"
+moregan-doctor = "install:doctor_main"
 
 [build-system]
 requires = ["hatchling"]

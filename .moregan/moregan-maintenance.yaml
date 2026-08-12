@@ -1,7 +1,7 @@
 task:
-  id: harness-maintenance-updater-doctor
-  nickname: harness-maintenance
-  summary: "Add updater and doctor commands to the hooliGAN-harness installer."
+  id: moregan-maintenance-updater-doctor
+  nickname: moregan-maintenance
+  summary: "Add updater and doctor commands to the moregan installer."
   created_at: "2026-05-13"
   confidence:
     score: 62
@@ -12,7 +12,7 @@ task:
       description: "Installer exposes explicit update and doctor commands in addition to install/uninstall."
       status: done
     - id: ac2
-      description: "Update refreshes the local harness checkout from GitHub main and reinstalls from the refreshed source."
+      description: "Update refreshes the local MoreGAN checkout from GitHub main and reinstalls from the refreshed source."
       status: done
     - id: ac3
       description: "Doctor detects duplicate installations, stale Claude registry entries, and missing installed files, then repairs them."

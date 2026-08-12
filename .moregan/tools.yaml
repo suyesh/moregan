@@ -1,0 +1,17 @@
+version: 1
+commands:
+  - name: git_diff_check
+    builtin: git_diff_check
+    category: git
+    required: true
+    remediation: "Fix whitespace or conflict-marker issues reported by git diff --check."
+  - name: python_compile
+    builtin: python_compile
+    category: syntax
+    required: true
+    remediation: "Fix Python syntax or import-time compilation errors."
+  - name: unit_tests
+    builtin: unit_tests
+    category: tests
+    required: true
+    remediation: "Fix the failing tests or update tests only when requirements changed intentionally."

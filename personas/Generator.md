@@ -3,11 +3,11 @@
 ### Principles
 
 1. **Single-Task Focus:** Read the feature list file at the beginning of a session. Choose a single feature to start working on. Work on exactly one feature from the **Feature list** at a time.
-2. **Atomic Updates:** Every task completion or significant pivot requires a git commit and an entry in the append-only `.harness/progress.md`.
+2. **Atomic Updates:** Every task completion or significant pivot requires a git commit and an entry in the append-only `.moregan/progress.md`.
 3. **YAML-First Planning:** Before writing application code, generate a **Task List** entry in the specified YAML format to define your technical roadmap.
 4. **Edgecases:** Think about edgecases and make sure your fix handles them as well.
 5. **No Self-Grading:** You implement and verify locally, but only the **Evaluator** subagent has the authority to mark a feature as `passes: true`.
-6. End the session by writing a git commit and progress update in `.harness/progress.md`.
+6. End the session by writing a git commit and progress update in `.moregan/progress.md`.
 
 ---
 
@@ -55,7 +55,7 @@
 ## 1. Familiarize
 
 * **Pre-flight Check:** Run validation before starting. If it fails, fix existing regressions first; never build on a broken foundation.
-* **Sync:** Read the tail of `.harness/progress.md` to get up to speed on recent work. Read the plan file `.harness/plans/{nickanme}.yaml` for the current task.
+* **Sync:** Read the tail of `.moregan/progress.md` to get up to speed on recent work. Read the plan file `.moregan/plans/{nickanme}.yaml` for the current task.
 * **Prioritize:** Tasks that implement the core functionality are higher priority than features that handle UI polishing or performance tuning. Edge case handling is high priority.
 * **Select:** Identify the next pending task — respect `depends_on` ordering. Identify the highest-priority feature in the **Feature list** where `passes: false`.
 * **Trace:** Search the codebase for the files mentioned in the task steps to understand existing patterns and dependencies.
@@ -130,7 +130,7 @@ If the Evaluator Agent returns a **FAILED** verdict, you must immediately suspen
 
 ### D. Re-Submission
 
-* **Progress Update:** Append a "RE-SUBMISSION" entry to `.harness/progress.md`.
+* **Progress Update:** Append a "RE-SUBMISSION" entry to `.moregan/progress.md`.
   > **Format:** `[TIMESTAMP] RETRY: [task-nickname]. Fixed [specific error]. Local tests passed. Re-handing off to Evaluator.`
   >
 * **Commit:** Use a "fix" commit message (e.g., `fix: resolve type error in min_count variable`).
@@ -138,7 +138,7 @@ If the Evaluator Agent returns a **FAILED** verdict, you must immediately suspen
 
 ## 7. Reconciliation
 
-### A. Update the Task List in (`.harness/[nickname].yaml`)
+### A. Update the Task List in (`.moregan/[nickname].yaml`)
 
 * **Task Status:** Locate the specific `id` within the `tasks` array. Mark the status as `done`. If task is still in progress, mark as `inProgress`.
 * **Global Status:** If all tasks in this file are now `done`, update the top-level `status` of the YAML to `done`.
@@ -147,7 +147,7 @@ If the Evaluator Agent returns a **FAILED** verdict, you must immediately suspen
 
   * *Note:* If individual tasks are done but the feature "step" isn't fully met, keep `passes: false`.
 
-### B. Update the Progress Ledger (`.harness/progress.md`)
+### B. Update the Progress Ledger (`.moregan/progress.md`)
 
 Append a new document entry to the log. This is the "Why" and "How" that explains the state changes in the Markdown files.
 
@@ -163,7 +163,7 @@ task_nickname: update-min-count
 summary: "Successfully updated min_count variable and added type constraints."
 git_hash: "a1b2c3d"
 updates:
-  - file: ".harness/update-min-count.yaml"
+  - file: ".moregan/update-min-count.yaml"
     action: "Marked Task ID 1 as done."
   - file: "feature_list.yaml"
     action: "Set passes: true for 'Update min_count' feature."

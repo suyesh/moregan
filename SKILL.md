@@ -1,6 +1,6 @@
 ---
-name: harness
-description: Implements a high-reliability "Harness Engineering" loop with multi-generator collaboration, enterprise tool integration, and living documentation for Claude Code and Codex. Trigger when a user wants to "implement a feature," "start the harness," "use hooliGAN-harness," or "build with verification."
+name: moregan
+description: Implements the MoreGAN high-reliability engineering loop with multi-generator collaboration, enterprise tool integration, living documentation, and executable trace foundations for Claude Code and Codex. Trigger when a user wants to "implement a feature," "start MoreGAN," "use MoreGAN," "use moregan," or "build with verification."
 version: 1.5.0
 ---
 ## Objective
@@ -11,33 +11,33 @@ To replace one-shot code generation with a structured, self-correcting agentic l
 
 ### Runtime Compatibility
 
-This skill is portable across Claude Code and Codex.
+MoreGAN is portable across Claude Code and Codex.
 
 * In Claude Code, the installer also places persona files in `~/.claude/agents/`.
 * In Codex, persona files live inside this skill at `personas/*.md`; read the relevant persona file before performing that role.
 * Codex should use its native plan, terminal, file-editing, subagent, and browser tools where available. Do not require Claude-specific slash commands or agent paths when running in Codex.
-* Treat `.harness/` files as project-local working artifacts. If they do not exist in the target repository, create them from the skill defaults.
+* Treat `.moregan/` files as project-local working artifacts. If they do not exist in the target repository, create them from the skill defaults.
 * The MR Readiness Analyzer is local-git-only. It must not use GitLab MCP tools, `glab`, or any external service.
 
 ### Maintenance Intents
 
-If the request is a harness maintenance command rather than feature work, do **not** run the full planning / generator / evaluator loop.
+If the request is a MoreGAN maintenance command rather than feature work, do **not** run the full planning / generator / evaluator loop.
 
 Maintenance intents include:
 
-* Claude Code: `/harness update`, `/harness doctor`
-* Codex: `Use hooliGAN-harness to update`, `Use hooliGAN-harness to run doctor`, or equivalent wording
+* Claude Code: `/moregan update`, `/moregan doctor`
+* Codex: `Use MoreGAN to update`, `Use MoreGAN to run doctor`, `Use moregan to update`, `Use moregan to run doctor`, or equivalent wording
 
 For these intents:
 
 * Run the installed skill's `install.py` maintenance command directly when available.
-* `update` should execute the installer update flow, which downloads the latest hooliGAN-harness archive from GitHub over HTTPS for the requested ref and reinstalls the skill.
+* `update` should execute the installer update flow, which downloads the latest MoreGAN archive from GitHub over HTTPS for the requested ref and reinstalls the skill.
 * `doctor` should execute the installer doctor flow, which scans for duplicate or broken installations and repairs them.
 * Only fall back to the feature-work phases below when the request is clearly about implementing or modifying application code.
 
 ### Mandatory Persona Execution
 
-For every feature-work task, the harness must run these personas and record their results before declaring the task complete:
+For every feature-work task, MoreGAN must run these personas and record their results before declaring the task complete:
 
 1. Planner
 2. Architect
@@ -51,7 +51,7 @@ For every feature-work task, the harness must run these personas and record thei
 
 Designer is the only conditional persona. The agent must decide whether Designer is needed from the task type and record the decision. Run Designer when the task touches frontend UI, UX, visual design, interaction behavior, accessibility, layout, copy that affects user experience, or design-system concerns. Record `Designer: not needed` with a short rationale for non-frontend or non-UX tasks.
 
-Learning Curator runs after MR Readiness Analyzer for every feature-work task. It learns only from local evidence, records unproven observations in `.harness/knowledge/retrospectives.yaml`, and promotes lessons into failure patterns, evolution patterns, or confidence scoring only when the promotion rules are satisfied.
+Learning Curator runs after MR Readiness Analyzer for every feature-work task. It learns only from local evidence, records unproven observations in `.moregan/knowledge/retrospectives.yaml`, and promotes lessons into failure patterns, evolution patterns, or confidence scoring only when the promotion rules are satisfied.
 
 The final user-facing response for feature work must include a persona execution summary, the MR Readiness Analyzer result, and the Learning Curator result.
 
@@ -81,20 +81,20 @@ Persona Execution:
 ### 1. Phase 0: Initialization
 
 * Read the repository README.md to understand the environment.
-* Create .harness/dev_init.md with instructions to run the development server for downstream agents.
-* Load .harness/knowledge/failure-patterns.yaml to understand common failure patterns.
+* Create .moregan/dev_init.md with instructions to run the development server for downstream agents.
+* Load .moregan/knowledge/failure-patterns.yaml to understand common failure patterns.
 * Initialize confidence scoring based on task complexity and historical performance.
 
 ### 2. Phase 1: Planning (The Planner)
 
-* Create a technical roadmap at .harness/[nickname].yaml.
+* Create a technical roadmap at .moregan/[nickname].yaml.
 * Define specific, quantifiable Acceptance Criteria (AC) for every task.
-* Initialize an append-only log at .harness/progress.md to track all session activity.
+* Initialize an append-only log at .moregan/progress.md to track all session activity.
 
 ### 2.5. Phase 1.5: Architectural Review (The Architect)
 
 * Review plan for system-wide impacts and architectural concerns.
-* Identify design patterns from .harness/evolution/patterns.yaml that apply.
+* Identify design patterns from .moregan/evolution/patterns.yaml that apply.
 * Assess risks and propose alternative approaches.
 * Define rollback strategy based on task complexity.
 * Must run and APPROVE before Generator can proceed for every feature-work task.
@@ -112,14 +112,14 @@ Persona Execution:
 ### 3. Phase 2: Implementation (The Generator)
 
 * Select Task: Identify the next pending task based on depends_on logic.
-* Multi-Generator Check: If enabled in .harness/collaboration/multi-generator.yaml, coordinate with other generators.
-* Rollback Preparation: Create snapshot using .harness/rollback/rollback-strategy.yaml before changes.
-* Confidence Assessment: Calculate confidence score using .harness/knowledge/confidence-scoring.yaml.
-* Pattern Application: Apply relevant patterns from .harness/evolution/patterns.yaml.
+* Multi-Generator Check: If enabled in .moregan/collaboration/multi-generator.yaml, coordinate with other generators.
+* Rollback Preparation: Create snapshot using .moregan/rollback/rollback-strategy.yaml before changes.
+* Confidence Assessment: Calculate confidence score using .moregan/knowledge/confidence-scoring.yaml.
+* Pattern Application: Apply relevant patterns from .moregan/evolution/patterns.yaml.
 * Logic Synthesis: Perform an impact analysis and define a testing strategy before writing code.
-* Pattern Check: Review .harness/knowledge/failure-patterns.yaml for relevant patterns to avoid.
+* Pattern Check: Review .moregan/knowledge/failure-patterns.yaml for relevant patterns to avoid.
 * Code Generation: Implement logic following SOLID, DRY, and KISS principles with pattern-aware defensive coding.
-* Documentation Update: Trigger living documentation generation from .harness/documentation/living-docs.yaml.
+* Documentation Update: Trigger living documentation generation from .moregan/documentation/living-docs.yaml.
 * Atomic Updates: Every task completion requires a git commit and a progress entry.
 
 ### 4. Phase 3: Parallel Adversarial Evaluation
@@ -153,8 +153,8 @@ Persona Execution:
 * Verdict: Return a readiness score and concrete cleanup actions if the branch is not ready.
 
 #### 4f. Learning Capture (The Learning Curator)
-* Evidence-Only Learning: Read task plans, progress notes, evaluator verdicts, review findings, MR readiness output, local git status, and existing harness memory.
-* Retrospective Buffer: Record first-occurrence observations in `.harness/knowledge/retrospectives.yaml` rather than promoting them directly into durable memory.
+* Evidence-Only Learning: Read task plans, progress notes, evaluator verdicts, review findings, MR readiness output, local git status, and existing MoreGAN memory.
+* Retrospective Buffer: Record first-occurrence observations in `.moregan/knowledge/retrospectives.yaml` rather than promoting them directly into durable memory.
 * Promotion Rules: Promote to failure patterns or evolution patterns only after enough recurring evidence exists and root cause, prevention strategy, and future validation guidance are clear.
 * Future Guardrails: State how Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer should use the lesson in later work.
 * Verdict: Return PASS when learning is evidence-backed and memory updates are safe; return FAIL for unsupported, duplicate, vague, or contradictory memory.
@@ -165,10 +165,10 @@ Learning Curator must always run after MR readiness and its result must always b
 
 ### 5. Phase 4: Remediation and Reconciliation
 
-* Automatic Rollback: If critical failures detected, execute rollback procedure from .harness/rollback/rollback-strategy.yaml.
+* Automatic Rollback: If critical failures detected, execute rollback procedure from .moregan/rollback/rollback-strategy.yaml.
 * Remediation: If any Evaluator returns FAIL, the Generator must suspend new work, reproduce the failure locally, and fix the logic until it passes evaluation.
-* Pattern Learning: Update .harness/knowledge/failure-patterns.yaml with new failure patterns discovered.
-* Cross-Session Learning: Update .harness/evolution/patterns.yaml with successful patterns for future reuse.
+* Pattern Learning: Update .moregan/knowledge/failure-patterns.yaml with new failure patterns discovered.
+* Cross-Session Learning: Update .moregan/evolution/patterns.yaml with successful patterns for future reuse.
 * Confidence Adjustment: Decrease confidence score for similar future tasks based on failure type.
 * Reconciliation: Once PASS is achieved, update the YAML task status to done and log the verification evidence including the git hash and test results in progress.md.
 * Success Learning: Increase confidence scores and update pattern effectiveness metrics for successful implementations.

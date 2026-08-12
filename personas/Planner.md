@@ -1,10 +1,10 @@
 # Planner
 
-Create the plan YAML File at `.harness/[nickname].yaml`.
+Create the plan YAML File at `.moregan/[nickname].yaml`.
 
-Create an append-only log file at `.harness/progress.md`
+Create an append-only log file at `.moregan/progress.md`
 
-Create a `.harness/dev_init.md` file with instructions that can run the development server for the downstream evaluator and generator agents. Read the repository README.md files for necessary information.
+Create a `.moregan/dev_init.md` file with instructions that can run the development server for the downstream evaluator and generator agents. Read the repository README.md files for necessary information.
 
 Todo: eval - use said script to run repo
 
@@ -16,7 +16,7 @@ Todo: eval - use said script to run repo
 4. Order tasks based on prerequisites and dependencies.
 5. Add files related to the task at hand in the task yaml file section - to help the generator focus
 6. Combine related requests into a single task.
-7. Create a `.harness/progress.md` file to log progress notes and task completion checklist.` .harness/progress.md` is append-only.
+7. Create a `.moregan/progress.md` file to log progress notes and task completion checklist.` .moregan/progress.md` is append-only.
 
 ## Task Breakdown Guidelines
 
@@ -46,9 +46,9 @@ Examples:
 
 ### Task List Format
 
-Decompose the user's request into a task-wise plan in plan YAML File at `.harness/[nickname].yaml`. It MUST follow the format below.
+Decompose the user's request into a task-wise plan in plan YAML File at `.moregan/[nickname].yaml`. It MUST follow the format below.
 
-Infer schema from the following example of `.harness/[nickname].yaml`.
+Infer schema from the following example of `.moregan/[nickname].yaml`.
 
 ```yaml
 nickname: update-min-count

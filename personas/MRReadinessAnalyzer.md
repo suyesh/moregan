@@ -22,7 +22,7 @@ Use read-only local commands:
 4. Gather commit history for the branch: `git log <base>..HEAD --oneline`.
 5. Gather change size: `git diff <base>..HEAD --stat` and `git diff <base>..HEAD --numstat`.
 6. Scan the diff for self-review artifacts: `git diff <base>..HEAD`.
-7. Read `.harness/progress.md`, the active `.harness/*.yaml` task plan, and recent verification notes when present.
+7. Read `.moregan/progress.md`, the active `.moregan/*.yaml` task plan, and recent verification notes when present.
 
 If there is no usable base branch, score only the available categories and state the limitation clearly.
 
@@ -31,7 +31,7 @@ If there is no usable base branch, score only the available categories and state
 Evaluate signals that predict review friction:
 
 - Ready: clean commits telling a development story, focused scope, tests or validation evidence, no debug artifacts, no unfinished checklist/task notes.
-- Not ready: WIP commits, fixup commits, giant unfocused diff, no validation evidence, TODO/FIXME/debug artifacts, or harness task state that still says work is unfinished.
+- Not ready: WIP commits, fixup commits, giant unfocused diff, no validation evidence, TODO/FIXME/debug artifacts, or MoreGAN task state that still says work is unfinished.
 
 ## Hard Rules
 
@@ -39,7 +39,7 @@ Apply these caps before final scoring:
 
 1. Current branch is `main` or `master`: overall score must not exceed 20, because there is no MR branch to submit.
 2. All commits are WIP/update/fixup style: Commit Story must be 0-10 and overall score must not exceed 30.
-3. `.harness/progress.md` or the active task YAML explicitly says validation was not run or work is incomplete: overall score must not exceed 35.
+3. `.moregan/progress.md` or the active task YAML explicitly says validation was not run or work is incomplete: overall score must not exceed 35.
 4. New changed code contains TODO, FIXME, obvious debug prints, or commented-out implementation blocks: Self-Review Signals must be 0-40.
 5. No changed files relative to base: overall score must not exceed 25 unless the user is intentionally checking an empty branch.
 

@@ -1,0 +1,255 @@
+nickname: moregan-roadmap
+created: "2026-08-11"
+status: active
+north_star: "Executable adversarial orchestration for coding agents, with enforced workflow state and evidence engineers can inspect."
+principles:
+  - runtime_enforces_protocol
+  - structured_stage_outputs
+  - deterministic_evidence_first
+  - adaptive_routing_by_risk
+  - empirical_learning_only
+  - benchmarked_claims
+phases:
+  - id: v1.6
+    name: Structured Runtime Outputs
+    status: current_branch
+    outcomes:
+      - shared_result_schemas
+      - stage_json_artifacts
+      - deterministic_failures_as_findings
+      - human_final_report
+  - id: v1.7
+    name: Real State Machine
+    status: implemented_current_branch
+    outcomes:
+      - explicit_task_states
+      - transition_validation
+      - max_remediation_attempts
+      - resumable_state_snapshots
+  - id: v1.8
+    name: Deterministic Tool Layer
+    status: implemented_current_branch
+    outcomes:
+      - configurable_tool_adapters
+      - stack_command_detection
+      - structured_tool_evidence
+      - repository_local_overrides
+  - id: v2.0
+    name: Worker Orchestration
+    status: implemented_current_branch
+    outcomes:
+      - planner_worker_interface
+      - generator_worker_interface
+      - evaluator_worker_interface
+      - provider_adapters
+  - id: v2.1
+    name: Provider-Backed Workers
+    status: implemented_current_branch
+    outcomes:
+      - local_agent_cli_adapters
+      - stage_result_json_contract
+      - worker_failure_findings
+      - provider_timeout_and_no_write_controls
+  - id: v2.2
+    name: Run Replay
+    status: implemented_current_branch
+    outcomes:
+      - replay_cli
+      - ordered_state_transition_rendering
+      - ordered_stage_result_rendering
+      - deterministic_evidence_rendering
+      - json_replay_output
+  - id: v2.3
+    name: Repository Initialization
+    status: implemented_current_branch
+    outcomes:
+      - init_cli
+      - safe_default_config_scaffolding
+      - gitignore_trace_exclusion
+      - force_and_dry_run_modes
+      - disabled_stack_tool_suggestions
+  - id: v2.4
+    name: Agent CLI Adapters
+    status: implemented_current_branch
+    outcomes:
+      - codex_worker_adapter_template
+      - claude_worker_adapter_template
+      - provider_prompt_contracts
+      - no_write_review_worker_defaults
+  - id: v2.5
+    name: Remediation Loop
+    status: planned
+    outcomes:
+      - generator_remediation_attempts
+      - finding_feedback_to_generator
+      - rerun_failed_gates
+      - bounded_failure_reports
+  - id: v2.6
+    name: Adaptive Routing
+    status: planned
+    outcomes:
+      - request_and_diff_risk_model
+      - route_selection_reasons
+      - skipped_stage_reasons
+      - benchmark_tuned_thresholds
+  - id: v3.0
+    name: Competitive Generators
+    status: planned
+    outcomes:
+      - multi_candidate_generation
+      - objective_specific_generators
+      - shared_judge_contract
+      - choose_or_synthesize_modes
+  - id: v3.5
+    name: Benchmarks
+    status: planned
+    outcomes:
+      - task_fixture_suites
+      - baseline_vs_moregan_metrics
+      - human_review_findings
+      - evidence_backed_claims
+  - id: v4.0
+    name: Benchmark-Driven Runtime
+    status: planned
+    outcomes:
+      - evidence_tuned_routes
+      - empirical_pattern_promotion
+      - replay_driven_debugging
+      - review_ready_reports
+completed_work:
+  - id: structured-stage-results
+    phase: v1.6
+    status: done
+    acceptance_criteria:
+      - "Runtime writes .moregan/runs/<run>/stages/risk_classifier.json."
+      - "Runtime writes .moregan/runs/<run>/stages/deterministic_evidence.json."
+      - "Stage artifacts include verdict, confidence, findings, evidence, and timing fields."
+      - "Failed deterministic checks become structured findings with remediation guidance."
+      - "Installer payload includes ROADMAP.md and the runtime schema module."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 18 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/runtime.py moregan/cli.py moregan/schemas.py passed."
+      - "git diff --check passed."
+      - "python3 -m moregan.cli run 'Implement structured MoreGAN runtime outputs' passed and wrote stage artifacts."
+  - id: runtime-state-machine
+    phase: v1.7
+    status: done
+    acceptance_criteria:
+      - "Runtime writes .moregan/runs/<run>/state.json."
+      - "Runtime writes .moregan/runs/<run>/states.jsonl."
+      - "State transitions are validated against an allowed transition map."
+      - "Invalid transitions raise an explicit runtime error."
+      - "CLI status displays the latest run state."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 19 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py passed."
+      - "git diff --check passed."
+      - "python3 -m moregan.cli run 'Implement MoreGAN runtime state machine' passed and wrote state.json plus states.jsonl."
+  - id: deterministic-tool-layer
+    phase: v1.8
+    status: done
+    acceptance_criteria:
+      - "Repository-local .moregan/tools.yaml can configure deterministic commands."
+      - "Runtime supports built-in and explicit deterministic commands."
+      - "Runtime records command duration, exit code, output tails, required/optional status, source, and remediation hints."
+      - "Optional tool failures record findings without blocking the run."
+      - "Stack detection writes tool_suggestions.json without running extra commands implicitly."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 22 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py passed."
+      - "python3 -m moregan.cli run 'Implement configurable deterministic tool layer' passed using .moregan/tools.yaml."
+  - id: worker-orchestration
+    phase: v2.0
+    status: done
+    acceptance_criteria:
+      - "Define worker adapter interfaces for planner, generator, evaluator, security, reviewer, production, readiness, and learning stages."
+      - "Add a dry-run worker mode that writes valid StageResult artifacts without modifying files."
+      - "Route selected workers through the existing StateMachine instead of hardcoded deterministic-only flow."
+      - "Medium routes can progress planner -> generator -> deterministic_evidence -> evaluator -> code_reviewer -> completed."
+      - "High routes can progress through architecture, security, production readiness, MR readiness, and learning states."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 24 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py passed."
+      - "python3 -m moregan.cli run 'Verify API endpoint worker orchestration' passed with planner, generator, deterministic_evidence, evaluator, and code_reviewer stages."
+  - id: provider-backed-workers
+    phase: v2.1
+    status: done
+    acceptance_criteria:
+      - "Load worker provider commands from .moregan/workers.yaml."
+      - "Provider-backed workers receive run context through environment variables."
+      - "Provider-backed workers must emit StageResult-compatible JSON."
+      - "Provider failures create structured findings and fail the routed stage."
+      - "Worker commands have timeout_seconds and no_write controls."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 26 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py passed."
+  - id: run-replay
+    phase: v2.2
+    status: done
+    acceptance_criteria:
+      - "Add `moregan replay <run_id>` and `moregan replay latest` CLI support."
+      - "Replay prints state transitions, stages, findings, and deterministic evidence in order."
+      - "Replay can emit JSON reconstruction for automation."
+      - "Replay is read-only and does not rerun providers or deterministic tools."
+      - "Installer payload includes the replay runtime module."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 27 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py moregan/replay.py passed."
+      - "git diff --check passed."
+      - "python3 -m moregan.cli run 'Verify run replay implementation' passed with trace 20260811-233454-verify-run-replay-implementation."
+      - "python3 -m moregan.cli replay latest and python3 -m moregan.cli replay latest --json passed."
+  - id: repository-initialization
+    phase: v2.3
+    status: done
+    acceptance_criteria:
+      - "Add `moregan init` CLI support."
+      - "Create .moregan/tools.yaml, .moregan/workers.yaml, and .moregan/runs/."
+      - "Add .moregan/runs/ to .gitignore unless disabled."
+      - "Preserve existing config unless --force is used."
+      - "Support --dry-run without writing files."
+      - "Seed disabled stack-specific deterministic tool suggestions when detected."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 30 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/init.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py moregan/replay.py passed."
+      - "git diff --check passed."
+      - "python3 -m moregan.cli --root /private/tmp/moregan-init-smoke-20260811-2342 init passed."
+      - "python3 -m moregan.cli --root /private/tmp/moregan-init-dry-run-20260811-2342 init --dry-run passed without writing files."
+      - "python3 -m moregan.cli run 'Verify repository initialization command' passed with trace 20260811-234204-verify-repository-initialization-command."
+  - id: agent-cli-adapters
+    phase: v2.4
+    status: done
+    acceptance_criteria:
+      - "Add first-class Codex and Claude worker adapter templates."
+      - "Adapter prompts require the StageResult JSON contract."
+      - "Review and evaluation workers default to no-write mode."
+      - "Adapter command metadata is traceable from run artifacts."
+      - "Agent worker wrapper normalizes provider stdout into StageResult JSON."
+      - "Installer payload includes adapter runtime modules."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 36 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/adapters.py moregan/agent_worker.py moregan/init.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py moregan/replay.py passed."
+      - "git diff --check passed."
+      - "python3 -m moregan.cli adapters codex --dry-run passed."
+      - "python3 -m moregan.cli adapters claude --dry-run passed."
+      - "python3 -m moregan.cli --root /private/tmp/moregan-adapters-smoke-20260811-2357 adapters codex --activate passed."
+      - "python3 -m moregan.cli run 'Verify agent adapter templates and PyPI workflow' passed with trace 20260811-235723-verify-agent-adapter-templates-and-pypi-workflow."
+  - id: pypi-trusted-publishing-workflow
+    phase: packaging
+    status: done
+    acceptance_criteria:
+      - "Add .github/workflows/workflow.yml."
+      - "Workflow uses GitHub OIDC trusted publishing with id-token: write."
+      - "Workflow uses pypa/gh-action-pypi-publish."
+      - "PyPI workflow filename field can be set to workflow.yml."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 36 tests including test_pypi_trusted_publishing_workflow_exists_with_expected_filename."
+      - "git diff --check passed."
+current_work:
+  id: remediation-loop
+  phase: v2.5
+  status: next
+  acceptance_criteria:
+    - "Failed deterministic checks and worker findings are fed back to the generator."
+    - "Runtime supports bounded remediation attempts."
+    - "Only failed gates and required downstream gates are rerun when practical."
+    - "Unresolved failures produce a clear final remediation report."

@@ -244,8 +244,8 @@ learning_mechanisms:
 session_persistence:
   storage:
     format: "yaml"
-    location: ".harness/evolution/"
-    backup: ".harness/evolution/backup/"
+    location: ".moregan/evolution/"
+    backup: ".moregan/evolution/backup/"
     retention: "unlimited"
 
   synchronization:

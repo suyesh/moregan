@@ -126,7 +126,7 @@ multi_generator_configuration:
 coordination_mechanisms:
   event_bus:
     implementation: "file_based"
-    location: ".harness/collaboration/events/"
+    location: ".moregan/collaboration/events/"
 
     event_types:
       task_claimed:
@@ -166,7 +166,7 @@ coordination_mechanisms:
     type: "distributed_lock"
     implementation: "file_lock"
 
-    lock_registry: ".harness/collaboration/locks/"
+    lock_registry: ".moregan/collaboration/locks/"
 
     locking_rules:
       - "One generator per file at a time"
@@ -176,7 +176,7 @@ coordination_mechanisms:
       - "Auto-release on generator completion"
 
   communication_protocol:
-    message_queue: ".harness/collaboration/messages/"
+    message_queue: ".moregan/collaboration/messages/"
 
     message_types:
       direct_message:
@@ -286,7 +286,7 @@ parallel_testing:
       - "By dependency graph"
 
   result_aggregation:
-    collection_point: ".harness/collaboration/test-results/"
+    collection_point: ".moregan/collaboration/test-results/"
 
     aggregation_rules:
       - "All tests must pass"

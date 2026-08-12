@@ -1,8 +1,8 @@
 nickname: mandatory-personas
-feature: Require all non-Designer personas on every harness task and show MR readiness at completion
+feature: Require all non-Designer personas on every MoreGAN task and show MR readiness at completion
 created: "2026-05-28"
 status: done
-context: The harness should guarantee that Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer run for every feature task. Designer remains conditional and should run only when the task has frontend, UX, accessibility, or visual design implications. Final task output should include the MR readiness result.
+context: MoreGAN should guarantee that Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, and MR Readiness Analyzer run for every feature task. Designer remains conditional and should run only when the task has frontend, UX, accessibility, or visual design implications. Final task output should include the MR readiness result.
 tasks:
   - id: "1"
     title: Encode mandatory persona execution in the skill workflow
@@ -18,11 +18,11 @@ tasks:
     title: Update defaults and documentation for the mandatory persona contract
     status: done
     acceptance_criteria:
-      - .harness/defaults.yaml represents mandatory non-Designer persona execution and conditional Designer execution.
+      - .moregan/defaults.yaml represents mandatory non-Designer persona execution and conditional Designer execution.
       - README.md explains that every feature task runs all non-Designer personas and ends with MR readiness output.
       - INSTALL.md usage summary reflects the same execution contract.
     files:
-      - .harness/defaults.yaml
+      - .moregan/defaults.yaml
       - README.md
       - INSTALL.md
     depends_on: ["1"]
@@ -36,23 +36,23 @@ tasks:
       - Final response includes the MR readiness score and Designer decision.
     files:
       - tests/test_install.py
-      - .harness/mandatory-personas.yaml
-      - .harness/progress.md
+      - .moregan/mandatory-personas.yaml
+      - .moregan/progress.md
     depends_on: ["2"]
   - id: "4"
     title: Add colorful persona execution output
     status: done
     acceptance_criteria:
       - SKILL.md defines a colorful final persona execution template.
-      - .harness/defaults.yaml defines status markers for PASS, not-needed, warning, and fail/not-ready states.
+      - .moregan/defaults.yaml defines status markers for PASS, not-needed, warning, and fail/not-ready states.
       - README.md shows a colorful persona execution example.
       - tests/test_install.py fails if the colorful persona output contract is removed.
       - Final response uses the colorful persona execution format.
     files:
       - SKILL.md
-      - .harness/defaults.yaml
+      - .moregan/defaults.yaml
       - README.md
       - tests/test_install.py
-      - .harness/mandatory-personas.yaml
-      - .harness/progress.md
+      - .moregan/mandatory-personas.yaml
+      - .moregan/progress.md
     depends_on: ["3"]

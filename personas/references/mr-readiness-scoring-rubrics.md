@@ -36,7 +36,7 @@ Evaluate TODO/FIXME/HACK comments, debug statements, commented-out code, test pr
 
 ## Local Validation Evidence - 15%
 
-Evaluate whether the branch has evidence of local tests, lint, typecheck, build, or domain-specific validation in `.harness/progress.md`, task plans, command output, or commit messages.
+Evaluate whether the branch has evidence of local tests, lint, typecheck, build, or domain-specific validation in `.moregan/progress.md`, task plans, command output, or commit messages.
 
 - 90-100: Relevant tests and quality gates were run and passed, with specific evidence.
 - 70-80: Core validation passed, with minor gaps such as no full-suite run for a narrow change.

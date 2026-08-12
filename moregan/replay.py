@@ -1,0 +1,116 @@
+"""Read-only replay rendering for MoreGAN run artifacts."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Dict, List
+
+
+class ReplayError(ValueError):
+    """Raised when a run cannot be replayed from existing artifacts."""
+
+
+class RunReplay:
+    """Reconstructs a MoreGAN run from trace artifacts without executing work."""
+
+    def __init__(self, run_dir: Path):
+        self.run_dir = run_dir
+
+    def to_dict(self) -> Dict[str, object]:
+        result = self._read_json("result.json")
+        state = self._read_json("state.json")
+        stages = self._load_stages(result)
+        return {
+            "run_id": result.get("run_id", self.run_dir.name),
+            "status": result.get("status"),
+            "request": result.get("request"),
+            "risk": result.get("risk"),
+            "state": state,
+            "stages": stages,
+            "evidence": result.get("evidence", []),
+            "trace_path": str(self.run_dir),
+        }
+
+    def render(self) -> str:
+        replay = self.to_dict()
+        risk = replay.get("risk") or {}
+        state = replay.get("state") or {}
+        stages = replay.get("stages") or []
+        evidence = replay.get("evidence") or []
+
+        lines = [
+            "# MoreGAN Replay",
+            "",
+            f"- Run: `{replay['run_id']}`",
+            f"- Status: `{replay.get('status')}`",
+            f"- Risk: `{risk.get('level')}`",
+            f"- State: `{state.get('current_state')}`",
+            f"- Request: {replay.get('request')}",
+            "",
+            "## State Transitions",
+            "",
+        ]
+
+        for index, snapshot in enumerate(state.get("history", []), start=1):
+            previous = snapshot.get("previous_state") or "start"
+            lines.append(
+                f"{index}. `{previous}` -> `{snapshot.get('state')}` "
+                f"({snapshot.get('stage')}) - {snapshot.get('reason')}"
+            )
+
+        lines.extend(["", "## Stage Results", ""])
+        for stage in stages:
+            lines.append(
+                f"- {stage.get('stage')}: {str(stage.get('verdict')).upper()} "
+                f"({float(stage.get('confidence', 0.0)):.2f} confidence)"
+            )
+            for finding in stage.get("findings", []):
+                lines.append(
+                    f"  - Finding {finding.get('severity')}: {finding.get('category')} - "
+                    f"{finding.get('description')}"
+                )
+            for item in stage.get("evidence", []):
+                summary = item.get("summary", "")
+                if summary:
+                    lines.append(f"  - Evidence {item.get('name')}: {summary}")
+
+        lines.extend(["", "## Deterministic Evidence", ""])
+        if not evidence:
+            lines.append("- No deterministic evidence was recorded.")
+        for item in evidence:
+            status = "SKIP" if item.get("skipped") else "PASS" if item.get("passed") else "FAIL"
+            command = " ".join(item.get("command") or [])
+            detail = item.get("reason") or command or item.get("stderr_tail") or item.get("stdout_tail") or "no detail"
+            lines.append(f"- {status}: {item.get('name')} ({item.get('category')}) - {detail}")
+
+        return "\n".join(lines) + "\n"
+
+    def _read_json(self, name: str) -> Dict[str, object]:
+        path = self.run_dir / name
+        if not path.exists():
+            raise ReplayError(f"run artifact not found: {path}")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ReplayError(f"invalid JSON artifact: {path}") from exc
+        if not isinstance(payload, dict):
+            raise ReplayError(f"expected JSON object artifact: {path}")
+        return payload
+
+    def _load_stages(self, result: Dict[str, object]) -> List[Dict[str, object]]:
+        ordered_stages = []
+        for stage in result.get("stages", []):
+            if not isinstance(stage, dict):
+                continue
+            stage_name = stage.get("stage")
+            if not stage_name:
+                continue
+            stage_path = self.run_dir / "stages" / f"{stage_name}.json"
+            if stage_path.exists():
+                payload = json.loads(stage_path.read_text(encoding="utf-8"))
+                if isinstance(payload, dict):
+                    ordered_stages.append(payload)
+                    continue
+            ordered_stages.append(stage)
+        return ordered_stages

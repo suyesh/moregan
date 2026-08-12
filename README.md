@@ -1,436 +1,405 @@
-# Harness Engineering: hooliGAN-harness v1.5.0
+# MoreGAN
 
-**Stop guessing if your agent’s code works. Force it to survive the loop.**
+<p align="center">
+  <img src="./assets/moregan.png" alt="MoreGAN logo" width="760">
+</p>
 
-Inspired by the adversarial tension of GAN architectures, `hooliGAN-harness` is a high-reliability engineering framework for Claude Code and Codex. It replaces fragile "one-shot" generation with a zero-trust pipeline featuring architectural review, parallel security evaluation, confidence-based validation, automatic rollback, cross-session learning, multi-generator collaboration, and enterprise integrations — ensuring enterprise-grade code quality.
+<p align="center">
+  <strong>Adversarial orchestration for coding agents.</strong><br>
+  Generator builds. Evaluators attack. The runtime keeps the evidence.
+</p>
 
----
+MoreGAN is a local harness for Claude Code, Codex, and other coding-agent workflows. It separates implementation from independent verification, records deterministic evidence, routes tasks by risk, and writes inspectable run traces that engineers can replay.
 
-## 🎯 Zero Configuration Required!
+The core idea is simple:
 
-**hooliGAN-harness works perfectly out-of-the-box with optimal defaults:**
-- ✅ All intelligence features enabled (learning, patterns, confidence scoring)
-- ✅ All safety features active (snapshots, rollback, security scanning)
-- ✅ Multi-generator mode ready (parallel specialists)
-- ✅ Living documentation automatic
-- ✅ Python dependencies are managed through uv
+```text
+request -> route by risk -> worker stages -> deterministic checks -> trace -> replay
+```
 
-Just install and use - that's it!
+MoreGAN is not trying to be a magic prompt. The direction is an executable runtime where Python enforces the protocol and agents are replaceable workers behind a structured `StageResult` contract.
 
----
+## Architecture
 
-## 🚀 Quick Installation
+```mermaid
+flowchart TD
+  Request[Engineer request] --> Init[moregan init]
+  Init --> Config[.moregan config]
+  Config --> Runtime[MoreGAN runtime]
 
-### Automatic Installation (Recommended)
+  Runtime --> Risk[Risk classifier]
+  Risk --> Route[Route selection]
+
+  Route --> Workers[Worker stages]
+  Workers --> Adapter{Provider configured?}
+  Adapter -->|No| DryRun[Honest SKIP stage result]
+  Adapter -->|Yes| AgentWorker[moregan.agent_worker]
+  AgentWorker --> Provider[Codex or Claude command]
+  Provider --> StageResult[StageResult JSON]
+  DryRun --> StageResult
+
+  Route --> Tools[Deterministic tools]
+  Tools --> Evidence[Command evidence]
+
+  StageResult --> State[State machine]
+  Evidence --> State
+  State --> Trace[.moregan/runs/run-id]
+  Trace --> Inspect[inspect]
+  Trace --> Replay[read-only replay]
+```
+
+The original architecture sketch is still in the repository as `Architecture.jpg`, but the Mermaid diagram above is the current runtime shape.
+
+## Why Engineers Use It
+
+- Enforced workflow instead of hoping an agent remembers every instruction.
+- Structured findings, evidence, confidence, and verdicts for each stage.
+- Deterministic checks for tests, syntax, git diff validation, and repo-local tools.
+- Read-only replay of past runs without rerunning providers or tests.
+- Codex and Claude adapter templates that normalize provider output into JSON.
+- Local trace artifacts under `.moregan/runs/` for debugging and review.
+
+## Requirements
+
+- Python 3.8 or newer
+- macOS, Linux, or Windows
+- Codex or Claude Code for skill usage
+- Optional: `uv` for local dependency management
+
+Codex and Claude can read the installed skill instructions directly. The executable runtime commands need local Python.
+
+## Install
+
+Clone the repository:
 
 ```bash
-# Clone the repository
-git clone https://github.com/suyesh/hooligan-harness.git
-cd hooligan-harness
+git clone https://github.com/suyesh/moregan.git
+cd moregan
+```
 
-# Run the installer (macOS/Linux)
+Install the skill into Claude Code, Codex, or both:
+
+```bash
 ./setup.sh
+```
 
-# Or for Windows
+Windows:
+
+```bat
 setup.bat
 ```
 
-The beautiful CLI installer will:
-- Auto-detect Claude Code and Codex installations
-- Let you choose where to install (Claude, Codex, or both)
-- Sync Python dependencies with uv from `pyproject.toml`
-- Set up all personas and configurations
-- Provide usage instructions
+Manual local setup:
 
----
-
-## 🧬 The GAN Inspiration
-
-In a Generative Adversarial Network (GAN), a Generator creates data and a Discriminator tries to catch the "fake."
-
-We apply this to software engineering:
-
-1. **The Generator** attempts to satisfy the feature requirements
-2. **The Evaluator** assumes the code is buggy until proven otherwise
-3. **The Security Evaluator** hunts for vulnerabilities in parallel
-4. **The Architect** reviews designs before implementation begins
-5. **The Code Reviewer** reviews the changed code like a senior teammate
-6. **The Production Readiness Reviewer** checks whether the change can safely run in production
-7. **The MR Readiness Analyzer** checks whether the submission is ready for human review
-8. **The Learning Curator** captures evidence-backed lessons for future work
-
-This competitive loop continues until the output is indistinguishable from senior-level production code.
-
----
-
-## 🎭 The Ten Personas
-
-| Persona | Role | Responsibility |
-|---------|------|----------------|
-| **Planner** | 📋 Architect | Translates human intent into rigid YAML roadmaps with quantifiable Acceptance Criteria |
-| **Architect** | 🏗️ Reviewer | Reviews plans for system-wide impacts and suggests design patterns before coding |
-| **Designer** | 🎨 UI/UX Expert | Creates design specifications, ensures accessibility, and defines user interactions |
-| **Generator** | 💻 Builder | Implements using SOLID principles, defensive programming, and pattern awareness |
-| **Evaluator** | 🔍 Gatekeeper | Zero-trust verification with professional disdain for lazy code |
-| **Security Evaluator** | 🛡️ Guardian | Parallel OWASP Top 10 scanning and vulnerability detection |
-| **Code Reviewer** | 🧾 Reviewer | Reviews the changed code for correctness, maintainability, test quality, and team conventions |
-| **Production Readiness Reviewer** | 🚦 Reviewer | Reviews deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes |
-| **MR Readiness Analyzer** | 📊 Reviewer | Scores local branch readiness using commit story, diff scope, self-review signals, and validation evidence |
-| **Learning Curator** | 🧠 Curator | Captures evidence-backed lessons, records observations, and promotes recurring patterns into future guardrails |
-
-Every feature task runs Planner, Architect, Generator, Evaluator, Security Evaluator, Code Reviewer, Production Readiness Reviewer, MR Readiness Analyzer, and Learning Curator. Designer is conditional: the agent records whether it is needed and runs it for UI, UX, accessibility, interaction, visual design, layout, or design-system work. Final task output always includes the MR readiness result and Learning Curator result.
-
-### Mandatory Execution Contract
-
-For feature work, these personas are required and blocking:
-
-1. **Planner** creates the task plan and acceptance criteria.
-2. **Architect** approves the approach before implementation.
-3. **Generator** implements and verifies locally.
-4. **Evaluator** checks acceptance criteria and test quality.
-5. **Security Evaluator** checks security risks.
-6. **Code Reviewer** checks correctness, maintainability, and team conventions.
-7. **Production Readiness Reviewer** checks deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes.
-8. **MR Readiness Analyzer** produces the final local-git readiness score.
-9. **Learning Curator** captures evidence-backed observations and future guardrails after MR readiness.
-
-If Evaluator, Security Evaluator, Code Reviewer, or Production Readiness Reviewer returns `FAIL`, the harness must remediate and rerun the failed gate until it passes. MR Readiness is always shown at the end; a low score gives cleanup actions before requesting human review.
-Learning Curator runs even when a task fails or is not MR-ready so useful lessons are preserved without over-promoting one-off observations.
-
-Designer is the only conditional persona. The agent must explicitly record either `Designer: needed` or `Designer: not needed` for every feature task.
-
-Final persona output uses colored status markers:
-
-```text
-Persona Execution:
-- 🟢 Planner: PASS
-- 🟢 Architect: PASS
-- ⚪ Designer: Not needed - no frontend/UX surface changed
-- 🟢 Generator: PASS
-- 🟢 Evaluator: PASS
-- 🟢 Security Evaluator: PASS
-- 🟢 Code Reviewer: PASS
-- 🟢 Production Readiness Reviewer: PASS
-- 🔴 MR Readiness Analyzer: 20/100 - Not ready
-- 🟢 Learning Curator: PASS
+```bash
+uv sync
+python -m moregan.cli --help
 ```
 
----
+The installer copies:
 
-## ✨ Key Features
+- `SKILL.md`
+- persona instructions
+- `.moregan/` defaults
+- `moregan/` executable runtime package
+- maintenance commands for update and doctor
 
-### 🧠 **Intelligence Layer** (v1.1.0)
-- **Failure Pattern Memory**: Learns from past failures to prevent recurrence
-- **Confidence Scoring**: Adapts validation rigor (0-100% confidence)
-- **Pattern Recognition**: Auto-injects tests for known failure patterns
+## First Run
 
-### 🛡️ **Reliability Layer** (v1.2.0)
-- **Architectural Review**: Pre-implementation design validation
-- **Automatic Rollback**: Snapshots and recovery on critical failures
-- **Cross-Session Learning**: Pattern library that evolves over time
-- **Incident Reporting**: Detailed failure analysis and prevention
+Initialize a repository:
 
-### 🚀 **Scale Layer** (v1.3.0)
-- **Multi-Generator Mode**: Frontend, backend, database specialists in parallel
-- **Enterprise Integrations**: GitHub Actions, Jenkins, SonarQube, Datadog
-- **Living Documentation**: Auto-generated API specs, diagrams, changelogs
+```bash
+python -m moregan.cli init
+```
 
----
+This creates:
 
-## 📦 What Gets Installed
+```text
+.moregan/
+  tools.yaml
+  workers.yaml
+  runs/
+```
+
+It also adds `.moregan/runs/` to `.gitignore`. Existing config is preserved unless `--force` is passed.
+
+Run MoreGAN:
+
+```bash
+python -m moregan.cli run "Add OAuth login"
+```
+
+Inspect the latest run:
+
+```bash
+python -m moregan.cli status
+python -m moregan.cli inspect latest
+python -m moregan.cli replay latest
+python -m moregan.cli replay latest --json
+```
+
+## Runtime Commands
+
+```bash
+python -m moregan.cli init
+python -m moregan.cli adapters codex
+python -m moregan.cli adapters claude
+python -m moregan.cli run "Refactor the payment service"
+python -m moregan.cli status
+python -m moregan.cli inspect latest
+python -m moregan.cli replay latest
+```
+
+Useful flags:
+
+```bash
+python -m moregan.cli init --dry-run
+python -m moregan.cli init --force
+python -m moregan.cli adapters codex --activate
+python -m moregan.cli adapters claude --activate
+python -m moregan.cli run "Change button copy" --no-checks
+```
+
+## Codex And Claude Adapters
+
+Scaffold provider templates:
+
+```bash
+python -m moregan.cli adapters codex
+python -m moregan.cli adapters claude
+```
+
+This writes:
+
+```text
+.moregan/
+  adapters/
+    codex/
+      README.md
+      generator.md
+      evaluator.md
+      ...
+    claude/
+      README.md
+      generator.md
+      evaluator.md
+      ...
+  workers.codex.yaml
+  workers.claude.yaml
+```
+
+Activate one provider:
+
+```bash
+python -m moregan.cli adapters codex --activate
+```
+
+Then set a provider command that reads a prompt from stdin and prints one `StageResult` JSON object:
+
+```bash
+export MOREGAN_CODEX_COMMAND="<your codex command>"
+export MOREGAN_CLAUDE_COMMAND="<your claude command>"
+```
+
+Review and evaluation workers default to no-write mode. The generator stage is write-enabled when activated.
+
+## Worker Contract
+
+Workers must print one JSON object:
+
+```json
+{
+  "stage": "generator",
+  "verdict": "pass",
+  "confidence": 0.9,
+  "findings": [],
+  "evidence": [
+    {
+      "kind": "worker",
+      "name": "summary",
+      "summary": "Implemented the requested change and ran tests."
+    }
+  ]
+}
+```
+
+Valid verdicts:
+
+- `pass`
+- `fail`
+- `skip`
+
+Blocking issues should use `fail` with concrete findings and remediation.
+
+## Deterministic Tools
+
+Configure deterministic checks in `.moregan/tools.yaml`:
+
+```yaml
+version: 1
+commands:
+  - name: git_diff_check
+    builtin: git_diff_check
+    category: git
+    required: true
+    remediation: "Fix whitespace or conflict-marker issues reported by git diff --check."
+
+  - name: unit_tests
+    builtin: unit_tests
+    category: tests
+    required: true
+    remediation: "Fix failing tests or update tests only when requirements changed intentionally."
+```
+
+MoreGAN can also run explicit commands:
+
+```yaml
+version: 1
+commands:
+  - name: npm_test
+    command: ["npm", "test"]
+    category: tests
+    required: true
+    remediation: "Fix failing npm tests."
+```
+
+Optional checks record findings without blocking the run:
+
+```yaml
+required: false
+```
+
+## Trace Artifacts
+
+Each run writes:
+
+```text
+.moregan/runs/<run-id>/
+  request.json
+  plan.json
+  risk.json
+  state.json
+  states.jsonl
+  tool_suggestions.json
+  stages/
+    risk_classifier.json
+    generator.json
+    deterministic_evidence.json
+    evaluator.json
+  events.jsonl
+  result.json
+  final_report.md
+```
+
+Replay is read-only:
+
+```bash
+python -m moregan.cli replay latest
+```
+
+It reconstructs state transitions, stage results, findings, and deterministic evidence from existing files. It does not rerun providers or tests.
+
+## Skill Usage
 
 Claude Code:
 
-```
-~/.claude/
-├── skills/
-│   └── hooliGAN-harness/
-│       ├── SKILL.md                    # Main skill definition
-│       ├── README.md                   # This file
-│       ├── install.py                  # Maintenance commands
-│       └── .harness/
-│           ├── knowledge/              # Failure patterns, retrospectives & confidence scoring
-│           ├── evolution/              # Cross-session learning patterns
-│           ├── rollback/               # Automatic rollback strategies
-│           ├── collaboration/          # Multi-generator configuration
-│           ├── integrations/           # External tool configs
-│           └── documentation/          # Living docs generation
-└── agents/
-    ├── harness-planner.md             # Task planning persona
-    ├── harness-architect.md           # Design review persona
-    ├── harness-designer.md            # Conditional UI/UX design persona
-    ├── harness-generator.md           # Code implementation persona
-    ├── harness-evaluator.md           # Functional evaluation persona
-    ├── harness-security-evaluator.md  # Security scanning persona
-    ├── harness-code-reviewer.md       # Changed-code review persona
-    ├── harness-production-readiness-reviewer.md # Production safety review persona
-    ├── harness-mr-readiness-analyzer.md # MR readiness scoring persona
-    └── harness-learning-curator.md    # Evidence-backed learning persona
+```bash
+/moregan "Add user authentication with JWT"
+/moregan update
+/moregan doctor
 ```
 
 Codex:
 
-```
-~/.codex/
-└── skills/
-    └── hooliGAN-harness/
-        ├── SKILL.md                    # Main skill definition
-        ├── README.md                   # This file
-        ├── INSTALL.md                  # Installation guide
-        ├── install.py                  # Maintenance commands
-        ├── personas/                   # Persona instructions loaded by the skill
-        └── .harness/                   # Configuration and knowledge base
+```text
+Use MoreGAN to add user authentication with JWT
+Use MoreGAN to update
+Use MoreGAN to run doctor
 ```
 
----
+Maintenance:
 
-## 💻 Usage
+- `update` downloads the latest MoreGAN archive from GitHub and reinstalls existing targets.
+- `doctor` checks duplicate installs, stale persona files, registry duplication, and missing files.
 
-Once installed, trigger the harness in your coding agent session - **no configuration needed!**
+## PyPI Trusted Publishing
 
-### Claude Code
+This repository includes a GitHub Actions trusted-publishing workflow:
+
+```text
+.github/workflows/workflow.yml
+```
+
+Use these values in PyPI:
+
+```text
+Owner: suyesh
+Repository name: moregan
+Workflow filename: workflow.yml
+Environment name: pypi
+```
+
+The workflow uses GitHub OIDC with `id-token: write` and `pypa/gh-action-pypi-publish`.
+
+## Roadmap
+
+Implemented on the current branch:
+
+- Full rename to MoreGAN and `.moregan/`
+- `moregan init`
+- structured runtime schemas
+- state machine
+- deterministic tool layer
+- provider-backed worker command contract
+- run replay
+- Codex and Claude adapter templates
+- PyPI trusted-publishing workflow
+
+Next production-readiness work:
+
+- remediation loop
+- safer execution model with isolated worktrees
+- stricter config validation and doctor checks
+- stack-specific deterministic tool presets
+- benchmark suite
+- packaging cleanup for PyPI and `uvx` usage
+
+See [ROADMAP.md](ROADMAP.md) for the detailed plan.
+
+## Development
+
+Run tests:
+
 ```bash
-/harness "Add user authentication with JWT"
+python3 -m unittest discover -s tests -v
 ```
 
-Maintenance shortcuts:
+Compile Python files:
 
 ```bash
-/harness update
-/harness doctor
+python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/*.py
 ```
 
-### Codex
-Ask Codex to use the installed skill by name:
-
-```text
-Use hooliGAN-harness to add user authentication with JWT
-```
-
-Maintenance requests:
-
-```text
-Use hooliGAN-harness to update
-Use hooliGAN-harness to run doctor
-```
-
-### Complex Features
-```text
-Use hooliGAN-harness to build a REST API with rate limiting, caching, and OpenAPI documentation
-```
-
-### With Specific Requirements
-```text
-Use hooliGAN-harness to refactor the payment system to use the Repository pattern with 95% test coverage
-```
-
-### Installer Maintenance
-After installation, maintenance is exposed through the skill itself:
+Check diff hygiene:
 
 ```bash
-/harness update
-/harness doctor
+git diff --check
 ```
 
-```text
-Use hooliGAN-harness to update
-Use hooliGAN-harness to run doctor
+Dogfood the runtime:
+
+```bash
+python3 -m moregan.cli run "Verify MoreGAN runtime"
+python3 -m moregan.cli replay latest
 ```
 
-`update` downloads the latest harness archive from GitHub over HTTPS for the requested ref, then reinstalls the harness to existing targets. `doctor` scans for duplicate skill directories, stale Claude persona files, duplicate Claude registry entries, and missing installed files, then repairs them.
+## License
 
----
+MIT. See [LICENSE](LICENSE).
 
-## 🔄 The Workflow
+## References
 
-```mermaid
-graph LR
-    A[User Request] --> B[Planner]
-    B --> C[Architect]
-    C --> D{Designer Needed?}
-    D -->|Yes| E[Designer]
-    D -->|No| F[Record Designer Decision]
-    E --> G[Generator]
-    F --> G
-    G --> H[Evaluator + Security Evaluator + Code Reviewer]
-    H --> I[Production Readiness Reviewer]
-    I --> J[MR Readiness Analyzer]
-    J --> K[Learning Curator]
-    K --> L{Pass?}
-    L -->|No| M[Rollback & Learn]
-    M --> G
-    L -->|Yes| N[Show MR Readiness, Learning Result & Complete]
-```
-
-### Detailed Flow:
-
-1. **Planning Phase**
-   - Planner creates YAML roadmap with measurable acceptance criteria
-   - Initializes progress tracking in `.harness/progress.md`
-
-2. **Architectural Review**
-   - Architect runs on every feature task before implementation
-   - Identifies patterns from `.harness/evolution/patterns.yaml`
-   - Defines rollback strategy
-
-3. **Designer Decision**
-   - The agent records whether Designer is needed
-   - Designer runs for UI, UX, accessibility, interaction, visual design, layout, or design-system work
-   - Non-design tasks record the rationale and continue
-
-4. **Implementation Phase**
-   - Generator creates snapshot for rollback
-   - Applies learned patterns and avoids known failures
-   - Implements with SOLID, DRY, KISS principles
-
-5. **Parallel Evaluation**
-   - Functional Evaluator checks all acceptance criteria
-   - Security Evaluator scans for vulnerabilities
-   - Code Reviewer reviews the changed code
-   - Production Readiness Reviewer checks deployability, rollback, observability, configuration, data safety, performance risk, and operational failure modes
-   - Functional, security, code review, and production readiness gates must PASS for task completion
-
-6. **MR Readiness and Final Output**
-   - MR Readiness Analyzer scores local branch readiness using local git only
-   - Final output shows the MR readiness result, Learning Curator result, and persona execution summary
-
-7. **Learning & Documentation**
-   - Learning Curator records first-occurrence observations in `.harness/knowledge/retrospectives.yaml`
-   - Promotes recurring failure and success patterns only after evidence thresholds are met
-   - Updates failure patterns, successful patterns, and confidence scores when justified
-   - Auto-generates API docs, diagrams, changelogs
-
----
-
-## ⚙️ Configuration
-
-### Enable Multi-Generator Mode
-```yaml
-# .harness/collaboration/multi-generator.yaml
-multi_generator_configuration:
-  enabled: true
-  max_parallel_generators: 3
-```
-
-### Configure Confidence Levels
-```yaml
-# .harness/knowledge/confidence-scoring.yaml
-confidence_levels:
-  exploration: [0, 40]    # High validation
-  development: [40, 70]   # Standard validation
-  production: [70, 90]    # Streamlined validation
-  verified: [90, 100]     # Minimal validation
-```
-
-### Set Up Enterprise Integrations
-```yaml
-# .harness/integrations/external-tools.yaml
-integrations:
-  ci_cd:
-    github_actions:
-      enabled: true
-  monitoring:
-    datadog:
-      enabled: true
-  security:
-    sonarqube:
-      enabled: true
-```
-
----
-
-## 📊 Metrics & Learning
-
-The framework tracks:
-- **Pattern Effectiveness**: Success rates of discovered patterns
-- **Failure Prevention**: Reduction in recurring failures
-- **Confidence Evolution**: Improvement in prediction accuracy
-- **Collaboration Efficiency**: Multi-generator coordination metrics
-- **Retrospective Observations**: Evidence-backed lessons waiting for recurrence before promotion
-
----
-
-## 🔧 Advanced Features
-
-### Automatic Rollback Triggers
-- Performance regression >20%
-- Test coverage drop below 80%
-- Security vulnerability detected
-- Build failure after 2 attempts
-
-### Pattern Evolution Stages
-1. **Experimental** (3+ uses, 60% success)
-2. **Proven** (10+ uses, 75% success)  
-3. **Standard** (25+ uses, 85% success)
-4. **Deprecated** (<50% success after 20 uses)
-
-### Living Documentation Types
-- OpenAPI specifications
-- Mermaid architecture diagrams
-- PlantUML state machines
-- Architecture Decision Records (ADRs)
-- Automated changelogs
-
----
-
-## 🤝 Compatibility
-
-- **Claude Code**: Full support with all features
-- **Codex**: Full skill support with persona files bundled inside the skill
-- **Python**: 3.8 or higher required
-- **uv**: Required for Python package management
-- **Platforms**: macOS, Linux, Windows
-
----
-
-## 📚 Documentation
-
-- **[Installation Guide](INSTALL.md)** - Detailed setup instructions
-- **[Skill Documentation](SKILL.md)** - Technical skill reference
-- **[Architecture](Architecture.jpg)** - Visual system overview
-
----
-
-## 🏆 Why hooliGAN-harness?
-
-1. **Zero-Trust Verification**: Every line of code is scrutinized
-2. **Learning System**: Gets smarter with each use
-3. **Enterprise Ready**: Integrates with your existing tools
-4. **Parallel Execution**: Multiple specialists work simultaneously
-5. **Self-Documenting**: Maintains its own documentation
-6. **Failure Recovery**: Automatic rollback keeps you safe
-7. **Production Quality**: Code that’s ready to ship
-
----
-
-## 📈 Version History
-
-- **v1.0.0**: Initial adversarial loop (Planner, Generator, Evaluator)
-- **v1.1.0**: Added Security Evaluator, failure memory, confidence scoring
-- **v1.2.0**: Added Architect, rollback mechanisms, cross-session learning
-- **v1.3.0**: Added multi-generator mode, enterprise integrations, living docs
-- **v1.3.1**: Added Codex skill installation support
-- **v1.4.0**: Added Code Reviewer, Production Readiness Reviewer, and local-git MR Readiness Analyzer personas
-- **v1.5.0**: Added Learning Curator persona and retrospective learning buffer
-
----
-
-## 🙏 Acknowledgments
-
-Inspired by research from Anthropic, OpenAI, and the broader AI engineering community. Special thanks to the GAN architecture for showing us that adversarial training produces superior results.
-
----
-
-## 📝 License
-
-MIT License - See [LICENSE](LICENSE) file for details
-
----
-
-## 🔗 References
-
-* [Anthropic: Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
-* [Anthropic: Managed Agents & Multi-Agent Orchestration](https://www.anthropic.com/engineering/managed-agents)
-* [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
-* [GitHub Harness Framework Repo by celesteanders](https://github.com/celesteanders/harness)
-* [Paper: GAN-inspired Multi-Agent Harnesses](https://medium.com/@gwrx2005/gan-inspired-multi-agent-harnesses-for-long-running-autonomous-software-engineering-architecture-37a8c2d59b6b)
+- [Anthropic: Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
+- [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/)
+- [PyPI Trusted Publisher Setup](https://docs.pypi.org/trusted-publishers/adding-a-publisher/)

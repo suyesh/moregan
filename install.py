@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-hooliGAN-harness installer and maintenance CLI.
+MoreGAN installer and maintenance CLI.
 """
 
 import argparse
@@ -19,23 +19,42 @@ from typing import Dict, List, Optional, Sequence
 from urllib.request import urlopen
 
 VERSION = "1.5.0"
-SKILL_NAME = "hooliGAN-harness"
-DEFAULT_REPOSITORY_URL = "https://github.com/suyesh/hooligan-harness"
-INSTALL_MANIFEST_PATH = Path(".harness") / "install-manifest.json"
+BRAND_NAME = "MoreGAN"
+SKILL_NAME = "moregan"
+DEFAULT_REPOSITORY_URL = "https://github.com/suyesh/moregan"
+INSTALL_MANIFEST_PATH = Path(".moregan") / "install-manifest.json"
 CLAUDE_PERSONAS = {
-    "Planner.md": "harness-planner.md",
-    "Architect.md": "harness-architect.md",
-    "Designer.md": "harness-designer.md",
-    "Generator.md": "harness-generator.md",
-    "Evaluator.md": "harness-evaluator.md",
-    "SecurityEvaluator.md": "harness-security-evaluator.md",
-    "CodeReviewer.md": "harness-code-reviewer.md",
-    "ProductionReadinessReviewer.md": "harness-production-readiness-reviewer.md",
-    "MRReadinessAnalyzer.md": "harness-mr-readiness-analyzer.md",
-    "LearningCurator.md": "harness-learning-curator.md",
+    "Planner.md": "moregan-planner.md",
+    "Architect.md": "moregan-architect.md",
+    "Designer.md": "moregan-designer.md",
+    "Generator.md": "moregan-generator.md",
+    "Evaluator.md": "moregan-evaluator.md",
+    "SecurityEvaluator.md": "moregan-security-evaluator.md",
+    "CodeReviewer.md": "moregan-code-reviewer.md",
+    "ProductionReadinessReviewer.md": "moregan-production-readiness-reviewer.md",
+    "MRReadinessAnalyzer.md": "moregan-mr-readiness-analyzer.md",
+    "LearningCurator.md": "moregan-learning-curator.md",
 }
-CODEX_REQUIRED_FILES = ["SKILL.md", "README.md", "INSTALL.md", "install.py", ".harness", "personas"]
-CLAUDE_REQUIRED_FILES = ["SKILL.md", "README.md", "INSTALL.md", "install.py", ".harness", "personas"]
+CODEX_REQUIRED_FILES = [
+    "SKILL.md",
+    "README.md",
+    "INSTALL.md",
+    "ROADMAP.md",
+    "install.py",
+    ".moregan",
+    "personas",
+    "moregan",
+]
+CLAUDE_REQUIRED_FILES = [
+    "SKILL.md",
+    "README.md",
+    "INSTALL.md",
+    "ROADMAP.md",
+    "install.py",
+    ".moregan",
+    "personas",
+    "moregan",
+]
 
 # Use rich when available; otherwise fall back to a dependency-free terminal UI.
 try:
@@ -187,8 +206,8 @@ class DoctorIssue:
     action: str
 
 
-class HooliganInstaller:
-    """Installer and maintenance commands for hooliGAN-harness."""
+class MoreGANInstaller:
+    """Installer and maintenance commands for MoreGAN."""
 
     def __init__(self, source_dir: Optional[Path] = None, home: Optional[Path] = None, console: Optional[Console] = None):
         self.console = console or Console()
@@ -234,7 +253,7 @@ class HooliganInstaller:
             return self.claude_path["config"] / "backups" / SKILL_NAME
         if str(target_path).startswith(str(self.codex_path["config"])):
             return self.codex_path["config"] / "backups" / SKILL_NAME
-        return self.source_dir / ".harness" / "backups"
+        return self.source_dir / ".moregan" / "backups"
 
     def _read_install_manifest(self, base_dir: Optional[Path] = None) -> Optional[dict]:
         manifest_path = self._get_manifest_path(base_dir)
@@ -279,7 +298,8 @@ class HooliganInstaller:
 
     def show_banner(self):
         banner = Panel.fit(
-            f"[bold magenta]{SKILL_NAME}[/bold magenta] [cyan]v{VERSION}[/cyan]\n\n"
+            f"[bold magenta]{BRAND_NAME}[/bold magenta] [cyan]v{VERSION}[/cyan]\n"
+            f"[dim]Installed skill name: {SKILL_NAME}[/dim]\n\n"
             "[italic]High-reliability engineering framework for AI code generation[/italic]\n"
             "[dim]Inspired by GAN architectures[/dim]",
             border_style="bright_blue",
@@ -354,7 +374,7 @@ class HooliganInstaller:
 
         if claude_installed and codex_installed:
             target = self._select_option(
-                "Where should hooliGAN-harness be installed?",
+                f"Where should {BRAND_NAME} be installed?",
                 [
                     ("both", "Both", "Install into Claude Code and Codex"),
                     ("claude", "Claude Code", "Install only into Claude Code"),
@@ -521,7 +541,7 @@ class HooliganInstaller:
             return backup_path
         return None
 
-    def _cleanup_legacy_sibling_backups(self, target_path: Path):
+    def _cleanup_sibling_backups(self, target_path: Path):
         parent = target_path.parent
         if not parent.exists():
             return
@@ -539,7 +559,7 @@ class HooliganInstaller:
             while destination.exists():
                 destination = backup_root / f"{child.name}-{counter}"
                 counter += 1
-            self.console.print(f"[yellow]📦 Moving legacy backup out of skills directory: {child} -> {destination}[/yellow]")
+            self.console.print(f"[yellow]📦 Moving backup out of skills directory: {child} -> {destination}[/yellow]")
             shutil.move(str(child), str(destination))
 
     def _get_manifest_path(self, base_dir: Optional[Path] = None) -> Path:
@@ -599,7 +619,7 @@ class HooliganInstaller:
         skills_dir = self.claude_path["global_skills"]
         agents_dir = self.claude_path["global_agents"]
 
-        self._cleanup_legacy_sibling_backups(skills_dir)
+        self._cleanup_sibling_backups(skills_dir)
         skills_dir.mkdir(parents=True, exist_ok=True)
         agents_dir.mkdir(parents=True, exist_ok=True)
 
@@ -614,9 +634,11 @@ class HooliganInstaller:
                 ("SKILL.md", skills_dir / "SKILL.md"),
                 ("README.md", skills_dir / "README.md"),
                 ("INSTALL.md", skills_dir / "INSTALL.md"),
+                ("ROADMAP.md", skills_dir / "ROADMAP.md"),
                 ("install.py", skills_dir / "install.py"),
-                (".harness", skills_dir / ".harness"),
+                (".moregan", skills_dir / ".moregan"),
                 ("personas", skills_dir / "personas"),
+                ("moregan", skills_dir / "moregan"),
                 *[(f"personas/{source}", agents_dir / dest) for source, dest in CLAUDE_PERSONAS.items()],
             ]
 
@@ -632,7 +654,7 @@ class HooliganInstaller:
 
     def _install_codex_files(self):
         skills_dir = self.codex_path["global_skills"]
-        self._cleanup_legacy_sibling_backups(skills_dir)
+        self._cleanup_sibling_backups(skills_dir)
         skills_dir.mkdir(parents=True, exist_ok=True)
 
         with Progress(
@@ -646,9 +668,11 @@ class HooliganInstaller:
                 ("SKILL.md", skills_dir / "SKILL.md"),
                 ("README.md", skills_dir / "README.md"),
                 ("INSTALL.md", skills_dir / "INSTALL.md"),
+                ("ROADMAP.md", skills_dir / "ROADMAP.md"),
                 ("install.py", skills_dir / "install.py"),
-                (".harness", skills_dir / ".harness"),
+                (".moregan", skills_dir / ".moregan"),
                 ("personas", skills_dir / "personas"),
+                ("moregan", skills_dir / "moregan"),
             ]
 
             task = progress.add_task("[green]Installing Codex skill files...", total=len(files_to_copy))
@@ -713,21 +737,24 @@ class HooliganInstaller:
     def show_usage_instructions(self):
         usage_lines = []
         if "claude" in self.install_targets:
-            usage_lines.append('Claude Code: [yellow]/harness "Your feature request"[/yellow]')
+            usage_lines.append('Claude Code: [yellow]/moregan "Your feature request"[/yellow]')
         if "codex" in self.install_targets:
-            usage_lines.append("Codex: ask Codex to use the [yellow]hooliGAN-harness[/yellow] skill, for example:")
-            usage_lines.append("   [yellow]Use hooliGAN-harness to add user authentication with JWT[/yellow]")
+            usage_lines.append(f"Codex: ask Codex to use the [yellow]{BRAND_NAME}[/yellow] skill, for example:")
+            usage_lines.append("   [yellow]Use MoreGAN to add user authentication with JWT[/yellow]")
 
         instructions = Panel(
             "[bold green]✅ Installation Complete![/bold green]\n\n"
-            "[bold cyan]To use hooliGAN-harness:[/bold cyan]\n\n"
+            f"[bold cyan]To use {BRAND_NAME}:[/bold cyan]\n\n"
             + "\n".join(usage_lines)
             + "\n\n"
+            + "[bold cyan]Executable runtime preview:[/bold cyan]\n"
+            + '   [yellow]python -m moregan.cli run "Your engineering request"[/yellow]\n'
+            + "   [yellow]python -m moregan.cli inspect latest[/yellow]\n\n"
             + "[bold cyan]Maintenance in Claude/Codex:[/bold cyan]\n"
-            + "   [yellow]/harness update[/yellow]\n"
-            + "   [yellow]/harness doctor[/yellow]\n"
-            + "   [yellow]Use hooliGAN-harness to update[/yellow]\n"
-            + "   [yellow]Use hooliGAN-harness to run doctor[/yellow]\n\n"
+            + "   [yellow]/moregan update[/yellow]\n"
+            + "   [yellow]/moregan doctor[/yellow]\n"
+            + "   [yellow]Use MoreGAN to update[/yellow]\n"
+            + "   [yellow]Use MoreGAN to run doctor[/yellow]\n\n"
             + "[bold cyan]The framework will:[/bold cyan]\n"
             + "• Create a structured plan\n"
             + "• Review architecture before coding\n"
@@ -743,7 +770,7 @@ class HooliganInstaller:
         self.console.print(instructions)
 
     def uninstall(self) -> bool:
-        self.console.print("[bold red]🗑️  Uninstalling hooliGAN-harness...[/bold red]")
+        self.console.print(f"[bold red]🗑️  Uninstalling {BRAND_NAME}...[/bold red]")
 
         if not self.install_targets:
             self.resolve_targets(prefer_installed=True)
@@ -780,7 +807,7 @@ class HooliganInstaller:
         return True
 
     def doctor(self, apply_fixes: bool = True) -> bool:
-        self.console.print("[bold cyan]🩺 Running hooliGAN-harness doctor...[/bold cyan]")
+        self.console.print(f"[bold cyan]🩺 Running {BRAND_NAME} doctor...[/bold cyan]")
         issues = self._collect_doctor_issues()
 
         if not issues:
@@ -830,7 +857,7 @@ class HooliganInstaller:
                 DoctorIssue(
                     category="duplicate_installation",
                     path=child,
-                    detail="duplicate harness installation directory detected",
+                    detail="duplicate MoreGAN installation directory detected",
                     action="remove_tree",
                 )
             )
@@ -912,7 +939,7 @@ class HooliganInstaller:
             DoctorIssue(
                 category="registry_duplicate",
                 path=registry_file,
-                detail=f"skills.json contains {len(entries)} harness entries",
+                detail=f"skills.json contains {len(entries)} MoreGAN entries",
                 action="dedupe_registry",
             )
         ]
@@ -934,7 +961,7 @@ class HooliganInstaller:
             self.install_targets.append("codex")
 
     def update_installation(self, force: bool = False, target_ref: str = "main") -> bool:
-        self.console.print("[bold cyan]⬆️  Updating hooliGAN-harness from GitHub...[/bold cyan]")
+        self.console.print(f"[bold cyan]⬆️  Updating {BRAND_NAME} from GitHub...[/bold cyan]")
         self.resolve_targets(prefer_installed=True)
         if not self.install_targets:
             self.console.print("[yellow]No existing installation found. Running a fresh install instead.[/yellow]")
@@ -948,7 +975,7 @@ class HooliganInstaller:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             downloaded_source = self._download_update_source(target_ref=target_ref, destination_root=Path(temp_dir))
-            updater = HooliganInstaller(source_dir=downloaded_source, home=self.home, console=self.console)
+            updater = MoreGANInstaller(source_dir=downloaded_source, home=self.home, console=self.console)
             updater.install_targets = list(self.install_targets)
             updater.install_files()
 
@@ -994,7 +1021,7 @@ class HooliganInstaller:
                 "What would you like to do?",
                 [
                     ("reinstall", "Reinstall", "Replace installed files from this checkout"),
-                    ("uninstall", "Uninstall", "Remove the installed harness"),
+                    ("uninstall", "Uninstall", "Remove the installed MoreGAN"),
                     ("cancel", "Cancel", "Exit without changing the installation"),
                 ],
                 default="cancel",
@@ -1029,7 +1056,7 @@ class HooliganInstaller:
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Install and maintain hooliGAN-harness.")
+    parser = argparse.ArgumentParser(description="Install and maintain MoreGAN.")
     parser.add_argument(
         "command",
         nargs="?",
@@ -1070,7 +1097,7 @@ def normalize_targets(target: Optional[str]) -> Optional[List[str]]:
 
 def main(argv: Optional[Sequence[str]] = None):
     args = parse_args(argv)
-    installer = HooliganInstaller()
+    installer = MoreGANInstaller()
 
     try:
         explicit_targets = normalize_targets(args.target)

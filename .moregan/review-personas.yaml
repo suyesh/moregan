@@ -2,7 +2,7 @@ nickname: review-personas
 feature: Add code review and local MR readiness personas
 created: "2026-05-20"
 status: done
-context: Add two harness personas for changed-code review and local-git MR readiness analysis, without external MR tooling or install-time backend selection.
+context: Add two MoreGAN personas for changed-code review and local-git MR readiness analysis, without external MR tooling or install-time backend selection.
 tasks:
   - id: "1"
     title: Add code review and local MR readiness personas
@@ -30,7 +30,7 @@ tasks:
       - README.md
       - INSTALL.md
       - SKILL.md
-      - .harness/defaults.yaml
+      - .moregan/defaults.yaml
       - pyproject.toml
       - uv.lock
       - setup.sh

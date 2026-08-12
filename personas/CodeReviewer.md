@@ -13,7 +13,7 @@ You do not replace the Evaluator, which checks acceptance criteria, and you do n
 Review only the submitted change set, but read enough surrounding code to understand the impact.
 
 1. Read the repository's `CLAUDE.md`, README, contribution docs, build files, and style config when present.
-2. Inspect `git status --short`, `git diff`, staged changes, and recent commits relevant to the harness task.
+2. Inspect `git status --short`, `git diff`, staged changes, and recent commits relevant to the MoreGAN task.
 3. Read every changed file in full, not only the changed hunks.
 4. Read nearby callers, callees, tests, schemas, migrations, configs, and API clients affected by the change.
 5. Compare the implementation against the task YAML, acceptance criteria, and progress log.

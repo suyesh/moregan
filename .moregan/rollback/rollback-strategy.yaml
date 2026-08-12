@@ -108,7 +108,7 @@ recovery_actions:
       - error_messages
       - recovery_time
 
-    report_destination: ".harness/incidents/{timestamp}-{task_id}.yaml"
+    report_destination: ".moregan/incidents/{timestamp}-{task_id}.yaml"
 
     template: |
       incident_id: "{uuid}"

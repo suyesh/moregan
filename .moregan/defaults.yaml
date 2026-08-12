@@ -1,11 +1,11 @@
-# Default Configuration for hooliGAN-harness
+# Default Configuration for MoreGAN
 # All features are optimally configured out-of-the-box
 # You can start using the framework immediately without any configuration
 # Modify these settings only if you need to customize behavior
 
 version: 1.5.0
 framework:
-  name: "hooliGAN-harness"
+  name: "MoreGAN"
   description: "High-reliability engineering framework with adversarial evaluation"
 
 # All features enabled by default for optimal experience
@@ -132,17 +132,17 @@ personas:
     required_for_every_feature_task: true
     runs_after: "mr_readiness_analyzer"
     evidence_only: true
-    retrospective_buffer: ".harness/knowledge/retrospectives.yaml"
+    retrospective_buffer: ".moregan/knowledge/retrospectives.yaml"
     promotion_thresholds:
       observation: 1
       candidate_pattern: 2
       promoted_pattern: 3
     write_targets:
-      - ".harness/knowledge/retrospectives.yaml"
-      - ".harness/knowledge/failure-patterns.yaml"
-      - ".harness/evolution/patterns.yaml"
-      - ".harness/knowledge/confidence-scoring.yaml"
-      - ".harness/progress.md"
+      - ".moregan/knowledge/retrospectives.yaml"
+      - ".moregan/knowledge/failure-patterns.yaml"
+      - ".moregan/evolution/patterns.yaml"
+      - ".moregan/knowledge/confidence-scoring.yaml"
+      - ".moregan/progress.md"
 
 persona_execution:
   mandatory_for_every_feature_task:
@@ -202,7 +202,7 @@ learning:
   learn_from_failures: true
   learn_from_successes: true
   pattern_confidence_threshold: 0.75  # Use patterns with >75% success rate
-  retrospective_buffer: ".harness/knowledge/retrospectives.yaml"
+  retrospective_buffer: ".moregan/knowledge/retrospectives.yaml"
   evidence_only_learning: true
   promotion_thresholds:
     observation: 1
@@ -254,12 +254,12 @@ user_experience:
 
 # No Configuration Required Notice
 notice: |
-  🎉 hooliGAN-harness is ready to use immediately!
+  MoreGAN is ready to use.
 
-  All features are optimally configured with production-ready defaults.
-  You don't need to change any settings to get started.
+  The skill workflow is available through Claude Code and Codex, and the
+  executable runtime preview is available with python -m moregan.cli.
 
-  Simply run: /harness "Your feature request"
+  Simply run: /moregan "Your feature request"
 
   The framework will automatically:
   ✅ Plan your implementation

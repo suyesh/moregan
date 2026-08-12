@@ -1,12 +1,12 @@
 @echo off
-REM hooliGAN-harness Quick Setup Script for Windows
+REM MoreGAN Quick Setup Script for Windows
 REM Uses uv for fast Python dependency management
 
 setlocal enabledelayedexpansion
 
 echo.
 echo ╔══════════════════════════════════════════════╗
-echo ║        hooliGAN-harness Installer           ║
+echo ║             MoreGAN Installer               ║
 echo ║              Version 1.5.0                  ║
 echo ╚══════════════════════════════════════════════╝
 echo.
@@ -50,7 +50,7 @@ if errorlevel 1 (
 )
 
 REM Run the installer
-echo 🚀 Launching hooliGAN-harness installer...
+echo 🚀 Launching MoreGAN installer...
 echo.
 uv run python install.py
 if errorlevel 1 (

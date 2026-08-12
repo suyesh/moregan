@@ -7,7 +7,7 @@ from unittest.mock import patch
 import install
 
 
-class HooliganInstallerTests(unittest.TestCase):
+class MoreGANInstallerTests(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
         self.root = Path(self.tempdir.name)
@@ -16,10 +16,24 @@ class HooliganInstallerTests(unittest.TestCase):
         self.source_dir.mkdir()
         self.home.mkdir()
 
-        (self.source_dir / ".harness").mkdir()
+        (self.source_dir / ".moregan").mkdir()
+        (self.source_dir / ".moregan" / "tools.yaml").write_text("version: 1\ncommands: []\n", encoding="utf-8")
+        (self.source_dir / ".moregan" / "workers.yaml").write_text("version: 1\nworkers: []\n", encoding="utf-8")
         (self.source_dir / "personas").mkdir()
-        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "install.py"]:
+        (self.source_dir / "moregan").mkdir()
+        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "install.py"]:
             (self.source_dir / file_name).write_text(file_name, encoding="utf-8")
+        (self.source_dir / "moregan" / "__init__.py").write_text("", encoding="utf-8")
+        (self.source_dir / "moregan" / "adapters.py").write_text("adapters", encoding="utf-8")
+        (self.source_dir / "moregan" / "agent_worker.py").write_text("agent_worker", encoding="utf-8")
+        (self.source_dir / "moregan" / "cli.py").write_text("cli", encoding="utf-8")
+        (self.source_dir / "moregan" / "init.py").write_text("init", encoding="utf-8")
+        (self.source_dir / "moregan" / "runtime.py").write_text("runtime", encoding="utf-8")
+        (self.source_dir / "moregan" / "schemas.py").write_text("schemas", encoding="utf-8")
+        (self.source_dir / "moregan" / "state.py").write_text("state", encoding="utf-8")
+        (self.source_dir / "moregan" / "tools.py").write_text("tools", encoding="utf-8")
+        (self.source_dir / "moregan" / "workers.py").write_text("workers", encoding="utf-8")
+        (self.source_dir / "moregan" / "replay.py").write_text("replay", encoding="utf-8")
         for persona_name in install.CLAUDE_PERSONAS:
             (self.source_dir / "personas" / persona_name).write_text(persona_name, encoding="utf-8")
 
@@ -27,7 +41,7 @@ class HooliganInstallerTests(unittest.TestCase):
         (self.home / ".claude" / "agents").mkdir(parents=True)
         (self.home / ".codex" / "skills").mkdir(parents=True)
 
-        self.installer = install.HooliganInstaller(source_dir=self.source_dir, home=self.home)
+        self.installer = install.MoreGANInstaller(source_dir=self.source_dir, home=self.home)
 
     def tearDown(self):
         self.tempdir.cleanup()
@@ -39,7 +53,7 @@ class HooliganInstallerTests(unittest.TestCase):
         duplicate.mkdir(parents=True)
         for name in install.CLAUDE_REQUIRED_FILES:
             path = canonical / name
-            if name in {".harness", "personas"}:
+            if name in {".moregan", "personas", "moregan"}:
                 path.mkdir()
             else:
                 path.write_text(name, encoding="utf-8")
@@ -75,17 +89,29 @@ class HooliganInstallerTests(unittest.TestCase):
         skill_dir = self.installer.claude_path["global_skills"]
         self.assertTrue((skill_dir / "install.py").exists())
         self.assertTrue((skill_dir / "INSTALL.md").exists())
+        self.assertTrue((skill_dir / "ROADMAP.md").exists())
+        self.assertTrue((skill_dir / "moregan" / "adapters.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "cli.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "init.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "schemas.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "state.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "tools.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "workers.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "replay.py").exists())
+        self.assertTrue((skill_dir / ".moregan" / "tools.yaml").exists())
+        self.assertTrue((skill_dir / ".moregan" / "workers.yaml").exists())
         self.assertTrue((skill_dir / "personas" / "Planner.md").exists())
         self.assertTrue((skill_dir / "personas" / "CodeReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "ProductionReadinessReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "MRReadinessAnalyzer.md").exists())
         self.assertTrue((skill_dir / "personas" / "LearningCurator.md").exists())
-        self.assertTrue((self.installer.claude_path["global_agents"] / "harness-code-reviewer.md").exists())
+        self.assertTrue((self.installer.claude_path["global_agents"] / "moregan-code-reviewer.md").exists())
         self.assertTrue(
-            (self.installer.claude_path["global_agents"] / "harness-production-readiness-reviewer.md").exists()
+            (self.installer.claude_path["global_agents"] / "moregan-production-readiness-reviewer.md").exists()
         )
-        self.assertTrue((self.installer.claude_path["global_agents"] / "harness-mr-readiness-analyzer.md").exists())
-        self.assertTrue((self.installer.claude_path["global_agents"] / "harness-learning-curator.md").exists())
+        self.assertTrue((self.installer.claude_path["global_agents"] / "moregan-mr-readiness-analyzer.md").exists())
+        self.assertTrue((self.installer.claude_path["global_agents"] / "moregan-learning-curator.md").exists())
 
         manifest = json.loads((skill_dir / install.INSTALL_MANIFEST_PATH).read_text(encoding="utf-8"))
         self.assertEqual(manifest["target"], "claude")
@@ -100,6 +126,15 @@ class HooliganInstallerTests(unittest.TestCase):
 
         skill_dir = self.installer.codex_path["global_skills"]
         self.assertTrue((skill_dir / "install.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "adapters.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "init.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "runtime.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "schemas.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "state.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "tools.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "workers.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "replay.py").exists())
         self.assertTrue((skill_dir / "personas" / "CodeReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "ProductionReadinessReviewer.md").exists())
         self.assertTrue((skill_dir / "personas" / "MRReadinessAnalyzer.md").exists())
@@ -123,10 +158,10 @@ class HooliganInstallerTests(unittest.TestCase):
         )
         self.assertNotEqual(backup_path.parent, skill_dir.parent)
 
-    def test_install_moves_legacy_sibling_backups_out_of_skills_directory(self):
-        legacy_backup = self.home / ".claude" / "skills" / f"{install.SKILL_NAME}.backup.20260513"
-        legacy_backup.mkdir(parents=True)
-        (legacy_backup / "SKILL.md").write_text("legacy", encoding="utf-8")
+    def test_install_moves_sibling_backups_out_of_skills_directory(self):
+        sibling_backup = self.home / ".claude" / "skills" / f"{install.SKILL_NAME}.backup.20260513"
+        sibling_backup.mkdir(parents=True)
+        (sibling_backup / "SKILL.md").write_text("backup", encoding="utf-8")
 
         (self.source_dir / ".git").mkdir()
         self.installer.install_targets = ["claude"]
@@ -135,7 +170,7 @@ class HooliganInstallerTests(unittest.TestCase):
         backup_root = self.home / ".claude" / "backups" / install.SKILL_NAME
         moved_backups = list(backup_root.glob(f"{install.SKILL_NAME}.backup.20260513*"))
         self.assertTrue(moved_backups)
-        self.assertFalse(legacy_backup.exists())
+        self.assertFalse(sibling_backup.exists())
 
     def test_doctor_check_mode_reports_without_fixing(self):
         duplicate = self.home / ".codex" / "skills" / f"{install.SKILL_NAME}.backup.20260513"
@@ -150,14 +185,25 @@ class HooliganInstallerTests(unittest.TestCase):
 
         def fake_output(command):
             if command == ["git", "config", "--get", "remote.origin.url"]:
-                return "git@github.com:suyesh/hooligan-harness.git\n"
+                return "git@github.com:suyesh/moregan.git\n"
             raise AssertionError(command)
 
         self.installer._git_output = fake_output
-        self.assertEqual(self.installer._get_repository_url(), "https://github.com/suyesh/hooligan-harness")
+        self.assertEqual(self.installer._get_repository_url(), "https://github.com/suyesh/moregan")
 
     def test_default_repository_url_points_to_canonical_repo(self):
-        self.assertEqual(install.DEFAULT_REPOSITORY_URL, "https://github.com/suyesh/hooligan-harness")
+        self.assertEqual(install.DEFAULT_REPOSITORY_URL, "https://github.com/suyesh/moregan")
+
+    def test_pypi_trusted_publishing_workflow_exists_with_expected_filename(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        workflow = repo_root / ".github" / "workflows" / "workflow.yml"
+
+        self.assertTrue(workflow.exists())
+        text = workflow.read_text(encoding="utf-8")
+        self.assertIn("id-token: write", text)
+        self.assertIn("pypa/gh-action-pypi-publish@release/v1", text)
+        self.assertIn("environment:", text)
+        self.assertIn("name: pypi", text)
 
     def test_update_uses_downloaded_archive_source(self):
         installed_codex_skill = self.installer.codex_path["global_skills"]
@@ -167,10 +213,24 @@ class HooliganInstallerTests(unittest.TestCase):
 
         download_dir = self.root / "downloaded"
         download_dir.mkdir()
-        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "install.py"]:
+        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "install.py"]:
             (download_dir / file_name).write_text(file_name, encoding="utf-8")
-        (download_dir / ".harness").mkdir()
+        (download_dir / ".moregan").mkdir()
+        (download_dir / ".moregan" / "tools.yaml").write_text("version: 1\ncommands: []\n", encoding="utf-8")
+        (download_dir / ".moregan" / "workers.yaml").write_text("version: 1\nworkers: []\n", encoding="utf-8")
         (download_dir / "personas").mkdir()
+        (download_dir / "moregan").mkdir()
+        (download_dir / "moregan" / "__init__.py").write_text("", encoding="utf-8")
+        (download_dir / "moregan" / "adapters.py").write_text("adapters", encoding="utf-8")
+        (download_dir / "moregan" / "agent_worker.py").write_text("agent_worker", encoding="utf-8")
+        (download_dir / "moregan" / "cli.py").write_text("cli", encoding="utf-8")
+        (download_dir / "moregan" / "init.py").write_text("init", encoding="utf-8")
+        (download_dir / "moregan" / "runtime.py").write_text("runtime", encoding="utf-8")
+        (download_dir / "moregan" / "schemas.py").write_text("schemas", encoding="utf-8")
+        (download_dir / "moregan" / "state.py").write_text("state", encoding="utf-8")
+        (download_dir / "moregan" / "tools.py").write_text("tools", encoding="utf-8")
+        (download_dir / "moregan" / "workers.py").write_text("workers", encoding="utf-8")
+        (download_dir / "moregan" / "replay.py").write_text("replay", encoding="utf-8")
         for persona_name in install.CLAUDE_PERSONAS:
             (download_dir / "personas" / persona_name).write_text(persona_name, encoding="utf-8")
 
@@ -187,17 +247,33 @@ class HooliganInstallerTests(unittest.TestCase):
         (skill_dir / "SKILL.md").write_text("existing", encoding="utf-8")
         (skill_dir / "README.md").write_text("existing", encoding="utf-8")
         (skill_dir / "INSTALL.md").write_text("existing", encoding="utf-8")
+        (skill_dir / "ROADMAP.md").write_text("existing", encoding="utf-8")
         (skill_dir / "install.py").write_text("existing", encoding="utf-8")
-        (skill_dir / ".harness").mkdir()
+        (skill_dir / ".moregan").mkdir()
         (skill_dir / "personas").mkdir()
+        (skill_dir / "moregan").mkdir()
         self.installer.install_targets = ["claude"]
 
         download_dir = self.root / "downloaded-update"
         download_dir.mkdir()
-        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "install.py"]:
+        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "install.py"]:
             (download_dir / file_name).write_text(file_name, encoding="utf-8")
-        (download_dir / ".harness").mkdir()
+        (download_dir / ".moregan").mkdir()
+        (download_dir / ".moregan" / "tools.yaml").write_text("version: 1\ncommands: []\n", encoding="utf-8")
+        (download_dir / ".moregan" / "workers.yaml").write_text("version: 1\nworkers: []\n", encoding="utf-8")
         (download_dir / "personas").mkdir()
+        (download_dir / "moregan").mkdir()
+        (download_dir / "moregan" / "__init__.py").write_text("", encoding="utf-8")
+        (download_dir / "moregan" / "adapters.py").write_text("adapters", encoding="utf-8")
+        (download_dir / "moregan" / "agent_worker.py").write_text("agent_worker", encoding="utf-8")
+        (download_dir / "moregan" / "cli.py").write_text("cli", encoding="utf-8")
+        (download_dir / "moregan" / "init.py").write_text("init", encoding="utf-8")
+        (download_dir / "moregan" / "runtime.py").write_text("runtime", encoding="utf-8")
+        (download_dir / "moregan" / "schemas.py").write_text("schemas", encoding="utf-8")
+        (download_dir / "moregan" / "state.py").write_text("state", encoding="utf-8")
+        (download_dir / "moregan" / "tools.py").write_text("tools", encoding="utf-8")
+        (download_dir / "moregan" / "workers.py").write_text("workers", encoding="utf-8")
+        (download_dir / "moregan" / "replay.py").write_text("replay", encoding="utf-8")
         for persona_name in install.CLAUDE_PERSONAS:
             (download_dir / "personas" / persona_name).write_text(persona_name, encoding="utf-8")
 
@@ -216,7 +292,7 @@ class HooliganInstallerTests(unittest.TestCase):
         destination_root = self.root / "archive-download"
         archive_root = f"{install.SKILL_NAME}-main"
         with patch.object(self.installer, "_get_repository_url", autospec=True) as get_repo_url:
-            get_repo_url.return_value = "https://github.com/suyesh/hooligan-harness"
+            get_repo_url.return_value = "https://github.com/suyesh/moregan"
             with patch("install.urlopen", autospec=True) as mocked_urlopen:
                 import io
                 import zipfile
@@ -230,12 +306,12 @@ class HooliganInstallerTests(unittest.TestCase):
                 extracted = self.installer._download_update_source("main", destination_root)
 
         self.assertEqual(extracted.name, archive_root)
-        mocked_urlopen.assert_called_once_with("https://github.com/suyesh/hooligan-harness/archive/main.zip")
+        mocked_urlopen.assert_called_once_with("https://github.com/suyesh/moregan/archive/main.zip")
 
     def test_skill_defines_mandatory_persona_execution_contract(self):
         repo_root = Path(__file__).resolve().parents[1]
         skill_text = (repo_root / "SKILL.md").read_text(encoding="utf-8")
-        defaults_text = (repo_root / ".harness" / "defaults.yaml").read_text(encoding="utf-8")
+        defaults_text = (repo_root / ".moregan" / "defaults.yaml").read_text(encoding="utf-8")
 
         self.assertIn("### Mandatory Persona Execution", skill_text)
         for persona_name in [
@@ -273,12 +349,12 @@ class HooliganInstallerTests(unittest.TestCase):
         repo_root = Path(__file__).resolve().parents[1]
         persona_text = (repo_root / "personas" / "LearningCurator.md").read_text(encoding="utf-8")
         retrospectives_text = (
-            repo_root / ".harness" / "knowledge" / "retrospectives.yaml"
+            repo_root / ".moregan" / "knowledge" / "retrospectives.yaml"
         ).read_text(encoding="utf-8")
 
         self.assertIn("sole purpose is to learn from past work", persona_text)
         self.assertIn("Run after the MR Readiness Analyzer", persona_text)
-        self.assertIn(".harness/knowledge/retrospectives.yaml", persona_text)
+        self.assertIn(".moregan/knowledge/retrospectives.yaml", persona_text)
         self.assertIn("First occurrence", persona_text)
         self.assertIn("Third occurrence", persona_text)
         self.assertIn("Learning Curator Verdict: PASS|FAIL", persona_text)

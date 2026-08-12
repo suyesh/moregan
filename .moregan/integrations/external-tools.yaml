@@ -1,6 +1,6 @@
 # External Tool Integrations
 # Configuration for enterprise tool integrations
-# NOTE: All integrations are OPTIONAL - hooliGAN-harness works perfectly without any external tools
+# NOTE: All integrations are OPTIONAL - moregan works perfectly without any external tools
 # Only enable if you have these tools in your environment
 
 version: 1.0.0
@@ -19,9 +19,9 @@ integrations:
 
         auto_generated_workflows:
           test_runner:
-            name: "harness-test-suite"
+            name: "moregan-test-suite"
             template: |
-              name: Harness Test Suite
+              name: MoreGAN Test Suite
               on: [push, pull_request]
               jobs:
                 test:
@@ -36,7 +36,7 @@ integrations:
                         # Security evaluator checks
 
           performance_check:
-            name: "harness-performance"
+            name: "moregan-performance"
             frequency: "on_merge"
 
       status_reporting:
@@ -79,15 +79,15 @@ integrations:
 
         metrics:
           custom_metrics:
-            - name: "harness.task.completion_time"
+            - name: "moregan.task.completion_time"
               type: "gauge"
               tags: ["task_id", "generator_id"]
 
-            - name: "harness.evaluation.pass_rate"
+            - name: "moregan.evaluation.pass_rate"
               type: "rate"
               tags: ["evaluator_type"]
 
-            - name: "harness.rollback.frequency"
+            - name: "moregan.rollback.frequency"
               type: "counter"
               tags: ["trigger_type"]
 
@@ -104,7 +104,7 @@ integrations:
       enabled: false
       configuration:
         dsn: "${SENTRY_DSN}"
-        environment: "harness"
+        environment: "moregan"
 
         error_tracking:
           - "Generator failures"
@@ -148,7 +148,7 @@ integrations:
 
         reporting:
           format: "json"
-          output: ".harness/security/snyk-report.json"
+          output: ".moregan/security/snyk-report.json"
 
     sonarqube:
       enabled: false
@@ -208,15 +208,15 @@ integrations:
 
         auto_publish:
           - document: "Architecture Decisions"
-            page_title: "Harness Architecture Log"
+            page_title: "MoreGAN Architecture Log"
             update_frequency: "on_architect_approval"
 
           - document: "API Documentation"
-            page_title: "Harness API Reference"
+            page_title: "MoreGAN API Reference"
             update_frequency: "on_api_change"
 
           - document: "Pattern Library"
-            page_title: "Harness Design Patterns"
+            page_title: "MoreGAN Design Patterns"
             update_frequency: "weekly"
 
     notion:
@@ -254,7 +254,7 @@ integrations:
           auto_assign: false
 
           labels:
-            - "harness-generated"
+            - "moregan-generated"
             - "auto-tested"
             - "security-scanned"
 
@@ -282,15 +282,15 @@ integrations:
 
         notifications:
           - event: "task_completed"
-            channel: "#harness-updates"
+            channel: "#moregan-updates"
             template: "Task {{task_id}} completed by {{generator_id}}"
 
           - event: "evaluation_failed"
-            channel: "#harness-alerts"
+            channel: "#moregan-alerts"
             template: "⚠️ Evaluation failed for {{task_id}}: {{reason}}"
 
           - event: "rollback_triggered"
-            channel: "#harness-critical"
+            channel: "#moregan-critical"
             template: "🚨 Rollback triggered: {{trigger_reason}}"
 
     discord:
@@ -387,7 +387,7 @@ metrics_aggregation:
     - "csv"
 
   storage:
-    local: ".harness/metrics/"
+    local: ".moregan/metrics/"
     retention: "30d"
 
   dashboards:

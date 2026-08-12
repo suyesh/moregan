@@ -1,4 +1,4 @@
-# 🚀 hooliGAN-harness Installation Guide
+# MoreGAN Installation Guide
 
 ## Quick Start
 
@@ -26,10 +26,14 @@ uv run python install.py
 The installer auto-detects Claude Code and Codex. If both are present, it asks whether to install to Claude, Codex, or both.
 
 ### Claude Code Installation
-- `~/.claude/skills/hooliGAN-harness/`
+- `~/.claude/skills/moregan/`
   - `SKILL.md` - Main skill definition
   - `README.md` - Documentation
-  - `.harness/` - Configuration and knowledge base
+  - `INSTALL.md` - Installation guide
+  - `ROADMAP.md` - Product/runtime roadmap
+  - `install.py` - Maintenance commands
+  - `moregan/` - Executable runtime package
+  - `.moregan/` - Configuration and knowledge base
     - `knowledge/` - Failure patterns, retrospectives, and confidence scoring
     - `evolution/` - Cross-session learning patterns
     - `rollback/` - Rollback strategies
@@ -39,24 +43,27 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
 
 ### Agent Personas
 - `~/.claude/agents/`
-  - `harness-planner.md` - Plans tasks and creates YAML roadmaps
-  - `harness-architect.md` - Reviews plans for architectural impacts
-  - `harness-designer.md` - Reviews UI/UX plans and accessibility
-  - `harness-generator.md` - Implements code following best practices
-  - `harness-evaluator.md` - Adversarial functional evaluation
-  - `harness-security-evaluator.md` - Parallel security scanning
-  - `harness-code-reviewer.md` - Reviews changed code for quality and correctness
-  - `harness-production-readiness-reviewer.md` - Reviews deployability, rollback, observability, and operational safety
-  - `harness-mr-readiness-analyzer.md` - Scores local branch readiness before MR creation
-  - `harness-learning-curator.md` - Captures evidence-backed lessons for future harness work
+  - `moregan-planner.md` - Plans tasks and creates YAML roadmaps
+  - `moregan-architect.md` - Reviews plans for architectural impacts
+  - `moregan-designer.md` - Reviews UI/UX plans and accessibility
+  - `moregan-generator.md` - Implements code following best practices
+  - `moregan-evaluator.md` - Adversarial functional evaluation
+  - `moregan-security-evaluator.md` - Parallel security scanning
+  - `moregan-code-reviewer.md` - Reviews changed code for quality and correctness
+  - `moregan-production-readiness-reviewer.md` - Reviews deployability, rollback, observability, and operational safety
+  - `moregan-mr-readiness-analyzer.md` - Scores local branch readiness before MR creation
+  - `moregan-learning-curator.md` - Captures evidence-backed lessons for future MoreGAN work
 
 ### Codex Installation
-- `~/.codex/skills/hooliGAN-harness/`
+- `~/.codex/skills/moregan/`
   - `SKILL.md` - Main skill definition
   - `README.md` - Documentation
   - `INSTALL.md` - Installation guide
+  - `ROADMAP.md` - Product/runtime roadmap
+  - `install.py` - Maintenance commands
+  - `moregan/` - Executable runtime package
   - `personas/` - Persona instructions used by the skill
-  - `.harness/` - Configuration and knowledge base
+  - `.moregan/` - Configuration and knowledge base
 
 ## Features
 
@@ -86,22 +93,22 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
 
 ## Usage
 
-After installation, use the harness in your coding agent session.
+After installation, use MoreGAN in your coding agent session.
 
 Claude Code:
 
 ```bash
-/harness "Add user authentication with JWT and rate limiting"
-/harness update
-/harness doctor
+/moregan "Add user authentication with JWT and rate limiting"
+/moregan update
+/moregan doctor
 ```
 
 Codex:
 
 ```text
-Use hooliGAN-harness to add user authentication with JWT and rate limiting
-Use hooliGAN-harness to update
-Use hooliGAN-harness to run doctor
+Use MoreGAN to add user authentication with JWT and rate limiting
+Use MoreGAN to update
+Use MoreGAN to run doctor
 ```
 
 The framework will:
@@ -115,10 +122,43 @@ The framework will:
 8. Learn from failures and successful patterns without over-promoting one-off observations
 9. Auto-generate documentation
 
+Executable runtime preview:
+
+```bash
+python -m moregan.cli init
+python -m moregan.cli adapters codex
+python -m moregan.cli adapters claude
+python -m moregan.cli run "Add OAuth login"
+python -m moregan.cli status
+python -m moregan.cli inspect latest
+python -m moregan.cli replay latest
+```
+
+`init` creates `.moregan/tools.yaml`, `.moregan/workers.yaml`, `.moregan/runs/`, and a `.gitignore` entry for local run traces. Existing config files are preserved unless `--force` is used.
+The runtime writes auditable artifacts under `.moregan/runs/`, including `state.json`, `states.jsonl`, `tool_suggestions.json`, and structured stage files in `stages/*.json`.
+Repository-local deterministic checks are configured in `.moregan/tools.yaml`.
+Worker stages are recorded as dry-run `SKIP` results until a provider command is configured in `.moregan/workers.yaml`.
+Codex and Claude can read the installed skill instructions directly, but these executable runtime and maintenance commands need local Python 3.8+.
+
+Adapter templates:
+
+```bash
+python -m moregan.cli adapters codex --activate
+python -m moregan.cli adapters claude --activate
+```
+
+`adapters` writes `.moregan/adapters/<provider>/` prompts and `.moregan/workers.<provider>.yaml`. With `--activate`, it also writes `.moregan/workers.yaml` unless that file already exists; use `--force` for intentional replacement. Set `MOREGAN_CODEX_COMMAND` or `MOREGAN_CLAUDE_COMMAND` to a provider command that reads the prompt from stdin and prints one `StageResult` JSON object.
+
+PyPI trusted publishing:
+
+- Workflow file: `.github/workflows/workflow.yml`
+- PyPI workflow filename field: `workflow.yml`
+- Recommended PyPI environment: `pypi`
+
 ## Advanced Configuration
 
 ### Enable Multi-Generator Mode
-Edit `.harness/collaboration/multi-generator.yaml`:
+Edit `.moregan/collaboration/multi-generator.yaml`:
 ```yaml
 multi_generator_configuration:
   enabled: true  # Set to true
@@ -126,14 +166,14 @@ multi_generator_configuration:
 ```
 
 ### Configure External Integrations
-Edit `.harness/integrations/external-tools.yaml` to enable:
+Edit `.moregan/integrations/external-tools.yaml` to enable:
 - CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI)
 - Monitoring (Datadog, Sentry, Prometheus)
 - Security scanning (Snyk, SonarQube, Veracode)
 - Documentation (Confluence, Notion, Docusaurus)
 
 ### Adjust Confidence Thresholds
-Edit `.harness/knowledge/confidence-scoring.yaml` to customize validation levels.
+Edit `.moregan/knowledge/confidence-scoring.yaml` to customize validation levels.
 
 ## Maintenance
 
@@ -142,31 +182,31 @@ Run maintenance through the installed skill, not through the setup wrapper.
 Claude Code:
 
 ```bash
-/harness update
-/harness doctor
+/moregan update
+/moregan doctor
 ```
 
 Codex:
 
 ```text
-Use hooliGAN-harness to update
-Use hooliGAN-harness to run doctor
+Use MoreGAN to update
+Use MoreGAN to run doctor
 ```
 
-`update` downloads the latest `hooligan-harness` archive from GitHub over HTTPS for the requested ref, then reinstalls the skill. `doctor` removes duplicate backup/copy installs, fixes Claude registry duplication, removes orphaned persona files, and repairs missing installed files.
+`update` downloads the latest `moregan` archive from GitHub over HTTPS for the requested ref, then reinstalls the skill. `doctor` removes duplicate backup/copy installs, fixes Claude registry duplication, removes orphaned persona files, and repairs missing installed files.
 
 ## Uninstallation
 
-To remove hooliGAN-harness:
+To remove MoreGAN:
 
 ```bash
 uv run python install.py uninstall
 ```
 
 Or manually remove:
-- `~/.claude/skills/hooliGAN-harness/`
-- Agent files from `~/.claude/agents/harness-*.md`
-- `~/.codex/skills/hooliGAN-harness/`
+- `~/.claude/skills/moregan/`
+- Agent files from `~/.claude/agents/moregan-*.md`
+- `~/.codex/skills/moregan/`
 
 ## Troubleshooting
 
@@ -188,8 +228,8 @@ Or manually remove:
 
 ## Support
 
-- **Repository**: https://github.com/suyesh/hooligan-harness
-- **Issues**: https://github.com/suyesh/hooligan-harness/issues
+- **Repository**: https://github.com/suyesh/moregan
+- **Issues**: https://github.com/suyesh/moregan/issues
 - **Documentation**: See README.md for framework details
 
 ## License

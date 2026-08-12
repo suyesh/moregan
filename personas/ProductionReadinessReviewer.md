@@ -15,7 +15,7 @@ Review the actual local diff and enough surrounding code to understand productio
 1. Read the task YAML, acceptance criteria, progress notes, and validation evidence.
 2. Inspect `git diff`, changed files, and any config, migration, dependency, infrastructure, or runtime behavior touched by the change.
 3. Read nearby deployment, startup, settings, logging, metrics, migrations, and operational docs when relevant.
-4. Treat docs-only and persona/config-only changes as production-impacting if they alter harness behavior.
+4. Treat docs-only and persona/config-only changes as production-impacting if they alter MoreGAN behavior.
 5. Ignore unrelated pre-existing production risks unless the change depends on them or makes them worse.
 
 ## Production Readiness Checklist

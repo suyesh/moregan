@@ -15,17 +15,17 @@ tasks:
       - personas/ProductionReadinessReviewer.md
     depends_on: []
   - id: "2"
-    title: Wire Production Readiness Reviewer into the mandatory harness workflow
+    title: Wire Production Readiness Reviewer into the mandatory MoreGAN workflow
     status: done
     acceptance_criteria:
       - install.py installs the new persona for Claude and bundles it for Codex.
       - SKILL.md lists Production Readiness Reviewer as mandatory after Code Reviewer and before MR Readiness Analyzer.
-      - .harness/defaults.yaml includes production_readiness_reviewer in mandatory persona execution and final output settings.
+      - .moregan/defaults.yaml includes production_readiness_reviewer in mandatory persona execution and final output settings.
       - README.md and INSTALL.md document the new mandatory gate.
     files:
       - install.py
       - SKILL.md
-      - .harness/defaults.yaml
+      - .moregan/defaults.yaml
       - README.md
       - INSTALL.md
     depends_on: ["1"]
@@ -41,6 +41,6 @@ tasks:
       - Final response includes the colorful Production Readiness Reviewer result and MR readiness score.
     files:
       - tests/test_install.py
-      - .harness/production-readiness-reviewer.yaml
-      - .harness/progress.md
+      - .moregan/production-readiness-reviewer.yaml
+      - .moregan/progress.md
     depends_on: ["2"]
