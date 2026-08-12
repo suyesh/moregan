@@ -711,3 +711,41 @@ persona_execution:
   learning_curator: "PASS - recorded remediation evidence and next safer execution work"
 notes: "MoreGAN now retries failed post-generation gates by sending structured failure context back to the generator. Initial generator failure remains terminal because there is no successful generator to remediate from."
 ---
+
+---
+timestamp: "2026-08-12T00:32:32-07:00"
+status: SUCCESS
+task_nickname: moregan-safer-execution-isolation
+summary: "Added isolated default execution for no-write worker stages and repository write guards."
+branch: "main"
+updates:
+  - file: "moregan/workers.py"
+    action: "Added worker execution modes auto, isolated, and repository; no-write workers run in isolated snapshots by default; repository no-write workers fail if they mutate git status."
+  - file: "moregan/adapters.py"
+    action: "Updated generated Codex/Claude workers YAML with execution defaults and documented isolated no-write behavior."
+  - file: "moregan/init.py"
+    action: "Added execution mode to the workers.yaml example seeded by `moregan init`."
+  - file: "tests/test_moregan_runtime.py"
+    action: "Added coverage for isolated no-write worker execution, repository no-write violation detection, and adapter execution defaults."
+  - file: "README.md"
+    action: "Documented worker execution modes and no-write violation behavior."
+  - file: "INSTALL.md"
+    action: "Documented execution mode defaults for provider-backed workers."
+  - file: "ROADMAP.md"
+    action: "Marked safer execution implemented and moved next work to context curation."
+  - file: ".moregan/roadmap.yaml"
+    action: "Marked safer-execution-isolation done and set context-curation-token-savings as current_work."
+verification_evidence: "python3 -m unittest discover -s tests -v passed 43 tests; python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/adapters.py moregan/agent_worker.py moregan/init.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py moregan/replay.py passed; git diff --check passed; targeted tests passed for isolated no-write execution and repository no-write violation detection."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - runtime/config/docs change with no frontend surface"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "not scored - local branch has intentional uncommitted implementation work before commit"
+  learning_curator: "PASS - recorded safer execution behavior and next context curation work"
+notes: "This is not full sandboxing. It is a practical first guard: no-write workers default to temporary snapshots, while explicit repository no-write execution is checked against git status."
+---

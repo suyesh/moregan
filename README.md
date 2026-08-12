@@ -66,6 +66,7 @@ flowchart TD
 - Structured findings, evidence, confidence, and verdicts for each stage.
 - Deterministic checks for tests, syntax, git diff validation, and repo-local commands.
 - Bounded remediation attempts that feed failed findings back to the generator.
+- Isolated execution for no-write worker stages by default.
 - Read-only replay of past runs without rerunning providers or tests.
 - Codex and Claude adapter templates that normalize provider output into JSON.
 - Local trace artifacts under `.moregan/runs/` for debugging and review.
@@ -249,6 +250,16 @@ export MOREGAN_CLAUDE_COMMAND="<your claude command>"
 ```
 
 Review and evaluation workers default to no-write mode. The generator stage is write-enabled when activated.
+
+Worker execution modes:
+
+```yaml
+execution: auto        # no-write workers run in isolated snapshots; write-enabled workers run in the repo
+execution: isolated    # always run in a temporary repository snapshot
+execution: repository  # run in the real checkout
+```
+
+MoreGAN passes `MOREGAN_EXECUTION_MODE` and `MOREGAN_EXECUTION_ROOT` to provider commands and records the execution context in stage evidence. If a `no_write: true` worker is forced to `execution: repository` and changes the git status, MoreGAN fails that stage with a `no_write_violation` finding.
 
 ## Worker Contract
 

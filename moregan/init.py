@@ -178,6 +178,7 @@ class MoreGANInitializer:
                 "#     command: [\"python3\", \"scripts/moregan_generator.py\"]",
                 "#     timeout_seconds: 120",
                 "#     no_write: false",
+                "#     execution: repository  # auto, repository, or isolated",
             ]
         ) + "\n"
 

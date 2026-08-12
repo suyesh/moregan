@@ -300,7 +300,79 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertEqual(generator_stage["verdict"], "pass")
         self.assertEqual(generator_stage["confidence"], 0.91)
         self.assertEqual(generator_stage["evidence"][0]["summary"], "1")
-        self.assertEqual(generator_stage["evidence"][-1]["kind"], "worker_command")
+        self.assertIn("worker_command", {item["kind"] for item in generator_stage["evidence"]})
+        self.assertIn("execution_context", {item["kind"] for item in generator_stage["evidence"]})
+
+    def test_no_write_worker_runs_in_isolated_snapshot_by_default(self):
+        moregan_dir = self.root / ".moregan"
+        moregan_dir.mkdir()
+        marker = self.root / "review-marker.txt"
+        code = (
+            "import json, pathlib; "
+            "root = pathlib.Path.cwd(); "
+            "(root / 'review-marker.txt').write_text('isolated write'); "
+            "print(json.dumps({'stage': 'evaluator', 'verdict': 'pass', 'confidence': 1.0, "
+            "'findings': [], 'evidence': [{'kind': 'cwd', 'name': 'worker_cwd', 'summary': str(root)}]}))"
+        )
+        command = json.dumps([sys.executable, "-c", code])
+        (moregan_dir / "workers.yaml").write_text(
+            "version: 1\n"
+            "workers:\n"
+            "  - stage: evaluator\n"
+            f"    command: {command}\n"
+            "    timeout_seconds: 10\n"
+            "    no_write: true\n",
+            encoding="utf-8",
+        )
+
+        result = MoreGANRuntime(self.root).run("Change button copy", run_checks=False)
+        run_dir = Path(result.trace_path)
+
+        self.assertEqual(result.status, "pass")
+        self.assertFalse(marker.exists())
+        evaluator_stage = json.loads((run_dir / "stages" / "evaluator.json").read_text(encoding="utf-8"))
+        execution = [item for item in evaluator_stage["evidence"] if item["kind"] == "execution_context"][0]
+        self.assertEqual(execution["name"], "isolated_snapshot")
+        self.assertNotEqual(Path(execution["path"]).resolve(), self.root.resolve())
+        self.assertTrue((Path(execution["path"]) / "review-marker.txt").exists())
+
+    def test_repository_no_write_worker_violation_fails_stage(self):
+        subprocess.run(["git", "init"], cwd=self.root, check=True, capture_output=True, text=True)
+        subprocess.run(["git", "config", "user.email", "moregan@example.com"], cwd=self.root, check=True)
+        subprocess.run(["git", "config", "user.name", "MoreGAN"], cwd=self.root, check=True)
+        (self.root / "tracked.txt").write_text("base", encoding="utf-8")
+        subprocess.run(["git", "add", "tracked.txt"], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-m", "base"], cwd=self.root, check=True, capture_output=True, text=True)
+
+        moregan_dir = self.root / ".moregan"
+        moregan_dir.mkdir()
+        code = (
+            "import json, pathlib; "
+            "(pathlib.Path.cwd() / 'tracked.txt').write_text('mutated'); "
+            "print(json.dumps({'stage': 'evaluator', 'verdict': 'pass', 'confidence': 1.0, "
+            "'findings': [], 'evidence': []}))"
+        )
+        command = json.dumps([sys.executable, "-c", code])
+        (moregan_dir / "workers.yaml").write_text(
+            "version: 1\n"
+            "workers:\n"
+            "  - stage: evaluator\n"
+            f"    command: {command}\n"
+            "    timeout_seconds: 10\n"
+            "    no_write: true\n"
+            "    execution: repository\n",
+            encoding="utf-8",
+        )
+
+        result = MoreGANRuntime(self.root, max_remediation_attempts=0).run("Change button copy", run_checks=False)
+        run_dir = Path(result.trace_path)
+
+        self.assertEqual(result.status, "fail")
+        evaluator_stage = json.loads((run_dir / "stages" / "evaluator.json").read_text(encoding="utf-8"))
+        self.assertEqual(evaluator_stage["verdict"], "fail")
+        self.assertEqual(evaluator_stage["findings"][0]["category"], "no_write_violation")
+        execution = [item for item in evaluator_stage["evidence"] if item["kind"] == "execution_context"][0]
+        self.assertEqual(execution["name"], "repository_checkout")
 
     def test_worker_command_failure_blocks_run_with_structured_finding(self):
         moregan_dir = self.root / ".moregan"
@@ -485,7 +557,9 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertIn("generator", stages)
         self.assertIn("code_reviewer", stages)
         self.assertFalse(stages["generator"].no_write)
+        self.assertEqual(stages["generator"].execution, "repository")
         self.assertTrue(stages["code_reviewer"].no_write)
+        self.assertEqual(stages["code_reviewer"].execution, "auto")
         self.assertIn("moregan.agent_worker", stages["generator"].command)
 
     def test_agent_adapter_scaffold_preserves_active_workers_unless_forced(self):

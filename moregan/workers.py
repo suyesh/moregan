@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import shlex
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -62,6 +64,7 @@ class WorkerCommand:
     timeout_seconds: int
     no_write: bool
     source: str
+    execution: str = "auto"
 
 
 class WorkerAdapter(Protocol):
@@ -115,6 +118,8 @@ class CommandWorker:
 
     def run(self, context: WorkerContext) -> StageResult:
         started = time.perf_counter()
+        execution_root = self._execution_root(context)
+        no_write_before = self._git_status(context.root) if self.command.no_write and execution_root == context.root else None
         env = os.environ.copy()
         env.update(
             {
@@ -126,13 +131,15 @@ class CommandWorker:
                 "MOREGAN_NO_WRITE": "1" if self.command.no_write else "0",
                 "MOREGAN_ATTEMPT": str(context.attempt),
                 "MOREGAN_REMEDIATION_CONTEXT": json.dumps(context.remediation_context or {}, sort_keys=True),
+                "MOREGAN_EXECUTION_MODE": "isolated" if execution_root != context.root else "repository",
+                "MOREGAN_EXECUTION_ROOT": str(execution_root),
             }
         )
 
         try:
             result = subprocess.run(
                 self.command.command,
-                cwd=context.root,
+                cwd=execution_root,
                 check=False,
                 capture_output=True,
                 text=True,
@@ -171,7 +178,13 @@ class CommandWorker:
                 stderr_tail=result.stderr,
             )
 
-        return self._stage_result_from_payload(payload, started, context.attempt)
+        stage_result = self._stage_result_from_payload(payload, started, context.attempt)
+        self._attach_execution_evidence(stage_result, context.root, execution_root)
+        no_write_violation = self._no_write_violation(no_write_before, context.root)
+        if no_write_violation:
+            stage_result.verdict = "fail"
+            stage_result.findings.append(no_write_violation)
+        return stage_result
 
     def _stage_result_from_payload(self, payload: Dict[str, object], started: float, attempt: int) -> StageResult:
         stage = str(payload.get("stage", self.stage))
@@ -264,6 +277,90 @@ class CommandWorker:
             started_at=_timestamp(),
             completed_at=_timestamp(),
             duration_ms=_duration_ms(started),
+        )
+
+    def _execution_root(self, context: WorkerContext) -> Path:
+        execution = self.command.execution
+        if execution == "repository":
+            return context.root
+        if execution == "isolated" or (execution == "auto" and self.command.no_write):
+            return self._create_isolated_snapshot(context)
+        return context.root
+
+    def _create_isolated_snapshot(self, context: WorkerContext) -> Path:
+        target = Path(
+            tempfile.mkdtemp(
+                prefix=f"moregan-{context.run_id}-{self.stage}-attempt{context.attempt}-"
+            )
+        )
+        target.rmdir()
+        shutil.copytree(context.root, target, ignore=self._ignore_for_snapshot)
+        return target
+
+    def _ignore_for_snapshot(self, directory: str, names: List[str]) -> List[str]:
+        ignored = []
+        common_ignored = {
+            ".git",
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".venv",
+            "venv",
+            "node_modules",
+            "dist",
+            "build",
+        }
+        for name in names:
+            path = Path(directory) / name
+            if name in common_ignored:
+                ignored.append(name)
+                continue
+            if path.match("*.pyc"):
+                ignored.append(name)
+                continue
+            if name == "runs" and path.parent.name == ".moregan":
+                ignored.append(name)
+        return ignored
+
+    def _attach_execution_evidence(self, result: StageResult, repository_root: Path, execution_root: Path) -> None:
+        isolated = execution_root != repository_root
+        result.evidence.append(
+            EvidenceReference(
+                kind="execution_context",
+                name="isolated_snapshot" if isolated else "repository_checkout",
+                summary=(
+                    "Worker ran in an isolated snapshot; base checkout was not used as cwd."
+                    if isolated
+                    else "Worker ran in the repository checkout."
+                ),
+                path=str(execution_root),
+            )
+        )
+
+    def _git_status(self, root: Path) -> Optional[str]:
+        if not (root / ".git").exists():
+            return None
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=all"],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout if result.returncode == 0 else None
+
+    def _no_write_violation(self, before: Optional[str], root: Path) -> Optional[Finding]:
+        if before is None:
+            return None
+        after = self._git_status(root)
+        if after is None or after == before:
+            return None
+        return Finding(
+            severity="high",
+            category="no_write_violation",
+            description="A no-write worker changed the repository checkout.",
+            remediation="Run no-write workers with execution: isolated or fix the worker command so it does not write.",
         )
 
     def _finding_from_payload(self, payload: Dict[str, object]) -> Finding:
@@ -403,6 +500,7 @@ class WorkerConfigLoader:
             timeout_seconds=int(payload.get("timeout_seconds", 120)),
             no_write=self._coerce_bool(payload.get("no_write", True)),
             source=str(self.CONFIG_PATH),
+            execution=self._coerce_execution(payload.get("execution", "auto")),
         )
 
     def _coerce_command(self, value: object) -> List[str]:
@@ -422,6 +520,12 @@ class WorkerConfigLoader:
             if lowered in {"false", "no", "off", "0"}:
                 return False
         return bool(value)
+
+    def _coerce_execution(self, value: object) -> str:
+        execution = str(value or "auto").strip().lower()
+        if execution not in {"auto", "repository", "isolated"}:
+            raise WorkerConfigError("worker execution must be one of: auto, repository, isolated")
+        return execution
 
 
 def _timestamp() -> str:

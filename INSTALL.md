@@ -159,6 +159,7 @@ When a required deterministic check or routed worker fails after generation, the
 Repository-local deterministic checks are configured in `.moregan/tools.yaml`.
 Worker stages are recorded as dry-run `SKIP` results until a provider command is configured in `.moregan/workers.yaml`.
 Codex and Claude can read the installed skill instructions directly, but these executable runtime and maintenance commands need local Python 3.8+.
+Provider-backed workers support `execution: auto`, `execution: isolated`, and `execution: repository`. In `auto`, no-write workers run in isolated snapshots by default, while write-enabled generator workers run in the repository checkout.
 
 Useful runtime flags:
 

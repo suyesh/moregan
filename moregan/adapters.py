@@ -115,6 +115,7 @@ class AgentAdapterScaffolder:
         ]
         for stage in WORKER_STAGE_ORDER:
             no_write = "false" if stage == "generator" else "true"
+            execution = "repository" if stage == "generator" else "auto"
             timeout = "600" if stage == "generator" else "300"
             lines.extend(
                 [
@@ -122,6 +123,7 @@ class AgentAdapterScaffolder:
                     f"    command: {self._command(provider, stage)}",
                     f"    timeout_seconds: {timeout}",
                     f"    no_write: {no_write}",
+                    f"    execution: {execution}",
                 ]
             )
         return "\n".join(lines) + "\n"
@@ -154,7 +156,7 @@ To activate this provider template:
 cp .moregan/workers.{provider}.yaml .moregan/workers.yaml
 ```
 
-Review workers before activation. Review, evaluation, security, production, MR readiness, and planning workers default to `MOREGAN_NO_WRITE=1`; the generator stage defaults to write-enabled.
+Review workers before activation. Review, evaluation, security, production, MR readiness, and planning workers default to `MOREGAN_NO_WRITE=1` with `execution: auto`, which runs no-write workers in isolated snapshots by default. The generator stage defaults to write-enabled repository execution.
 """
 
     def _prompt(self, provider: str, stage: str) -> str:

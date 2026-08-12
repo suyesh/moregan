@@ -156,4 +156,4 @@ Goal: let evidence tune the harness.
 
 ## Current Branch Focus
 
-This branch starts v1.6 through v2.5. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, and bounded remediation attempts. The next implementation step is safer execution with isolated worktrees.
+This branch starts v1.6 through v2.6. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, and isolated no-write worker execution. The next implementation step is context curation to reduce token cost and preserve useful context.

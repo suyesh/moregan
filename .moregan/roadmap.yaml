@@ -272,12 +272,24 @@ completed_work:
       - "Targeted runtime tests passed for deterministic remediation success, worker-finding remediation context, remediation exhaustion, generator provider failure, and agent worker normalization."
       - "Runtime writes remediation.json and attempt-specific stage artifacts such as generator.attempt2.json and deterministic_evidence.attempt2.json."
       - "CLI exposes --max-remediation-attempts."
+  - id: safer-execution-isolation
+    phase: v2.6
+    status: done
+    acceptance_criteria:
+      - "No-write worker stages run outside the base checkout by default."
+      - "Write-enabled generator stages continue to run in the repository checkout unless configured otherwise."
+      - "Trace artifacts record the execution context used for every provider-backed worker."
+      - "No-write workers forced into repository execution fail if they mutate git status."
+    verification:
+      - "Targeted tests passed for isolated no-write execution, repository no-write violation detection, and provider command execution evidence."
+      - "Adapter templates now include execution mode defaults."
+      - "README and INSTALL document execution: auto, isolated, and repository."
 current_work:
-  id: safer-execution-isolation
-  phase: v2.6
+  id: context-curation-token-savings
+  phase: v2.7
   status: next
   acceptance_criteria:
-    - "Generator and remediation attempts can run in isolated worktrees or guarded execution contexts."
-    - "No-write worker stages are protected from accidental repository writes where practical."
-    - "Trace artifacts record the execution context used for each write-enabled attempt."
-    - "Failed isolated attempts can be inspected without corrupting the base checkout."
+    - "Runtime writes compact context packs under .moregan/runs/<run>/context/."
+    - "Context packs include request, route, changed-file summary, deterministic evidence summary, remediation context, and relevant local lessons."
+    - "Workers receive context manifest paths instead of oversized prose where practical."
+    - "Trace artifacts record approximate context size for each worker stage."
