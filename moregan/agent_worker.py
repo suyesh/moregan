@@ -129,6 +129,8 @@ class AgentWorkerRunner:
             "no_write": os.environ.get("MOREGAN_NO_WRITE", "1"),
             "attempt": os.environ.get("MOREGAN_ATTEMPT", "1"),
             "remediation_context": os.environ.get("MOREGAN_REMEDIATION_CONTEXT", "{}"),
+            "context_pack": os.environ.get("MOREGAN_CONTEXT_PACK", ""),
+            "context_tokens": os.environ.get("MOREGAN_CONTEXT_TOKENS", "0"),
         }
         return (
             f"{template}\n\n"
@@ -141,6 +143,9 @@ class AgentWorkerRunner:
             f"- MOREGAN_NO_WRITE: {context['no_write']}\n\n"
             f"- attempt: {context['attempt']}\n"
             f"- remediation_context: {context['remediation_context']}\n\n"
+            f"- context_pack: {context['context_pack']}\n"
+            f"- context_tokens_estimate: {context['context_tokens']}\n\n"
+            "Read the context pack path when present instead of requesting oversized inline history.\n\n"
             "Return exactly one JSON object on stdout and no markdown fences.\n"
         )
 

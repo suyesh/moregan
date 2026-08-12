@@ -29,6 +29,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         (self.source_dir / "moregan" / "adapters.py").write_text("adapters", encoding="utf-8")
         (self.source_dir / "moregan" / "agent_worker.py").write_text("agent_worker", encoding="utf-8")
         (self.source_dir / "moregan" / "cli.py").write_text("cli", encoding="utf-8")
+        (self.source_dir / "moregan" / "context.py").write_text("context", encoding="utf-8")
         (self.source_dir / "moregan" / "init.py").write_text("init", encoding="utf-8")
         (self.source_dir / "moregan" / "runtime.py").write_text("runtime", encoding="utf-8")
         (self.source_dir / "moregan" / "schemas.py").write_text("schemas", encoding="utf-8")
@@ -97,6 +98,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "moregan" / "adapters.py").exists())
         self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
         self.assertTrue((skill_dir / "moregan" / "cli.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "context.py").exists())
         self.assertTrue((skill_dir / "moregan" / "init.py").exists())
         self.assertTrue((skill_dir / "moregan" / "schemas.py").exists())
         self.assertTrue((skill_dir / "moregan" / "state.py").exists())
@@ -134,6 +136,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "assets" / "moregan.png").exists())
         self.assertTrue((skill_dir / "moregan" / "adapters.py").exists())
         self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "context.py").exists())
         self.assertTrue((skill_dir / "moregan" / "init.py").exists())
         self.assertTrue((skill_dir / "moregan" / "runtime.py").exists())
         self.assertTrue((skill_dir / "moregan" / "schemas.py").exists())
@@ -214,6 +217,14 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertIn('"personas" = "personas"', pyproject)
         self.assertIn('".moregan/tools.yaml" = ".moregan/tools.yaml"', pyproject)
         self.assertIn('".moregan/workers.yaml" = ".moregan/workers.yaml"', pyproject)
+
+    def test_package_version_constants_match(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+        init_py = (repo_root / "moregan" / "__init__.py").read_text(encoding="utf-8")
+
+        self.assertIn(f'version = "{install.VERSION}"', pyproject)
+        self.assertIn(f'__version__ = "{install.VERSION}"', init_py)
 
     def test_pypi_trusted_publishing_workflow_exists_with_expected_filename(self):
         repo_root = Path(__file__).resolve().parents[1]

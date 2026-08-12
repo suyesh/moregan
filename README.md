@@ -1,5 +1,7 @@
 # MoreGAN
 
+[![Publish to PyPI](https://github.com/suyesh/moregan/actions/workflows/workflow.yml/badge.svg)](https://github.com/suyesh/moregan/actions/workflows/workflow.yml)
+
 <p align="center">
   <img src="./assets/moregan.png" alt="MoreGAN logo" width="760">
 </p>
@@ -67,6 +69,7 @@ flowchart TD
 - Deterministic checks for tests, syntax, git diff validation, and repo-local commands.
 - Bounded remediation attempts that feed failed findings back to the generator.
 - Isolated execution for no-write worker stages by default.
+- Compact context packs that keep worker prompts smaller while preserving useful run context.
 - Read-only replay of past runs without rerunning providers or tests.
 - Codex and Claude adapter templates that normalize provider output into JSON.
 - Local trace artifacts under `.moregan/runs/` for debugging and review.
@@ -261,6 +264,15 @@ execution: repository  # run in the real checkout
 
 MoreGAN passes `MOREGAN_EXECUTION_MODE` and `MOREGAN_EXECUTION_ROOT` to provider commands and records the execution context in stage evidence. If a `no_write: true` worker is forced to `execution: repository` and changes the git status, MoreGAN fails that stage with a `no_write_violation` finding.
 
+MoreGAN also passes compact context instead of oversized inline history:
+
+```text
+MOREGAN_CONTEXT_PACK=/path/to/.moregan/runs/<run-id>/context/stages/generator.attempt1.json
+MOREGAN_CONTEXT_TOKENS=1234
+```
+
+Provider commands can read `MOREGAN_CONTEXT_PACK` when they need the current request, route, repository summary, prior stage findings, deterministic evidence, remediation context, and local lessons.
+
 ## Worker Contract
 
 Workers must print one JSON object:
@@ -352,6 +364,12 @@ Each run writes a directory like this. The exact `stages/*.json` files depend on
   state.json
   states.jsonl
   tool_suggestions.json
+  context/
+    manifest.json
+    base.json
+    stages/
+      generator.attempt1.json
+      evaluator.attempt1.json
   stages/
     risk_classifier.json
     generator.json
@@ -378,6 +396,8 @@ It reconstructs state transitions, stage results, findings, and deterministic ev
 When a required deterministic check or routed worker fails after generation, MoreGAN transitions through `remediation`, passes a structured remediation context to the generator, and retries from deterministic evidence when practical. The default limit is three remediation attempts.
 
 Remediation runs also write `remediation.json` plus attempt-specific stage files such as `generator.attempt2.json`.
+
+Context packs are capped JSON summaries designed to preserve useful context without spending tokens on full trace history. `context/manifest.json` records every pack path, byte size, and approximate token count.
 
 ## Skill Usage
 
@@ -434,6 +454,7 @@ Implemented in this repository:
 - deterministic tool layer
 - provider-backed worker command contract
 - bounded remediation loop
+- compact context packs for token-aware worker execution
 - run replay
 - Codex and Claude adapter templates
 - PyPI trusted-publishing workflow
@@ -442,7 +463,8 @@ Implemented in this repository:
 
 Next production-readiness work:
 
-- safer execution model with isolated worktrees
+- empirical learning backed by run observations
+- stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
 - stack-specific deterministic tool presets
 - benchmark suite

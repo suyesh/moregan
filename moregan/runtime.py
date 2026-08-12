@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 
+from moregan.context import ContextPackWriter
 from moregan.schemas import (
     CommandEvidence,
     EvidenceReference,
@@ -353,6 +354,7 @@ class MoreGANRuntime:
         self.max_remediation_attempts = max(0, max_remediation_attempts)
         self.classifier = RiskClassifier()
         self.trace_writer = TraceWriter(self.root)
+        self.context_writer = ContextPackWriter(self.root)
         self.evidence_runner = DeterministicEvidenceRunner(self.root)
         self.worker_registry = WorkerRegistry.from_root(self.root)
 
@@ -409,6 +411,12 @@ class MoreGANRuntime:
             "tool_suggestions.json",
             [asdict(suggestion) for suggestion in tool_suggestions],
         )
+        self.context_writer.write_base_context(
+            run_dir=run_dir,
+            request=request,
+            risk=risk,
+            tool_suggestions=tool_suggestions,
+        )
 
         evidence: List[CommandEvidence] = []
         stages = [risk_stage]
@@ -420,15 +428,6 @@ class MoreGANRuntime:
         while current_index < len(risk.route):
             route_stage = risk.route[current_index]
             attempt = max(1, state_machine.run_state.remediation_attempts + 1)
-            worker_context = WorkerContext(
-                root=self.root,
-                run_id=run_id,
-                request=request,
-                risk=risk,
-                route=risk.route,
-                attempt=attempt,
-                remediation_context=remediation_context,
-            )
 
             if route_stage == "deterministic_evidence":
                 evidence_stage, current_evidence = self._run_deterministic_evidence(
@@ -462,6 +461,27 @@ class MoreGANRuntime:
                 current_index += 1
                 continue
 
+            context_pack = self.context_writer.write_stage_context(
+                run_dir=run_dir,
+                request=request,
+                risk=risk,
+                stage=route_stage,
+                attempt=attempt,
+                stages=stages,
+                evidence=evidence,
+                remediation_context=remediation_context,
+            )
+            worker_context = WorkerContext(
+                root=self.root,
+                run_id=run_id,
+                request=request,
+                risk=risk,
+                route=risk.route,
+                attempt=attempt,
+                remediation_context=remediation_context,
+                context_pack_path=context_pack.path,
+                context_estimated_tokens=context_pack.estimated_tokens,
+            )
             worker_stage = self._run_worker_stage(
                 run_dir=run_dir,
                 state_machine=state_machine,
@@ -661,6 +681,16 @@ class MoreGANRuntime:
             next_attempt=next_attempt,
         )
 
+        context_pack = self.context_writer.write_stage_context(
+            run_dir=run_dir,
+            request=request,
+            risk=risk,
+            stage="generator",
+            attempt=next_attempt,
+            stages=stages,
+            evidence=evidence,
+            remediation_context=context,
+        )
         generator_context = WorkerContext(
             root=self.root,
             run_id=run_dir.name,
@@ -669,6 +699,8 @@ class MoreGANRuntime:
             route=risk.route,
             attempt=next_attempt,
             remediation_context=context,
+            context_pack_path=context_pack.path,
+            context_estimated_tokens=context_pack.estimated_tokens,
         )
         generator_stage = self._run_worker_stage(
             run_dir=run_dir,

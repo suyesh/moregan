@@ -78,6 +78,69 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertEqual(len(states_jsonl), 6)
         self.assertEqual(latest_run(self.root), run_dir)
 
+    def test_runtime_writes_compact_context_packs(self):
+        moregan_dir = self.root / ".moregan"
+        lessons_dir = moregan_dir / "knowledge"
+        lessons_dir.mkdir(parents=True)
+        (lessons_dir / "endpoint-lessons.md").write_text(
+            "Endpoint changes need acceptance criteria and regression tests.",
+            encoding="utf-8",
+        )
+        (self.root / "service.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+        result = MoreGANRuntime(self.root).run("Add API endpoint", run_checks=False)
+        run_dir = Path(result.trace_path)
+
+        base_context = json.loads((run_dir / "context" / "base.json").read_text(encoding="utf-8"))
+        generator_context = json.loads(
+            (run_dir / "context" / "stages" / "generator.attempt1.json").read_text(encoding="utf-8")
+        )
+        manifest = json.loads((run_dir / "context" / "manifest.json").read_text(encoding="utf-8"))
+        generator_stage = json.loads((run_dir / "stages" / "generator.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(base_context["request"], "Add API endpoint")
+        self.assertEqual(generator_context["stage"], "generator")
+        self.assertEqual(generator_context["attempt"], 1)
+        self.assertEqual(generator_context["repository"]["root"], str(self.root.resolve()))
+        self.assertGreater(generator_context["context_size"]["estimated_tokens"], 0)
+        self.assertTrue(generator_context["local_lessons"]["items"])
+        self.assertIn("context_pack", {item["kind"] for item in generator_stage["evidence"]})
+        self.assertGreaterEqual(len(manifest["packs"]), 2)
+        self.assertGreater(manifest["total_estimated_tokens"], 0)
+
+    def test_worker_receives_context_pack_path_and_token_estimate(self):
+        moregan_dir = self.root / ".moregan"
+        moregan_dir.mkdir()
+        code = (
+            "import json, os, pathlib; "
+            "path = os.environ.get('MOREGAN_CONTEXT_PACK', ''); "
+            "tokens = os.environ.get('MOREGAN_CONTEXT_TOKENS', '0'); "
+            "payload = json.loads(pathlib.Path(path).read_text()) if path else {}; "
+            "print(json.dumps({'stage': 'generator', 'verdict': 'pass', 'confidence': 1.0, "
+            "'findings': [], 'evidence': [{'kind': 'env', 'name': 'context_pack', "
+            "'summary': payload.get('stage', '') + ':' + tokens, 'path': path}]}))"
+        )
+        command = json.dumps([sys.executable, "-c", code])
+        (moregan_dir / "workers.yaml").write_text(
+            "version: 1\n"
+            "workers:\n"
+            "  - stage: generator\n"
+            f"    command: {command}\n"
+            "    timeout_seconds: 10\n"
+            "    no_write: false\n",
+            encoding="utf-8",
+        )
+
+        result = MoreGANRuntime(self.root).run("Change button copy", run_checks=False)
+        run_dir = Path(result.trace_path)
+        generator_stage = json.loads((run_dir / "stages" / "generator.json").read_text(encoding="utf-8"))
+
+        context_env = [item for item in generator_stage["evidence"] if item["name"] == "context_pack"][0]
+        context_trace = [item for item in generator_stage["evidence"] if item["kind"] == "context_pack"][0]
+        self.assertTrue(Path(context_env["path"]).exists())
+        self.assertTrue(context_env["summary"].startswith("generator:"))
+        self.assertEqual(context_trace["path"], context_env["path"])
+
     def test_runtime_records_failed_deterministic_checks_as_structured_findings(self):
         tests_dir = self.root / "tests"
         tests_dir.mkdir()
@@ -213,6 +276,11 @@ class MoreGANRuntimeTests(unittest.TestCase):
         context = json.loads((self.root / "remediation-context.json").read_text(encoding="utf-8"))
         self.assertEqual(context["failed_stage"], "evaluator")
         self.assertEqual(context["findings"][0]["category"], "acceptance_criteria_gap")
+        stage_context = json.loads(
+            (run_dir / "context" / "stages" / "generator.attempt2.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(stage_context["remediation_context"]["failed_stage"], "evaluator")
+        self.assertEqual(stage_context["remediation_context"]["findings"][0]["category"], "acceptance_criteria_gap")
         self.assertEqual(
             json.loads((run_dir / "stages" / "evaluator.attempt1.json").read_text(encoding="utf-8"))["verdict"],
             "fail",
@@ -308,11 +376,15 @@ class MoreGANRuntimeTests(unittest.TestCase):
         moregan_dir.mkdir()
         marker = self.root / "review-marker.txt"
         code = (
-            "import json, pathlib; "
+            "import json, os, pathlib; "
             "root = pathlib.Path.cwd(); "
+            "context_pack = pathlib.Path(os.environ.get('MOREGAN_CONTEXT_PACK', '')); "
             "(root / 'review-marker.txt').write_text('isolated write'); "
             "print(json.dumps({'stage': 'evaluator', 'verdict': 'pass', 'confidence': 1.0, "
-            "'findings': [], 'evidence': [{'kind': 'cwd', 'name': 'worker_cwd', 'summary': str(root)}]}))"
+            "'findings': [], 'evidence': ["
+            "{'kind': 'cwd', 'name': 'worker_cwd', 'summary': str(root)}, "
+            "{'kind': 'env', 'name': 'context_pack_env', 'summary': str(context_pack.exists()), "
+            "'path': str(context_pack)}]}))"
         )
         command = json.dumps([sys.executable, "-c", code])
         (moregan_dir / "workers.yaml").write_text(
@@ -335,6 +407,10 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertEqual(execution["name"], "isolated_snapshot")
         self.assertNotEqual(Path(execution["path"]).resolve(), self.root.resolve())
         self.assertTrue((Path(execution["path"]) / "review-marker.txt").exists())
+        context_env = [item for item in evaluator_stage["evidence"] if item["name"] == "context_pack_env"][0]
+        self.assertEqual(context_env["summary"], "True")
+        relative_context_path = Path(context_env["path"]).resolve().relative_to(Path(execution["path"]).resolve())
+        self.assertEqual(relative_context_path.parts[:2], (".moregan", "worker-context"))
 
     def test_repository_no_write_worker_violation_fails_stage(self):
         subprocess.run(["git", "init"], cwd=self.root, check=True, capture_output=True, text=True)

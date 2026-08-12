@@ -105,9 +105,9 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
 ## System Requirements
 
 - **Python**: 3.8 or higher
-- **uv**: Required for Python package management
+- **uv**: Optional, useful for source-checkout development
 - **Claude Code or Codex**: At least one supported environment must be installed (`~/.claude/` or `~/.codex/` must exist)
-- **Dependencies**: Synced from `pyproject.toml` by uv
+- **Dependencies**: Installed by `pip` for PyPI installs, or synced from `pyproject.toml` by `uv` for source development
   - `rich` - Beautiful terminal UI
 
 ## Usage
@@ -155,11 +155,13 @@ moregan replay latest
 
 `init` creates `.moregan/tools.yaml`, `.moregan/workers.yaml`, `.moregan/runs/`, and a `.gitignore` entry for local run traces. Existing config files are preserved unless `--force` is used.
 The runtime writes auditable artifacts under `.moregan/runs/`, including `state.json`, `states.jsonl`, `tool_suggestions.json`, and structured stage files in `stages/*.json`.
+It also writes compact context packs under `.moregan/runs/<run>/context/` so workers can read useful run context without receiving oversized inline prompts.
 When a required deterministic check or routed worker fails after generation, the runtime can run bounded remediation attempts and writes `remediation.json` plus attempt-specific stage artifacts.
 Repository-local deterministic checks are configured in `.moregan/tools.yaml`.
 Worker stages are recorded as dry-run `SKIP` results until a provider command is configured in `.moregan/workers.yaml`.
 Codex and Claude can read the installed skill instructions directly, but these executable runtime and maintenance commands need local Python 3.8+.
 Provider-backed workers support `execution: auto`, `execution: isolated`, and `execution: repository`. In `auto`, no-write workers run in isolated snapshots by default, while write-enabled generator workers run in the repository checkout.
+Provider-backed workers receive `MOREGAN_CONTEXT_PACK` and `MOREGAN_CONTEXT_TOKENS`; isolated workers get a copied pack inside their temporary snapshot.
 
 Useful runtime flags:
 

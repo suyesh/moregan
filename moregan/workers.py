@@ -55,6 +55,8 @@ class WorkerContext:
     route: List[str]
     attempt: int = 1
     remediation_context: Optional[Dict[str, object]] = None
+    context_pack_path: Optional[str] = None
+    context_estimated_tokens: int = 0
 
 
 @dataclass
@@ -83,7 +85,7 @@ class DryRunWorker:
     def run(self, context: WorkerContext) -> StageResult:
         started = time.perf_counter()
         label = WORKER_STAGE_LABELS.get(self.stage, self.stage)
-        return StageResult(
+        result = StageResult(
             stage=self.stage,
             verdict="skip",
             confidence=1.0,
@@ -107,6 +109,20 @@ class DryRunWorker:
             completed_at=_timestamp(),
             duration_ms=_duration_ms(started),
         )
+        self._attach_context_evidence(result, context)
+        return result
+
+    def _attach_context_evidence(self, result: StageResult, context: WorkerContext) -> None:
+        if not context.context_pack_path:
+            return
+        result.evidence.append(
+            EvidenceReference(
+                kind="context_pack",
+                name="stage_context",
+                summary=f"Worker context pack is approximately {context.context_estimated_tokens} tokens.",
+                path=context.context_pack_path,
+            )
+        )
 
 
 class CommandWorker:
@@ -119,6 +135,7 @@ class CommandWorker:
     def run(self, context: WorkerContext) -> StageResult:
         started = time.perf_counter()
         execution_root = self._execution_root(context)
+        context_pack_path = self._context_pack_for_execution(context, execution_root)
         no_write_before = self._git_status(context.root) if self.command.no_write and execution_root == context.root else None
         env = os.environ.copy()
         env.update(
@@ -131,6 +148,8 @@ class CommandWorker:
                 "MOREGAN_NO_WRITE": "1" if self.command.no_write else "0",
                 "MOREGAN_ATTEMPT": str(context.attempt),
                 "MOREGAN_REMEDIATION_CONTEXT": json.dumps(context.remediation_context or {}, sort_keys=True),
+                "MOREGAN_CONTEXT_PACK": context_pack_path or "",
+                "MOREGAN_CONTEXT_TOKENS": str(context.context_estimated_tokens),
                 "MOREGAN_EXECUTION_MODE": "isolated" if execution_root != context.root else "repository",
                 "MOREGAN_EXECUTION_ROOT": str(execution_root),
             }
@@ -147,39 +166,64 @@ class CommandWorker:
                 env=env,
             )
         except subprocess.TimeoutExpired as exc:
-            return self._failure_result(
-                started,
-                context.attempt,
-                description=f"{self.stage} worker timed out after {self.command.timeout_seconds}s.",
-                remediation="Increase timeout_seconds or fix the worker command so it completes.",
-                stdout_tail=exc.stdout or "",
-                stderr_tail=exc.stderr or "",
+            return self._finalize_result(
+                self._failure_result(
+                    started,
+                    context.attempt,
+                    description=f"{self.stage} worker timed out after {self.command.timeout_seconds}s.",
+                    remediation="Increase timeout_seconds or fix the worker command so it completes.",
+                    stdout_tail=exc.stdout or "",
+                    stderr_tail=exc.stderr or "",
+                ),
+                context,
+                execution_root,
+                no_write_before,
             )
 
         if result.returncode != 0:
-            return self._failure_result(
-                started,
-                context.attempt,
-                description=f"{self.stage} worker command exited with {result.returncode}.",
-                remediation="Fix the worker command or its provider configuration.",
-                stdout_tail=result.stdout,
-                stderr_tail=result.stderr,
+            return self._finalize_result(
+                self._failure_result(
+                    started,
+                    context.attempt,
+                    description=f"{self.stage} worker command exited with {result.returncode}.",
+                    remediation="Fix the worker command or its provider configuration.",
+                    stdout_tail=result.stdout,
+                    stderr_tail=result.stderr,
+                ),
+                context,
+                execution_root,
+                no_write_before,
             )
 
         try:
             payload = json.loads(result.stdout)
         except json.JSONDecodeError:
-            return self._failure_result(
-                started,
-                context.attempt,
-                description=f"{self.stage} worker did not emit valid JSON on stdout.",
-                remediation="Make the worker command print one StageResult-compatible JSON object.",
-                stdout_tail=result.stdout,
-                stderr_tail=result.stderr,
+            return self._finalize_result(
+                self._failure_result(
+                    started,
+                    context.attempt,
+                    description=f"{self.stage} worker did not emit valid JSON on stdout.",
+                    remediation="Make the worker command print one StageResult-compatible JSON object.",
+                    stdout_tail=result.stdout,
+                    stderr_tail=result.stderr,
+                ),
+                context,
+                execution_root,
+                no_write_before,
             )
 
         stage_result = self._stage_result_from_payload(payload, started, context.attempt)
+        return self._finalize_result(stage_result, context, execution_root, no_write_before)
+
+    def _finalize_result(
+        self,
+        stage_result: StageResult,
+        context: WorkerContext,
+        execution_root: Path,
+        no_write_before: Optional[str],
+    ) -> StageResult:
         self._attach_execution_evidence(stage_result, context.root, execution_root)
+        self._attach_context_evidence(stage_result, context)
         no_write_violation = self._no_write_violation(no_write_before, context.root)
         if no_write_violation:
             stage_result.verdict = "fail"
@@ -287,6 +331,20 @@ class CommandWorker:
             return self._create_isolated_snapshot(context)
         return context.root
 
+    def _context_pack_for_execution(self, context: WorkerContext, execution_root: Path) -> Optional[str]:
+        if not context.context_pack_path:
+            return None
+        if execution_root == context.root:
+            return context.context_pack_path
+
+        source = Path(context.context_pack_path)
+        if not source.exists():
+            return context.context_pack_path
+        target = execution_root / ".moregan" / "worker-context" / source.name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        return str(target)
+
     def _create_isolated_snapshot(self, context: WorkerContext) -> Path:
         target = Path(
             tempfile.mkdtemp(
@@ -335,6 +393,18 @@ class CommandWorker:
                     else "Worker ran in the repository checkout."
                 ),
                 path=str(execution_root),
+            )
+        )
+
+    def _attach_context_evidence(self, result: StageResult, context: WorkerContext) -> None:
+        if not context.context_pack_path:
+            return
+        result.evidence.append(
+            EvidenceReference(
+                kind="context_pack",
+                name="stage_context",
+                summary=f"Worker context pack is approximately {context.context_estimated_tokens} tokens.",
+                path=context.context_pack_path,
             )
         )
 

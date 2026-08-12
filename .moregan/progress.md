@@ -749,3 +749,47 @@ persona_execution:
   learning_curator: "PASS - recorded safer execution behavior and next context curation work"
 notes: "This is not full sandboxing. It is a practical first guard: no-write workers default to temporary snapshots, while explicit repository no-write execution is checked against git status."
 ---
+
+---
+timestamp: "2026-08-12T00:43:21-07:00"
+status: SUCCESS
+task_nickname: moregan-context-curation-token-savings
+summary: "Added compact context packs so workers receive context paths and token estimates instead of oversized inline history."
+branch: "main"
+updates:
+  - file: "moregan/context.py"
+    action: "Added capped JSON context pack writer with repository summaries, prior stages, deterministic evidence, remediation context, local lessons, and approximate token counts."
+  - file: "moregan/runtime.py"
+    action: "Wired context/base.json, context/stages/*.json, and context/manifest.json into runtime execution before worker stages."
+  - file: "moregan/workers.py"
+    action: "Passed MOREGAN_CONTEXT_PACK and MOREGAN_CONTEXT_TOKENS to provider-backed workers; copied context packs into isolated snapshots for no-write workers; recorded context evidence on stage results."
+  - file: "moregan/agent_worker.py"
+    action: "Added context pack path and estimated token count to Codex/Claude provider prompt runtime context."
+  - file: "tests/test_moregan_runtime.py"
+    action: "Added coverage for context pack artifacts, worker environment propagation, remediation context packs, and isolated snapshot context copies."
+  - file: "tests/test_install.py"
+    action: "Added context.py installer fixture coverage and version consistency coverage."
+  - file: "README.md"
+    action: "Added GitHub Actions PyPI publishing badge, context-pack documentation, and ten-item roadmap alignment."
+  - file: "INSTALL.md"
+    action: "Documented context pack environment variables and corrected uv as optional for source development."
+  - file: "ROADMAP.md"
+    action: "Added ten-item progress tracker and marked context curation implemented."
+  - file: ".moregan/roadmap.yaml"
+    action: "Added ten-item tracker, marked context-curation-token-savings done, and set empirical-learning-system as next current_work."
+  - file: "pyproject.toml, moregan/__init__.py, install.py"
+    action: "Bumped version to 1.6.0 for the new runtime feature."
+verification_evidence: "Targeted context/version tests passed; python3 -m unittest discover -s tests -v passed 46 tests; python3 -m py_compile passed for install.py, tests, and all runtime modules including moregan/context.py; git diff --check passed; env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.6.0.tar.gz and dist/moregan-1.6.0-py3-none-any.whl; local wheel smoke installed moregan-1.6.0 and confirmed `moregan --help` plus `import moregan.context`."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - runtime/docs change with no frontend surface"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "not scored - local branch has intentional implementation work before commit"
+  learning_curator: "PASS - next major numbered item is empirical learning"
+notes: "This completes the context/token-saving hardening under original item 4. The next major numbered item is item 5: empirical learning backed by run evidence."
+---

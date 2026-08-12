@@ -19,6 +19,23 @@ The core product promise is deliberately narrow:
 
 ## Roadmap
 
+## Ten-Item Progress Tracker
+
+This maps the original improvement list to the current implementation state.
+
+| # | Improvement | Current status |
+|---|-------------|----------------|
+| 1 | Real harness runtime | Implemented foundation: Python owns routing, state, stages, retries, and pass/fail trace output. |
+| 2 | Structured persona output | Implemented foundation: workers return `StageResult` JSON with verdicts, findings, evidence, confidence, and attempts. |
+| 3 | Deterministic evidence layer | Implemented foundation: `.moregan/tools.yaml`, built-ins, explicit commands, required/optional checks, and structured command evidence. |
+| 4 | Execution trace | Implemented and improving: run directories, events, state, stage artifacts, replay, remediation artifacts, and compact context packs. |
+| 5 | Empirical learning system | Next major numbered item. Lessons should be promoted from run evidence and outcomes, not prose invention. |
+| 6 | Adaptive routing | Partially implemented: request-risk routing exists; diff, touched-file, dependency, and stack-aware routing still needed. |
+| 7 | Competitive generators | Not implemented. |
+| 8 | Benchmark tasks | Not implemented. |
+| 9 | Measurable positioning | Partially implemented: README claims are more conservative; needs benchmark-backed release claims. |
+| 10 | Real CLI | Partially implemented: `init`, `setup`, `run`, `status`, `inspect`, `replay`, and `adapters` exist; `benchmark`, `learn`, and stronger `doctor` remain. |
+
 ### v1.6: Structured Runtime Outputs
 
 Goal: make the current runtime inspectable and automation-friendly.
@@ -127,6 +144,17 @@ Goal: spend rigor where risk justifies it.
 - Record why stages were selected or skipped.
 - Let benchmarks tune routing thresholds.
 
+### v2.7: Context Curation
+
+Goal: reduce token/context cost while preserving useful worker context.
+
+- Write compact JSON context packs under `.moregan/runs/<run>/context/`.
+- Include request, route, risk, repository summary, prior stage summaries, deterministic evidence, remediation context, and local lessons.
+- Pass context paths and approximate token counts through worker environment variables.
+- Keep no-write worker context inside isolated snapshots.
+
+Status: compact context packs are implemented. Runtime writes `context/base.json`, `context/stages/<stage>.attempt<N>.json`, and `context/manifest.json`; worker results include context-pack evidence with approximate token counts.
+
 ### v3.0: Competitive Generators
 
 Goal: make the GAN analogy operational.
@@ -156,4 +184,4 @@ Goal: let evidence tune the harness.
 
 ## Current Branch Focus
 
-This branch starts v1.6 through v2.6. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, and isolated no-write worker execution. The next implementation step is context curation to reduce token cost and preserve useful context.
+This branch starts v1.6 through v2.7. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, isolated no-write worker execution, and compact context packs. The next major numbered item is empirical learning backed by run evidence.

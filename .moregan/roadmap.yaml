@@ -9,6 +9,37 @@ principles:
   - adaptive_routing_by_risk
   - empirical_learning_only
   - benchmarked_claims
+ten_item_tracker:
+  - number: 1
+    improvement: Real harness runtime
+    status: implemented_foundation
+  - number: 2
+    improvement: Structured persona output
+    status: implemented_foundation
+  - number: 3
+    improvement: Deterministic evidence layer
+    status: implemented_foundation
+  - number: 4
+    improvement: Execution trace
+    status: implemented_and_improving
+  - number: 5
+    improvement: Empirical learning system
+    status: next_major_numbered_item
+  - number: 6
+    improvement: Adaptive routing
+    status: partially_implemented
+  - number: 7
+    improvement: Competitive generators
+    status: planned
+  - number: 8
+    improvement: Benchmark tasks
+    status: planned
+  - number: 9
+    improvement: Measurable positioning
+    status: partially_implemented
+  - number: 10
+    improvement: Real CLI
+    status: partially_implemented
 phases:
   - id: v1.6
     name: Structured Runtime Outputs
@@ -78,7 +109,7 @@ phases:
       - no_write_review_worker_defaults
   - id: v2.5
     name: Remediation Loop
-    status: planned
+    status: implemented_current_branch
     outcomes:
       - generator_remediation_attempts
       - finding_feedback_to_generator
@@ -86,12 +117,20 @@ phases:
       - bounded_failure_reports
   - id: v2.6
     name: Adaptive Routing
-    status: planned
+    status: partially_implemented
     outcomes:
       - request_and_diff_risk_model
       - route_selection_reasons
       - skipped_stage_reasons
       - benchmark_tuned_thresholds
+  - id: v2.7
+    name: Context Curation
+    status: implemented_current_branch
+    outcomes:
+      - compact_context_packs
+      - worker_context_pack_paths
+      - context_size_trace_evidence
+      - isolated_worker_context_copies
   - id: v3.0
     name: Competitive Generators
     status: planned
@@ -284,12 +323,29 @@ completed_work:
       - "Targeted tests passed for isolated no-write execution, repository no-write violation detection, and provider command execution evidence."
       - "Adapter templates now include execution mode defaults."
       - "README and INSTALL document execution: auto, isolated, and repository."
+  - id: context-curation-token-savings
+    phase: v2.7
+    status: done
+    acceptance_criteria:
+      - "Runtime writes compact context packs under .moregan/runs/<run>/context/."
+      - "Context packs include request, route, changed-file summary, deterministic evidence summary, remediation context, and relevant local lessons."
+      - "Workers receive context manifest paths instead of oversized prose where practical."
+      - "Trace artifacts record approximate context size for each worker stage."
+    verification:
+      - "Targeted tests passed for context pack writing, worker context environment variables, and remediation context packs."
+      - "Full unittest suite passed 46 tests."
+      - "python3 -m py_compile passed for install.py, tests, and all runtime modules including moregan/context.py."
+      - "git diff --check passed."
+      - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.6.0.tar.gz and dist/moregan-1.6.0-py3-none-any.whl."
+      - "Local wheel smoke installed moregan-1.6.0 and confirmed `moregan --help` plus `import moregan.context`."
+      - "Package version was bumped to 1.6.0 for the new runtime feature."
 current_work:
-  id: context-curation-token-savings
-  phase: v2.7
+  id: empirical-learning-system
+  phase: v2.8
+  original_list_number: 5
   status: next
   acceptance_criteria:
-    - "Runtime writes compact context packs under .moregan/runs/<run>/context/."
-    - "Context packs include request, route, changed-file summary, deterministic evidence summary, remediation context, and relevant local lessons."
-    - "Workers receive context manifest paths instead of oversized prose where practical."
-    - "Trace artifacts record approximate context size for each worker stage."
+    - "Learning artifacts store observations tied to run ids, failures, remediations, and outcomes."
+    - "Learning confidence is computed from observations instead of invented by prose."
+    - "Learning Curator output is validated before promoting recurring lessons."
+    - "Replay and inspect can surface learned patterns with evidence."
