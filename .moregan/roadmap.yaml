@@ -244,6 +244,22 @@ completed_work:
     verification:
       - "python3 -m unittest discover -s tests -v passed 36 tests including test_pypi_trusted_publishing_workflow_exists_with_expected_filename."
       - "git diff --check passed."
+  - id: pypi-installable-package
+    phase: packaging
+    status: done
+    acceptance_criteria:
+      - "Publishable package metadata uses the PyPI project name `moregan`."
+      - "`moregan` console script is the primary runtime command."
+      - "`moregan setup` runs the same Python installer used by ./setup.sh."
+      - "Wheel includes installer assets, SKILL.md, README.md, INSTALL.md, ROADMAP.md, LICENSE, assets, personas, and .moregan defaults."
+      - "Wheel excludes local .moregan/runs and .moregan/backups artifacts."
+    verification:
+      - "python3 -m unittest discover -s tests -v passed 39 tests."
+      - "python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/adapters.py moregan/agent_worker.py moregan/init.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py moregan/replay.py passed."
+      - "git diff --check passed."
+      - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.5.0.tar.gz and dist/moregan-1.5.0-py3-none-any.whl."
+      - "Wheel inspection found required runtime and skill assets with no .moregan/runs or .moregan/backups files."
+      - "Temp venv wheel smoke test installed moregan-1.5.0 and confirmed `moregan --help` plus `moregan setup --help`."
 current_work:
   id: remediation-loop
   phase: v2.5

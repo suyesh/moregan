@@ -21,8 +21,10 @@ class MoreGANInstallerTests(unittest.TestCase):
         (self.source_dir / ".moregan" / "workers.yaml").write_text("version: 1\nworkers: []\n", encoding="utf-8")
         (self.source_dir / "personas").mkdir()
         (self.source_dir / "moregan").mkdir()
-        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "install.py"]:
+        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "LICENSE", "install.py"]:
             (self.source_dir / file_name).write_text(file_name, encoding="utf-8")
+        (self.source_dir / "assets").mkdir()
+        (self.source_dir / "assets" / "moregan.png").write_bytes(b"png")
         (self.source_dir / "moregan" / "__init__.py").write_text("", encoding="utf-8")
         (self.source_dir / "moregan" / "adapters.py").write_text("adapters", encoding="utf-8")
         (self.source_dir / "moregan" / "agent_worker.py").write_text("agent_worker", encoding="utf-8")
@@ -53,7 +55,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         duplicate.mkdir(parents=True)
         for name in install.CLAUDE_REQUIRED_FILES:
             path = canonical / name
-            if name in {".moregan", "personas", "moregan"}:
+            if name in {".moregan", "personas", "moregan", "assets"}:
                 path.mkdir()
             else:
                 path.write_text(name, encoding="utf-8")
@@ -90,6 +92,8 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "install.py").exists())
         self.assertTrue((skill_dir / "INSTALL.md").exists())
         self.assertTrue((skill_dir / "ROADMAP.md").exists())
+        self.assertTrue((skill_dir / "LICENSE").exists())
+        self.assertTrue((skill_dir / "assets" / "moregan.png").exists())
         self.assertTrue((skill_dir / "moregan" / "adapters.py").exists())
         self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
         self.assertTrue((skill_dir / "moregan" / "cli.py").exists())
@@ -126,6 +130,8 @@ class MoreGANInstallerTests(unittest.TestCase):
 
         skill_dir = self.installer.codex_path["global_skills"]
         self.assertTrue((skill_dir / "install.py").exists())
+        self.assertTrue((skill_dir / "LICENSE").exists())
+        self.assertTrue((skill_dir / "assets" / "moregan.png").exists())
         self.assertTrue((skill_dir / "moregan" / "adapters.py").exists())
         self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
         self.assertTrue((skill_dir / "moregan" / "init.py").exists())
@@ -194,6 +200,21 @@ class MoreGANInstallerTests(unittest.TestCase):
     def test_default_repository_url_points_to_canonical_repo(self):
         self.assertEqual(install.DEFAULT_REPOSITORY_URL, "https://github.com/suyesh/moregan")
 
+    def test_pyproject_packages_moregan_for_pypi_install(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+
+        self.assertIn('name = "moregan"', pyproject)
+        self.assertNotIn("moregan-installer", pyproject)
+        self.assertNotIn("package = false", pyproject)
+        self.assertIn('moregan = "moregan.cli:main"', pyproject)
+        self.assertIn('"install.py" = "install.py"', pyproject)
+        self.assertIn('"SKILL.md" = "SKILL.md"', pyproject)
+        self.assertIn('"assets" = "assets"', pyproject)
+        self.assertIn('"personas" = "personas"', pyproject)
+        self.assertIn('".moregan/tools.yaml" = ".moregan/tools.yaml"', pyproject)
+        self.assertIn('".moregan/workers.yaml" = ".moregan/workers.yaml"', pyproject)
+
     def test_pypi_trusted_publishing_workflow_exists_with_expected_filename(self):
         repo_root = Path(__file__).resolve().parents[1]
         workflow = repo_root / ".github" / "workflows" / "workflow.yml"
@@ -204,6 +225,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertIn("pypa/gh-action-pypi-publish@release/v1", text)
         self.assertIn("environment:", text)
         self.assertIn("name: pypi", text)
+        self.assertIn("https://pypi.org/p/moregan", text)
 
     def test_update_uses_downloaded_archive_source(self):
         installed_codex_skill = self.installer.codex_path["global_skills"]
@@ -213,8 +235,10 @@ class MoreGANInstallerTests(unittest.TestCase):
 
         download_dir = self.root / "downloaded"
         download_dir.mkdir()
-        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "install.py"]:
+        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "LICENSE", "install.py"]:
             (download_dir / file_name).write_text(file_name, encoding="utf-8")
+        (download_dir / "assets").mkdir()
+        (download_dir / "assets" / "moregan.png").write_bytes(b"png")
         (download_dir / ".moregan").mkdir()
         (download_dir / ".moregan" / "tools.yaml").write_text("version: 1\ncommands: []\n", encoding="utf-8")
         (download_dir / ".moregan" / "workers.yaml").write_text("version: 1\nworkers: []\n", encoding="utf-8")
@@ -248,7 +272,9 @@ class MoreGANInstallerTests(unittest.TestCase):
         (skill_dir / "README.md").write_text("existing", encoding="utf-8")
         (skill_dir / "INSTALL.md").write_text("existing", encoding="utf-8")
         (skill_dir / "ROADMAP.md").write_text("existing", encoding="utf-8")
+        (skill_dir / "LICENSE").write_text("existing", encoding="utf-8")
         (skill_dir / "install.py").write_text("existing", encoding="utf-8")
+        (skill_dir / "assets").mkdir()
         (skill_dir / ".moregan").mkdir()
         (skill_dir / "personas").mkdir()
         (skill_dir / "moregan").mkdir()
@@ -256,8 +282,10 @@ class MoreGANInstallerTests(unittest.TestCase):
 
         download_dir = self.root / "downloaded-update"
         download_dir.mkdir()
-        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "install.py"]:
+        for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "LICENSE", "install.py"]:
             (download_dir / file_name).write_text(file_name, encoding="utf-8")
+        (download_dir / "assets").mkdir()
+        (download_dir / "assets" / "moregan.png").write_bytes(b"png")
         (download_dir / ".moregan").mkdir()
         (download_dir / ".moregan" / "tools.yaml").write_text("version: 1\ncommands: []\n", encoding="utf-8")
         (download_dir / ".moregan" / "workers.yaml").write_text("version: 1\nworkers: []\n", encoding="utf-8")

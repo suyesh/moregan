@@ -31,6 +31,19 @@ def build_parser() -> argparse.ArgumentParser:
     adapters_parser.add_argument("--force", action="store_true", help="replace existing adapter files")
     adapters_parser.add_argument("--dry-run", action="store_true", help="show what would be written without changing files")
 
+    setup_parser = subparsers.add_parser("setup", help="install and maintain the MoreGAN skill")
+    setup_parser.add_argument(
+        "installer_command",
+        nargs="?",
+        choices=["install", "uninstall", "update", "doctor"],
+        default="install",
+        help="installer command to run",
+    )
+    setup_parser.add_argument("--target", choices=["claude", "codex", "both"], help="install target override")
+    setup_parser.add_argument("--force", action="store_true", help="allow updater to proceed with a dirty checkout")
+    setup_parser.add_argument("--check", action="store_true", help="for doctor, report issues without applying fixes")
+    setup_parser.add_argument("--ref", help="git ref used by update")
+
     run_parser = subparsers.add_parser("run", help="create a MoreGAN run trace")
     run_parser.add_argument("request", help="engineering request to classify and trace")
     run_parser.add_argument("--no-checks", action="store_true", help="create trace without running deterministic checks")
@@ -82,6 +95,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         env_name = PROVIDER_COMMAND_ENV[result.provider]
         print(f"Provider command env: {env_name}")
         return 0
+
+    if args.command == "setup":
+        from install import main as installer_main
+
+        installer_args = [args.installer_command]
+        if args.target:
+            installer_args.extend(["--target", args.target])
+        if args.force:
+            installer_args.append("--force")
+        if args.check:
+            installer_args.append("--check")
+        if args.ref:
+            installer_args.extend(["--ref", args.ref])
+        return int(installer_main(installer_args) or 0)
 
     if args.command == "run":
         result = MoreGANRuntime(root).run(args.request, run_checks=not args.no_checks)

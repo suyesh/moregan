@@ -2,6 +2,21 @@
 
 ## Quick Start
 
+### PyPI
+```bash
+python3 -m pip install moregan
+moregan setup
+```
+
+`moregan setup` runs the same installer flow as `./setup.sh`. It installs the MoreGAN skill into Claude Code, Codex, or both.
+
+Target a specific agent:
+```bash
+moregan setup --target codex
+moregan setup --target claude
+moregan setup --target both
+```
+
 ### macOS / Linux
 ```bash
 ./setup.sh
@@ -31,6 +46,8 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
   - `README.md` - Documentation
   - `INSTALL.md` - Installation guide
   - `ROADMAP.md` - Product/runtime roadmap
+  - `LICENSE` - License text
+  - `assets/` - Logo and documentation assets
   - `install.py` - Maintenance commands
   - `moregan/` - Executable runtime package
   - `.moregan/` - Configuration and knowledge base
@@ -60,6 +77,8 @@ The installer auto-detects Claude Code and Codex. If both are present, it asks w
   - `README.md` - Documentation
   - `INSTALL.md` - Installation guide
   - `ROADMAP.md` - Product/runtime roadmap
+  - `LICENSE` - License text
+  - `assets/` - Logo and documentation assets
   - `install.py` - Maintenance commands
   - `moregan/` - Executable runtime package
   - `personas/` - Persona instructions used by the skill
@@ -125,13 +144,13 @@ The framework will:
 Executable runtime preview:
 
 ```bash
-python -m moregan.cli init
-python -m moregan.cli adapters codex
-python -m moregan.cli adapters claude
-python -m moregan.cli run "Add OAuth login"
-python -m moregan.cli status
-python -m moregan.cli inspect latest
-python -m moregan.cli replay latest
+moregan init
+moregan adapters codex
+moregan adapters claude
+moregan run "Add OAuth login"
+moregan status
+moregan inspect latest
+moregan replay latest
 ```
 
 `init` creates `.moregan/tools.yaml`, `.moregan/workers.yaml`, `.moregan/runs/`, and a `.gitignore` entry for local run traces. Existing config files are preserved unless `--force` is used.
@@ -143,14 +162,15 @@ Codex and Claude can read the installed skill instructions directly, but these e
 Adapter templates:
 
 ```bash
-python -m moregan.cli adapters codex --activate
-python -m moregan.cli adapters claude --activate
+moregan adapters codex --activate
+moregan adapters claude --activate
 ```
 
 `adapters` writes `.moregan/adapters/<provider>/` prompts and `.moregan/workers.<provider>.yaml`. With `--activate`, it also writes `.moregan/workers.yaml` unless that file already exists; use `--force` for intentional replacement. Set `MOREGAN_CODEX_COMMAND` or `MOREGAN_CLAUDE_COMMAND` to a provider command that reads the prompt from stdin and prints one `StageResult` JSON object.
 
 PyPI trusted publishing:
 
+- PyPI project name: `moregan`
 - Workflow file: `.github/workflows/workflow.yml`
 - PyPI workflow filename field: `workflow.yml`
 - Recommended PyPI environment: `pypi`
@@ -177,7 +197,14 @@ Edit `.moregan/knowledge/confidence-scoring.yaml` to customize validation levels
 
 ## Maintenance
 
-Run maintenance through the installed skill, not through the setup wrapper.
+Terminal:
+
+```bash
+moregan setup update
+moregan setup doctor --check
+```
+
+Run maintenance through the installed skill when you are inside Claude Code or Codex.
 
 Claude Code:
 

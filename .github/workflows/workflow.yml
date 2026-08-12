@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/moregan-installer
+      url: https://pypi.org/p/moregan
     permissions:
       contents: read
       id-token: write

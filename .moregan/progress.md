@@ -627,3 +627,43 @@ persona_execution:
   learning_curator: "PASS - recorded .moregan as the canonical workflow directory and MoreGAN as the sole current product name"
 notes: "No legacy product-name compatibility remains in current docs, code paths, installer payloads, or command aliases."
 ---
+
+---
+timestamp: "2026-08-12T00:14:26-07:00"
+status: SUCCESS
+task_nickname: moregan-pypi-installable-package
+summary: "Made MoreGAN installable as the `moregan` PyPI package and added `moregan setup` as the installed installer bridge."
+branch: "main"
+updates:
+  - file: "pyproject.toml"
+    action: "Renamed the publishable package from moregan-installer to moregan, removed local-only uv packaging, added PyPI metadata, and included runtime/skill assets in wheel and sdist builds."
+  - file: "moregan/cli.py"
+    action: "Added the `moregan setup` subcommand with installer, update, doctor, target, force, check, and ref options."
+  - file: "install.py"
+    action: "Included LICENSE and assets in Claude/Codex skill installs and updated post-install guidance to use the `moregan` console command."
+  - file: "README.md"
+    action: "Reworked installation around `python3 -m pip install moregan` followed by `moregan setup`, with source checkout install as the secondary path."
+  - file: "INSTALL.md"
+    action: "Added PyPI installation, setup target examples, terminal maintenance commands, and package publishing metadata."
+  - file: ".github/workflows/workflow.yml"
+    action: "Updated the trusted-publishing environment URL to the `moregan` PyPI project slug."
+  - file: "tests/test_install.py"
+    action: "Added package metadata and PyPI workflow coverage, plus installer assertions for LICENSE and logo assets."
+  - file: "tests/test_moregan_runtime.py"
+    action: "Added CLI coverage proving `moregan setup` invokes the installer with default and explicit maintenance arguments."
+  - file: ".moregan/roadmap.yaml"
+    action: "Recorded the PyPI-installable package milestone as complete with build and wheel-smoke verification."
+verification_evidence: "python3 -m unittest discover -s tests -v passed 39 tests; python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/__init__.py moregan/adapters.py moregan/agent_worker.py moregan/init.py moregan/runtime.py moregan/cli.py moregan/schemas.py moregan/state.py moregan/tools.py moregan/workers.py moregan/replay.py passed; git diff --check passed; env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.5.0.tar.gz and dist/moregan-1.5.0-py3-none-any.whl; wheel inspection confirmed required runtime/skill assets and no .moregan/runs or .moregan/backups files; temp venv smoke test installed the wheel and confirmed `moregan --help` and `moregan setup --help`."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - packaging and CLI docs change with no frontend surface"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "not scored - local branch has intentional uncommitted follow-up work"
+  learning_curator: "PASS - recorded PyPI package, console setup bridge, and artifact verification evidence"
+notes: "The PyPI project is not published until the GitHub release/workflow successfully publishes it; local packaging now builds the intended `moregan` wheel."
+---

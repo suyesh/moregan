@@ -330,6 +330,25 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertIn("MoreGAN dry run", output.getvalue())
         self.assertFalse((self.root / ".moregan").exists())
 
+    def test_cli_setup_runs_installer_default_install_command(self):
+        with patch("install.main", autospec=True) as installer_main:
+            installer_main.return_value = None
+
+            self.assertEqual(moregan_main(["--root", str(self.root), "setup"]), 0)
+
+        installer_main.assert_called_once_with(["install"])
+
+    def test_cli_setup_passes_installer_arguments_through(self):
+        with patch("install.main", autospec=True) as installer_main:
+            installer_main.return_value = None
+
+            self.assertEqual(
+                moregan_main(["--root", str(self.root), "setup", "doctor", "--target", "codex", "--check"]),
+                0,
+            )
+
+        installer_main.assert_called_once_with(["doctor", "--target", "codex", "--check"])
+
     def test_agent_adapter_scaffold_writes_prompt_templates_and_worker_config(self):
         result = AgentAdapterScaffolder(self.root).scaffold("codex", activate=True)
 

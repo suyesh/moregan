@@ -9,23 +9,35 @@
   Generator builds. Evaluators attack. The runtime keeps the evidence.
 </p>
 
-MoreGAN is a local harness for Claude Code, Codex, and other coding-agent workflows. It separates implementation from independent verification, records deterministic evidence, routes tasks by risk, and writes inspectable run traces that engineers can replay.
+MoreGAN is a local, evidence-first harness for Claude Code, Codex, and other coding-agent workflows. It separates implementation from independent verification, records deterministic evidence, routes tasks by risk, and writes inspectable run traces that engineers can replay.
 
-The core idea is simple:
+The loop is simple:
 
 ```text
 request -> route by risk -> worker stages -> deterministic checks -> trace -> replay
 ```
 
-MoreGAN is not trying to be a magic prompt. The direction is an executable runtime where Python enforces the protocol and agents are replaceable workers behind a structured `StageResult` contract.
+MoreGAN is not a magic prompt. It is an executable runtime where Python enforces the protocol and agents are replaceable workers behind a structured `StageResult` contract.
+
+## Why GAN
+
+GAN means **Generative Adversarial Network**. MoreGAN borrows the useful engineering idea from GANs, not the machine-learning training algorithm:
+
+- a generator proposes the implementation
+- evaluators attack the change from functional, security, review, and production angles
+- deterministic tools provide hard evidence from tests, syntax checks, git diff checks, and repo-local commands
+- the runtime decides pass/fail from structured results instead of trusting prose
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-  Request[Engineer request] --> Init[moregan init]
+  Setup[moregan setup] --> Skill[Codex or Claude skill]
+  Repo[Repository] --> Init[moregan init]
   Init --> Config[.moregan config]
-  Config --> Runtime[MoreGAN runtime]
+  Request[Engineer request] --> Runtime[moregan run]
+  Skill --> Runtime
+  Config --> Runtime
 
   Runtime --> Risk[Risk classifier]
   Risk --> Route[Route selection]
@@ -48,38 +60,49 @@ flowchart TD
   Trace --> Replay[read-only replay]
 ```
 
-The original architecture sketch is still in the repository as `Architecture.jpg`, but the Mermaid diagram above is the current runtime shape.
-
-## Why Engineers Use It
+## Engineer Value
 
 - Enforced workflow instead of hoping an agent remembers every instruction.
 - Structured findings, evidence, confidence, and verdicts for each stage.
-- Deterministic checks for tests, syntax, git diff validation, and repo-local tools.
+- Deterministic checks for tests, syntax, git diff validation, and repo-local commands.
 - Read-only replay of past runs without rerunning providers or tests.
 - Codex and Claude adapter templates that normalize provider output into JSON.
 - Local trace artifacts under `.moregan/runs/` for debugging and review.
+- Honest dry-run stage results when no agent provider command is configured.
 
 ## Requirements
 
-- Python 3.8 or newer
+- Python 3.8 or newer for the CLI runtime and installer
 - macOS, Linux, or Windows
-- Codex or Claude Code for skill usage
-- Optional: `uv` for local dependency management
+- Codex or Claude Code only when using the installed skill or provider-backed workers
+- Optional: `uv` for source-checkout development
 
-Codex and Claude can read the installed skill instructions directly. The executable runtime commands need local Python.
+Codex and Claude can read the installed skill instructions directly. The executable runtime still runs locally through Python.
 
 ## Install
 
-Clone the repository:
+Public install after the first PyPI release is published:
+
+```bash
+python3 -m pip install moregan
+moregan setup
+```
+
+`moregan setup` runs the same installer flow as `./setup.sh`. It installs the MoreGAN skill into Claude Code, Codex, or both.
+
+To install a specific target:
+
+```bash
+moregan setup --target codex
+moregan setup --target claude
+moregan setup --target both
+```
+
+Source checkout install, useful before the first PyPI release or while developing MoreGAN itself:
 
 ```bash
 git clone https://github.com/suyesh/moregan.git
 cd moregan
-```
-
-Install the skill into Claude Code, Codex, or both:
-
-```bash
 ./setup.sh
 ```
 
@@ -89,17 +112,20 @@ Windows:
 setup.bat
 ```
 
-Manual local setup:
+Source checkout development:
 
 ```bash
 uv sync
-python -m moregan.cli --help
+uv run moregan --help
 ```
+
+When running from a source checkout, prefix CLI examples with `uv run`, for example `uv run moregan init`.
 
 The installer copies:
 
 - `SKILL.md`
 - persona instructions
+- `assets/` and `LICENSE`
 - `.moregan/` defaults
 - `moregan/` executable runtime package
 - maintenance commands for update and doctor
@@ -109,7 +135,13 @@ The installer copies:
 Initialize a repository:
 
 ```bash
-python -m moregan.cli init
+moregan init
+```
+
+From a source checkout:
+
+```bash
+uv run moregan init
 ```
 
 This creates:
@@ -126,47 +158,60 @@ It also adds `.moregan/runs/` to `.gitignore`. Existing config is preserved unle
 Run MoreGAN:
 
 ```bash
-python -m moregan.cli run "Add OAuth login"
+moregan run "Add OAuth login"
 ```
 
 Inspect the latest run:
 
 ```bash
-python -m moregan.cli status
-python -m moregan.cli inspect latest
-python -m moregan.cli replay latest
-python -m moregan.cli replay latest --json
+moregan status
+moregan inspect latest
+moregan replay latest
+moregan replay latest --json
 ```
 
 ## Runtime Commands
 
+Installed CLI:
+
 ```bash
-python -m moregan.cli init
-python -m moregan.cli adapters codex
-python -m moregan.cli adapters claude
-python -m moregan.cli run "Refactor the payment service"
-python -m moregan.cli status
-python -m moregan.cli inspect latest
-python -m moregan.cli replay latest
+moregan init
+moregan setup
+moregan setup doctor --check
+moregan setup update
+moregan adapters codex
+moregan adapters claude
+moregan run "Refactor the payment service"
+moregan status
+moregan inspect latest
+moregan replay latest
+```
+
+Source checkout:
+
+```bash
+uv run moregan init
+uv run moregan run "Refactor the payment service"
+uv run moregan inspect latest
 ```
 
 Useful flags:
 
 ```bash
-python -m moregan.cli init --dry-run
-python -m moregan.cli init --force
-python -m moregan.cli adapters codex --activate
-python -m moregan.cli adapters claude --activate
-python -m moregan.cli run "Change button copy" --no-checks
+moregan init --dry-run
+moregan init --force
+moregan adapters codex --activate
+moregan adapters claude --activate
+moregan run "Change button copy" --no-checks
 ```
 
-## Codex And Claude Adapters
+## Agent Adapters
 
 Scaffold provider templates:
 
 ```bash
-python -m moregan.cli adapters codex
-python -m moregan.cli adapters claude
+moregan adapters codex
+moregan adapters claude
 ```
 
 This writes:
@@ -191,7 +236,7 @@ This writes:
 Activate one provider:
 
 ```bash
-python -m moregan.cli adapters codex --activate
+moregan adapters codex --activate
 ```
 
 Then set a provider command that reads a prompt from stdin and prints one `StageResult` JSON object:
@@ -230,6 +275,19 @@ Valid verdicts:
 - `skip`
 
 Blocking issues should use `fail` with concrete findings and remediation.
+
+A finding has this shape:
+
+```json
+{
+  "severity": "high",
+  "category": "missing_test_coverage",
+  "description": "The changed payment branch has no regression test.",
+  "remediation": "Add a test that fails before the fix and passes after it.",
+  "file": "tests/test_payments.py",
+  "line": 42
+}
+```
 
 ## Deterministic Tools
 
@@ -271,7 +329,7 @@ required: false
 
 ## Trace Artifacts
 
-Each run writes:
+Each run writes a directory like this. The exact `stages/*.json` files depend on the risk route:
 
 ```text
 .moregan/runs/<run-id>/
@@ -286,6 +344,7 @@ Each run writes:
     generator.json
     deterministic_evidence.json
     evaluator.json
+    ...
   events.jsonl
   result.json
   final_report.md
@@ -294,7 +353,7 @@ Each run writes:
 Replay is read-only:
 
 ```bash
-python -m moregan.cli replay latest
+moregan replay latest
 ```
 
 It reconstructs state transitions, stage results, findings, and deterministic evidence from existing files. It does not rerun providers or tests.
@@ -319,8 +378,9 @@ Use MoreGAN to run doctor
 
 Maintenance:
 
-- `update` downloads the latest MoreGAN archive from GitHub and reinstalls existing targets.
-- `doctor` checks duplicate installs, stale persona files, registry duplication, and missing files.
+- `moregan setup update` downloads the latest MoreGAN archive from GitHub and reinstalls existing targets.
+- `moregan setup doctor --check` reports duplicate installs, stale persona files, registry duplication, and missing files.
+- `/moregan update` and `/moregan doctor` remain available as Claude Code skill commands.
 
 ## PyPI Trusted Publishing
 
@@ -337,13 +397,14 @@ Owner: suyesh
 Repository name: moregan
 Workflow filename: workflow.yml
 Environment name: pypi
+PyPI project name: moregan
 ```
 
-The workflow uses GitHub OIDC with `id-token: write` and `pypa/gh-action-pypi-publish`.
+The package name in `pyproject.toml` is `moregan`. The workflow uses GitHub OIDC with `id-token: write` and `pypa/gh-action-pypi-publish`.
 
 ## Roadmap
 
-Implemented on the current branch:
+Implemented in this repository:
 
 - Full rename to MoreGAN and `.moregan/`
 - `moregan init`
@@ -354,6 +415,8 @@ Implemented on the current branch:
 - run replay
 - Codex and Claude adapter templates
 - PyPI trusted-publishing workflow
+- PyPI-ready package metadata
+- `moregan setup` installer bridge
 
 Next production-readiness work:
 
@@ -362,7 +425,7 @@ Next production-readiness work:
 - stricter config validation and doctor checks
 - stack-specific deterministic tool presets
 - benchmark suite
-- packaging cleanup for PyPI and `uvx` usage
+- first release publishing and `uvx` smoke testing
 
 See [ROADMAP.md](ROADMAP.md) for the detailed plan.
 
@@ -389,8 +452,8 @@ git diff --check
 Dogfood the runtime:
 
 ```bash
-python3 -m moregan.cli run "Verify MoreGAN runtime"
-python3 -m moregan.cli replay latest
+uv run moregan run "Verify MoreGAN runtime"
+uv run moregan replay latest
 ```
 
 ## License

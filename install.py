@@ -40,7 +40,9 @@ CODEX_REQUIRED_FILES = [
     "README.md",
     "INSTALL.md",
     "ROADMAP.md",
+    "LICENSE",
     "install.py",
+    "assets",
     ".moregan",
     "personas",
     "moregan",
@@ -50,7 +52,9 @@ CLAUDE_REQUIRED_FILES = [
     "README.md",
     "INSTALL.md",
     "ROADMAP.md",
+    "LICENSE",
     "install.py",
+    "assets",
     ".moregan",
     "personas",
     "moregan",
@@ -635,7 +639,9 @@ class MoreGANInstaller:
                 ("README.md", skills_dir / "README.md"),
                 ("INSTALL.md", skills_dir / "INSTALL.md"),
                 ("ROADMAP.md", skills_dir / "ROADMAP.md"),
+                ("LICENSE", skills_dir / "LICENSE"),
                 ("install.py", skills_dir / "install.py"),
+                ("assets", skills_dir / "assets"),
                 (".moregan", skills_dir / ".moregan"),
                 ("personas", skills_dir / "personas"),
                 ("moregan", skills_dir / "moregan"),
@@ -669,7 +675,9 @@ class MoreGANInstaller:
                 ("README.md", skills_dir / "README.md"),
                 ("INSTALL.md", skills_dir / "INSTALL.md"),
                 ("ROADMAP.md", skills_dir / "ROADMAP.md"),
+                ("LICENSE", skills_dir / "LICENSE"),
                 ("install.py", skills_dir / "install.py"),
+                ("assets", skills_dir / "assets"),
                 (".moregan", skills_dir / ".moregan"),
                 ("personas", skills_dir / "personas"),
                 ("moregan", skills_dir / "moregan"),
@@ -748,8 +756,11 @@ class MoreGANInstaller:
             + "\n".join(usage_lines)
             + "\n\n"
             + "[bold cyan]Executable runtime preview:[/bold cyan]\n"
-            + '   [yellow]python -m moregan.cli run "Your engineering request"[/yellow]\n'
-            + "   [yellow]python -m moregan.cli inspect latest[/yellow]\n\n"
+            + '   [yellow]moregan run "Your engineering request"[/yellow]\n'
+            + "   [yellow]moregan inspect latest[/yellow]\n\n"
+            + "[bold cyan]Terminal maintenance:[/bold cyan]\n"
+            + "   [yellow]moregan setup update[/yellow]\n"
+            + "   [yellow]moregan setup doctor --check[/yellow]\n\n"
             + "[bold cyan]Maintenance in Claude/Codex:[/bold cyan]\n"
             + "   [yellow]/moregan update[/yellow]\n"
             + "   [yellow]/moregan doctor[/yellow]\n"

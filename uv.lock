@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "moregan-installer"
+name = "moregan"
 version = "1.5.0"
 source = { virtual = "." }
 dependencies = [

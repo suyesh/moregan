@@ -257,7 +257,7 @@ notice: |
   MoreGAN is ready to use.
 
   The skill workflow is available through Claude Code and Codex, and the
-  executable runtime preview is available with python -m moregan.cli.
+  executable runtime preview is available with the moregan command.
 
   Simply run: /moregan "Your feature request"
 

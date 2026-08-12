@@ -1,9 +1,38 @@
 [project]
-name = "moregan-installer"
+name = "moregan"
 version = "1.5.0"
-description = "High-reliability engineering framework for AI code generation"
+description = "Adversarial orchestration for coding agents"
 readme = "README.md"
 requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "MoreGAN contributors" },
+]
+keywords = [
+    "agents",
+    "ai",
+    "codex",
+    "claude",
+    "code-generation",
+    "harness",
+    "testing",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
 dependencies = [
     "rich>=13.0.0",
     "questionary>=2.0.1",
@@ -19,8 +48,73 @@ moregan-doctor = "install:doctor_main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-package = false
+[project.urls]
+Homepage = "https://github.com/suyesh/moregan"
+Repository = "https://github.com/suyesh/moregan"
+Issues = "https://github.com/suyesh/moregan/issues"
+Documentation = "https://github.com/suyesh/moregan#readme"
+
+[tool.hatch.build]
+exclude = [
+    "/.moregan/runs",
+    "/.moregan/backups",
+    "/__pycache__",
+    "/.pytest_cache",
+    "/dist",
+    "/build",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["moregan"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"install.py" = "install.py"
+"SKILL.md" = "SKILL.md"
+"README.md" = "README.md"
+"INSTALL.md" = "INSTALL.md"
+"ROADMAP.md" = "ROADMAP.md"
+"LICENSE" = "LICENSE"
+"setup.sh" = "setup.sh"
+"setup.bat" = "setup.bat"
+"assets" = "assets"
+"personas" = "personas"
+".moregan/codebase-understanding.yaml" = ".moregan/codebase-understanding.yaml"
+".moregan/collaboration" = ".moregan/collaboration"
+".moregan/defaults.yaml" = ".moregan/defaults.yaml"
+".moregan/dev_init.md" = ".moregan/dev_init.md"
+".moregan/documentation" = ".moregan/documentation"
+".moregan/evolution" = ".moregan/evolution"
+".moregan/integrations" = ".moregan/integrations"
+".moregan/knowledge" = ".moregan/knowledge"
+".moregan/learning-curator.yaml" = ".moregan/learning-curator.yaml"
+".moregan/mandatory-personas.yaml" = ".moregan/mandatory-personas.yaml"
+".moregan/moregan-maintenance.yaml" = ".moregan/moregan-maintenance.yaml"
+".moregan/moregan-runtime.yaml" = ".moregan/moregan-runtime.yaml"
+".moregan/production-readiness-reviewer.yaml" = ".moregan/production-readiness-reviewer.yaml"
+".moregan/progress.md" = ".moregan/progress.md"
+".moregan/review-personas.yaml" = ".moregan/review-personas.yaml"
+".moregan/roadmap.yaml" = ".moregan/roadmap.yaml"
+".moregan/rollback" = ".moregan/rollback"
+".moregan/tools.yaml" = ".moregan/tools.yaml"
+".moregan/workers.yaml" = ".moregan/workers.yaml"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/moregan",
+    "/personas",
+    "/assets",
+    "/.moregan",
+    "/tests",
+    "/install.py",
+    "/SKILL.md",
+    "/README.md",
+    "/INSTALL.md",
+    "/ROADMAP.md",
+    "/LICENSE",
+    "/setup.sh",
+    "/setup.bat",
+    "/pyproject.toml",
+]
 
 [tool.ruff]
 line-length = 120
