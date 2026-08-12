@@ -254,12 +254,16 @@ class ContextPackWriter:
                 )
         candidates.sort(key=lambda item: (int(item["score"]), item["path"]), reverse=True)
         return {
-            "source_paths": [".moregan/knowledge", ".moregan/evolution", ".moregan/progress.md"],
+            "source_paths": [".moregan/knowledge", ".moregan/evolution", ".moregan/learning", ".moregan/progress.md"],
             "items": candidates[:8],
         }
 
     def _lesson_candidates(self) -> Iterable[Path]:
-        roots = [self.root / ".moregan" / "knowledge", self.root / ".moregan" / "evolution"]
+        roots = [
+            self.root / ".moregan" / "knowledge",
+            self.root / ".moregan" / "evolution",
+            self.root / ".moregan" / "learning",
+        ]
         progress = self.root / ".moregan" / "progress.md"
         if progress.exists():
             yield progress

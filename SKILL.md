@@ -1,7 +1,7 @@
 ---
 name: moregan
 description: Implements the MoreGAN high-reliability engineering loop with multi-generator collaboration, enterprise tool integration, living documentation, and executable trace foundations for Claude Code and Codex. Trigger when a user wants to "implement a feature," "start MoreGAN," "use MoreGAN," "use moregan," or "build with verification."
-version: 1.5.0
+version: 1.7.0
 ---
 ## Objective
 
@@ -13,6 +13,11 @@ To replace one-shot code generation with a structured, self-correcting agentic l
 
 MoreGAN is portable across Claude Code and Codex.
 
+* For feature-work requests, prefer the executable runtime first: run `moregan init` when `.moregan/` is missing, then run `moregan run "<user request>"`.
+* The skill should act as a launcher for the same runtime path that the CLI uses. Do not run a separate prompt-only persona loop when the runtime is available.
+* If `moregan run` reports routed worker stages as `SKIP` because no provider command is configured, report that clearly and help the user configure a provider with `moregan adapters codex --activate` or `moregan adapters claude --activate`.
+* Runtime provider execution requires `.moregan/workers.yaml` plus `MOREGAN_CODEX_COMMAND` or `MOREGAN_CLAUDE_COMMAND`. The provider command must read the generated prompt from stdin and return one `StageResult` JSON object on stdout.
+* When the runtime is unavailable, fall back to the persona instructions below and state that the run is skill-only rather than runtime-enforced.
 * In Claude Code, the installer also places persona files in `~/.claude/agents/`.
 * In Codex, persona files live inside this skill at `personas/*.md`; read the relevant persona file before performing that role.
 * Codex should use its native plan, terminal, file-editing, subagent, and browser tools where available. Do not require Claude-specific slash commands or agent paths when running in Codex.

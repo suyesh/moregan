@@ -21,6 +21,7 @@ class RunReplay:
         result = self._read_json("result.json")
         state = self._read_json("state.json")
         stages = self._load_stages(result)
+        learning = self._read_optional_json("learning.json")
         return {
             "run_id": result.get("run_id", self.run_dir.name),
             "status": result.get("status"),
@@ -29,6 +30,7 @@ class RunReplay:
             "state": state,
             "stages": stages,
             "evidence": result.get("evidence", []),
+            "learning": learning,
             "trace_path": str(self.run_dir),
         }
 
@@ -38,6 +40,7 @@ class RunReplay:
         state = replay.get("state") or {}
         stages = replay.get("stages") or []
         evidence = replay.get("evidence") or []
+        learning = replay.get("learning") or {}
 
         lines = [
             "# MoreGAN Replay",
@@ -84,12 +87,36 @@ class RunReplay:
             detail = item.get("reason") or command or item.get("stderr_tail") or item.get("stdout_tail") or "no detail"
             lines.append(f"- {status}: {item.get('name')} ({item.get('category')}) - {detail}")
 
+        lines.extend(["", "## Learning", ""])
+        if not learning:
+            lines.append("- No learning artifact was recorded.")
+        else:
+            lines.append(f"- Observations: {learning.get('observation_count', 0)}")
+            for pattern in learning.get("patterns", []):
+                if not isinstance(pattern, dict):
+                    continue
+                stats = pattern.get("statistics", {})
+                confidence = float(stats.get("confidence", 0.0)) if isinstance(stats, dict) else 0.0
+                lines.append(f"- Pattern `{pattern.get('pattern_id')}` confidence {confidence:.3f}")
+
         return "\n".join(lines) + "\n"
 
     def _read_json(self, name: str) -> Dict[str, object]:
         path = self.run_dir / name
         if not path.exists():
             raise ReplayError(f"run artifact not found: {path}")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ReplayError(f"invalid JSON artifact: {path}") from exc
+        if not isinstance(payload, dict):
+            raise ReplayError(f"expected JSON object artifact: {path}")
+        return payload
+
+    def _read_optional_json(self, name: str) -> Dict[str, object]:
+        path = self.run_dir / name
+        if not path.exists():
+            return {}
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:

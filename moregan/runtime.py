@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 
 from moregan.context import ContextPackWriter
+from moregan.learning import EmpiricalLearningStore
 from moregan.schemas import (
     CommandEvidence,
     EvidenceReference,
@@ -201,11 +202,34 @@ class TraceWriter:
                 f"(attempt {item.attempt}, {item.category}, {required}, {item.duration_ms}ms) - {detail}"
             )
 
+        lines.extend(["", "## Learning", ""])
+        learning = self._learning_summary(run_dir)
+        if learning is None:
+            lines.append("- No learning artifact was recorded.")
+        else:
+            lines.append(f"- Observations: {learning.get('observation_count', 0)}")
+            for pattern in learning.get("patterns", []):
+                if not isinstance(pattern, dict):
+                    continue
+                stats = pattern.get("statistics", {})
+                confidence = float(stats.get("confidence", 0.0)) if isinstance(stats, dict) else 0.0
+                lines.append(f"- Pattern `{pattern.get('pattern_id')}` confidence {confidence:.3f}")
+
         (run_dir / "final_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def _slugify(self, request: str) -> str:
         slug = re.sub(r"[^a-z0-9]+", "-", request.lower()).strip("-")
         return (slug or "run")[:48]
+
+    def _learning_summary(self, run_dir: Path) -> Optional[Dict[str, object]]:
+        path = run_dir / "learning.json"
+        if not path.exists():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return None
+        return payload if isinstance(payload, dict) else None
 
 
 class DeterministicEvidenceRunner:
@@ -355,6 +379,7 @@ class MoreGANRuntime:
         self.classifier = RiskClassifier()
         self.trace_writer = TraceWriter(self.root)
         self.context_writer = ContextPackWriter(self.root)
+        self.learning_store = EmpiricalLearningStore(self.root)
         self.evidence_runner = DeterministicEvidenceRunner(self.root)
         self.worker_registry = WorkerRegistry.from_root(self.root)
 
@@ -420,6 +445,7 @@ class MoreGANRuntime:
 
         evidence: List[CommandEvidence] = []
         stages = [risk_stage]
+        remediation_contexts: List[Dict[str, object]] = []
         status = "pass"
         terminal_reason = "all routed stages completed without blocking failures"
         current_index = 0
@@ -448,6 +474,7 @@ class MoreGANRuntime:
                         risk=risk,
                         request=request,
                         evidence=current_evidence,
+                        remediation_contexts=remediation_contexts,
                     )
                     if remediated is None:
                         status = "fail"
@@ -500,6 +527,7 @@ class MoreGANRuntime:
                     risk=risk,
                     request=request,
                     evidence=[],
+                    remediation_contexts=remediation_contexts,
                 )
                 if remediated is None:
                     status = "fail"
@@ -529,8 +557,21 @@ class MoreGANRuntime:
             state=state_machine.to_dict(),
             evidence=evidence,
         )
+        learning = self.learning_store.record_run(
+            run_dir=run_dir,
+            request=request,
+            status=status,
+            stages=stages,
+            evidence=evidence,
+            remediation_contexts=remediation_contexts,
+        )
         self.trace_writer.write_json(run_dir, "result.json", asdict(result))
         self.trace_writer.write_report(run_dir, result)
+        self.trace_writer.event(
+            run_dir,
+            "learning.recorded",
+            observation_count=learning.get("observation_count", 0),
+        )
         self.trace_writer.event(run_dir, "run.completed", status=status)
         return result
 
@@ -618,6 +659,7 @@ class MoreGANRuntime:
         risk: RiskClassification,
         request: str,
         evidence: List[CommandEvidence],
+        remediation_contexts: List[Dict[str, object]],
     ) -> Optional[Dict[str, object]]:
         if not self._can_remediate(state_machine, failed_stage.stage, failed_route_index, risk.route):
             exhausted = (
@@ -641,6 +683,7 @@ class MoreGANRuntime:
             next_attempt=next_attempt,
             evidence=evidence,
         )
+        remediation_contexts.append(context)
         self._transition(
             run_dir,
             state_machine,

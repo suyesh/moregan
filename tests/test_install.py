@@ -31,6 +31,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         (self.source_dir / "moregan" / "cli.py").write_text("cli", encoding="utf-8")
         (self.source_dir / "moregan" / "context.py").write_text("context", encoding="utf-8")
         (self.source_dir / "moregan" / "init.py").write_text("init", encoding="utf-8")
+        (self.source_dir / "moregan" / "learning.py").write_text("learning", encoding="utf-8")
         (self.source_dir / "moregan" / "runtime.py").write_text("runtime", encoding="utf-8")
         (self.source_dir / "moregan" / "schemas.py").write_text("schemas", encoding="utf-8")
         (self.source_dir / "moregan" / "state.py").write_text("state", encoding="utf-8")
@@ -100,6 +101,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "moregan" / "cli.py").exists())
         self.assertTrue((skill_dir / "moregan" / "context.py").exists())
         self.assertTrue((skill_dir / "moregan" / "init.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "learning.py").exists())
         self.assertTrue((skill_dir / "moregan" / "schemas.py").exists())
         self.assertTrue((skill_dir / "moregan" / "state.py").exists())
         self.assertTrue((skill_dir / "moregan" / "tools.py").exists())
@@ -138,6 +140,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
         self.assertTrue((skill_dir / "moregan" / "context.py").exists())
         self.assertTrue((skill_dir / "moregan" / "init.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "learning.py").exists())
         self.assertTrue((skill_dir / "moregan" / "runtime.py").exists())
         self.assertTrue((skill_dir / "moregan" / "schemas.py").exists())
         self.assertTrue((skill_dir / "moregan" / "state.py").exists())
@@ -383,6 +386,16 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertIn("include_learning_curator_result: true", defaults_text)
         self.assertIn("use_colored_status_markers: true", defaults_text)
         self.assertIn('not_ready: "🔴"', defaults_text)
+
+    def test_skill_prefers_executable_runtime_for_feature_work(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        skill_text = (repo_root / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn('run `moregan init` when `.moregan/` is missing', skill_text)
+        self.assertIn('run `moregan run "<user request>"`', skill_text)
+        self.assertIn("Do not run a separate prompt-only persona loop", skill_text)
+        self.assertIn("MOREGAN_CODEX_COMMAND", skill_text)
+        self.assertIn("MOREGAN_CLAUDE_COMMAND", skill_text)
 
     def test_learning_curator_persona_defines_conservative_learning_contract(self):
         repo_root = Path(__file__).resolve().parents[1]

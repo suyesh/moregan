@@ -24,10 +24,10 @@ ten_item_tracker:
     status: implemented_and_improving
   - number: 5
     improvement: Empirical learning system
-    status: next_major_numbered_item
+    status: implemented_foundation
   - number: 6
     improvement: Adaptive routing
-    status: partially_implemented
+    status: next_major_numbered_item
   - number: 7
     improvement: Competitive generators
     status: planned
@@ -131,6 +131,14 @@ phases:
       - worker_context_pack_paths
       - context_size_trace_evidence
       - isolated_worker_context_copies
+  - id: v2.8
+    name: Empirical Learning
+    status: implemented_current_branch
+    outcomes:
+      - run_learning_json
+      - observations_jsonl
+      - pattern_statistics
+      - replay_learning_summary
   - id: v3.0
     name: Competitive Generators
     status: planned
@@ -339,13 +347,31 @@ completed_work:
       - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.6.0.tar.gz and dist/moregan-1.6.0-py3-none-any.whl."
       - "Local wheel smoke installed moregan-1.6.0 and confirmed `moregan --help` plus `import moregan.context`."
       - "Package version was bumped to 1.6.0 for the new runtime feature."
+  - id: empirical-learning-system
+    phase: v2.8
+    original_list_number: 5
+    status: done
+    acceptance_criteria:
+      - "Every run writes learning.json."
+      - "Learning artifacts store observations tied to run ids, failures, remediations, and outcomes."
+      - "Learning confidence is computed from observations instead of invented by prose."
+      - "Replay and inspect surface learned patterns with evidence."
+      - "Skill feature-work usage prefers the executable runtime path instead of a parallel prompt-only loop."
+    verification:
+      - "Targeted item-5 tests passed."
+      - "python3 -m unittest discover -s tests -v passed 47 tests."
+      - "python3 -m py_compile passed for install.py, tests, and all runtime modules including moregan/learning.py."
+      - "git diff --check passed."
+      - ".moregan/roadmap.yaml parsed as YAML."
+      - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.7.0.tar.gz and dist/moregan-1.7.0-py3-none-any.whl."
+      - "Local wheel smoke installed moregan-1.7.0 and confirmed `moregan --help` plus `import moregan.learning`."
 current_work:
-  id: empirical-learning-system
-  phase: v2.8
-  original_list_number: 5
+  id: diff-aware-adaptive-routing
+  phase: v2.9
+  original_list_number: 6
   status: next
   acceptance_criteria:
-    - "Learning artifacts store observations tied to run ids, failures, remediations, and outcomes."
-    - "Learning confidence is computed from observations instead of invented by prose."
-    - "Learning Curator output is validated before promoting recurring lessons."
-    - "Replay and inspect can surface learned patterns with evidence."
+    - "Risk classification includes git diff size, changed paths, and file categories."
+    - "Auth, payments, migrations, dependency, infra, and public API file changes raise route risk."
+    - "Risk reasons record both request keyword and repository evidence."
+    - "Tests cover low, medium, high, and critical routing decisions from diff evidence."

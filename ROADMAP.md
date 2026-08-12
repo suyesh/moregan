@@ -29,8 +29,8 @@ This maps the original improvement list to the current implementation state.
 | 2 | Structured persona output | Implemented foundation: workers return `StageResult` JSON with verdicts, findings, evidence, confidence, and attempts. |
 | 3 | Deterministic evidence layer | Implemented foundation: `.moregan/tools.yaml`, built-ins, explicit commands, required/optional checks, and structured command evidence. |
 | 4 | Execution trace | Implemented and improving: run directories, events, state, stage artifacts, replay, remediation artifacts, and compact context packs. |
-| 5 | Empirical learning system | Next major numbered item. Lessons should be promoted from run evidence and outcomes, not prose invention. |
-| 6 | Adaptive routing | Partially implemented: request-risk routing exists; diff, touched-file, dependency, and stack-aware routing still needed. |
+| 5 | Empirical learning system | Implemented foundation: run-backed observations, outcomes, and aggregate pattern confidence. |
+| 6 | Adaptive routing | Next major numbered item. Request-risk routing exists; diff, touched-file, dependency, and stack-aware routing still needed. |
 | 7 | Competitive generators | Not implemented. |
 | 8 | Benchmark tasks | Not implemented. |
 | 9 | Measurable positioning | Partially implemented: README claims are more conservative; needs benchmark-backed release claims. |
@@ -155,6 +155,18 @@ Goal: reduce token/context cost while preserving useful worker context.
 
 Status: compact context packs are implemented. Runtime writes `context/base.json`, `context/stages/<stage>.attempt<N>.json`, and `context/manifest.json`; worker results include context-pack evidence with approximate token counts.
 
+### v2.8: Empirical Learning
+
+Goal: make learning evidence-backed instead of prose-invented.
+
+- Write `learning.json` for every run.
+- Append observations to `.moregan/learning/observations.jsonl` only when findings or failed deterministic evidence exist.
+- Aggregate recurring observations in `.moregan/learning/patterns.json`.
+- Compute confidence from observed remediated versus unresolved outcomes.
+- Surface learning in inspect and replay output.
+
+Status: the first empirical learning store is implemented. Clean runs do not invent lessons; failures and remediations record run-backed observations with outcomes and aggregate pattern statistics.
+
 ### v3.0: Competitive Generators
 
 Goal: make the GAN analogy operational.
@@ -184,4 +196,4 @@ Goal: let evidence tune the harness.
 
 ## Current Branch Focus
 
-This branch starts v1.6 through v2.7. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, isolated no-write worker execution, and compact context packs. The next major numbered item is empirical learning backed by run evidence.
+This branch starts v1.6 through v2.8. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, isolated no-write worker execution, compact context packs, and empirical learning artifacts. The next major numbered item is diff-aware adaptive routing.

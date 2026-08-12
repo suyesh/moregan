@@ -63,6 +63,12 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertEqual(deterministic_stage["verdict"], "skip")
         self.assertEqual(deterministic_stage["evidence"][0]["kind"], "operator_choice")
         self.assertTrue((run_dir / "tool_suggestions.json").exists())
+        self.assertTrue((run_dir / "learning.json").exists())
+        learning = json.loads((run_dir / "learning.json").read_text(encoding="utf-8"))
+        self.assertEqual(learning["observation_count"], 0)
+        self.assertTrue((self.root / ".moregan" / "learning" / "patterns.json").exists())
+        self.assertFalse((self.root / ".moregan" / "learning" / "observations.jsonl").exists())
+        self.assertIn("## Learning", (run_dir / "final_report.md").read_text(encoding="utf-8"))
 
         generator_stage = json.loads((run_dir / "stages" / "generator.json").read_text(encoding="utf-8"))
         self.assertEqual(generator_stage["verdict"], "skip")
@@ -168,6 +174,14 @@ class MoreGANRuntimeTests(unittest.TestCase):
         remediation = json.loads((run_dir / "remediation.json").read_text(encoding="utf-8"))
         self.assertEqual(remediation["attempts"][0]["failed_stage"], "deterministic_evidence")
         self.assertEqual(remediation["attempts"][0]["deterministic_evidence"][0]["name"], "unit_tests")
+        learning = json.loads((run_dir / "learning.json").read_text(encoding="utf-8"))
+        self.assertGreaterEqual(learning["observation_count"], 1)
+        self.assertTrue(any(item["outcome"] == "unresolved" for item in learning["observations"]))
+        self.assertTrue(any(item["source"] == "deterministic_evidence" for item in learning["observations"]))
+        patterns = json.loads((self.root / ".moregan" / "learning" / "patterns.json").read_text(encoding="utf-8"))
+        self.assertTrue(any(pattern["statistics"]["confidence"] == 0.0 for pattern in patterns["patterns"]))
+        observations = (self.root / ".moregan" / "learning" / "observations.jsonl").read_text(encoding="utf-8")
+        self.assertIn(result.run_id, observations)
 
         state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
         self.assertEqual(state["current_state"], "failed")
@@ -227,6 +241,9 @@ class MoreGANRuntimeTests(unittest.TestCase):
             ],
             "pass",
         )
+        learning = json.loads((run_dir / "learning.json").read_text(encoding="utf-8"))
+        self.assertTrue(any(item["outcome"] == "remediated" for item in learning["observations"]))
+        self.assertTrue(any(pattern["statistics"]["confidence"] == 1.0 for pattern in learning["patterns"]))
         state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
         self.assertEqual(state["remediation_attempts"], 1)
         self.assertEqual(state["current_state"], "completed")
@@ -560,9 +577,11 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertTrue(result.changed)
         self.assertTrue((self.root / ".moregan").is_dir())
         self.assertTrue((self.root / ".moregan" / "runs").is_dir())
+        self.assertTrue((self.root / ".moregan" / "learning").is_dir())
         self.assertTrue((self.root / ".moregan" / "tools.yaml").exists())
         self.assertTrue((self.root / ".moregan" / "workers.yaml").exists())
         self.assertIn(".moregan/runs/", (self.root / ".gitignore").read_text(encoding="utf-8"))
+        self.assertIn(".moregan/learning/", (self.root / ".gitignore").read_text(encoding="utf-8"))
 
         tools_yaml = (self.root / ".moregan" / "tools.yaml").read_text(encoding="utf-8")
         self.assertIn("builtin: git_diff_check", tools_yaml)
@@ -778,6 +797,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
             self.assertEqual(moregan_main(["--root", str(self.root), "replay", "latest"]), 0)
         self.assertIn("MoreGAN Replay", output.getvalue())
         self.assertIn("generator: PASS", output.getvalue())
+        self.assertIn("## Learning", output.getvalue())
         self.assertEqual(marker.read_text(encoding="utf-8"), "1")
 
         json_output = io.StringIO()
@@ -786,6 +806,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         replay = json.loads(json_output.getvalue())
         self.assertEqual(replay["run_id"], Path(result.trace_path).name)
         self.assertEqual(replay["stages"][1]["stage"], "generator")
+        self.assertEqual(replay["learning"]["observation_count"], 0)
 
     def test_python_compile_candidates_include_untracked_git_files(self):
         subprocess.run(["git", "init"], cwd=self.root, check=True, capture_output=True, text=True)

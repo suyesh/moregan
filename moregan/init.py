@@ -62,6 +62,7 @@ class MoreGANInitializer:
         result = InitResult(root=str(self.root))
         self._ensure_directory(self.moregan_dir, result, dry_run)
         self._ensure_directory(self.moregan_dir / "runs", result, dry_run)
+        self._ensure_directory(self.moregan_dir / "learning", result, dry_run)
         self._write_config(
             relative_path=Path(".moregan") / "tools.yaml",
             content=self._tools_yaml(),
@@ -112,21 +113,25 @@ class MoreGANInitializer:
 
     def _ensure_gitignore(self, dry_run: bool, result: InitResult) -> None:
         path = self.root / ".gitignore"
-        entry = ".moregan/runs/"
+        entries = [".moregan/runs/", ".moregan/learning/"]
         if path.exists():
             lines = path.read_text(encoding="utf-8").splitlines()
-            if entry in lines:
-                result.actions.append(InitAction(".gitignore", "exists", "already ignores .moregan/runs/"))
+            missing = [entry for entry in entries if entry not in lines]
+            if not missing:
+                result.actions.append(InitAction(".gitignore", "exists", "already ignores local MoreGAN artifacts"))
                 return
-            updated = "\n".join(lines + [entry]) + "\n"
-            result.actions.append(InitAction(".gitignore", "would_update" if dry_run else "updated", "added .moregan/runs/"))
+            updated = "\n".join(lines + missing) + "\n"
+            detail = "added " + ", ".join(missing)
+            result.actions.append(InitAction(".gitignore", "would_update" if dry_run else "updated", detail))
             if not dry_run:
                 path.write_text(updated, encoding="utf-8")
             return
 
-        result.actions.append(InitAction(".gitignore", "would_create" if dry_run else "created", "ignores .moregan/runs/"))
+        result.actions.append(
+            InitAction(".gitignore", "would_create" if dry_run else "created", "ignores local MoreGAN artifacts")
+        )
         if not dry_run:
-            path.write_text(f"{entry}\n", encoding="utf-8")
+            path.write_text("".join(f"{entry}\n" for entry in entries), encoding="utf-8")
 
     def _tools_yaml(self) -> str:
         lines = [

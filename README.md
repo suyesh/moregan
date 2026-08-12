@@ -70,6 +70,7 @@ flowchart TD
 - Bounded remediation attempts that feed failed findings back to the generator.
 - Isolated execution for no-write worker stages by default.
 - Compact context packs that keep worker prompts smaller while preserving useful run context.
+- Empirical learning artifacts that tie observations to run ids, failures, remediations, and outcomes.
 - Read-only replay of past runs without rerunning providers or tests.
 - Codex and Claude adapter templates that normalize provider output into JSON.
 - Local trace artifacts under `.moregan/runs/` for debugging and review.
@@ -399,6 +400,8 @@ Remediation runs also write `remediation.json` plus attempt-specific stage files
 
 Context packs are capped JSON summaries designed to preserve useful context without spending tokens on full trace history. `context/manifest.json` records every pack path, byte size, and approximate token count.
 
+Learning is evidence-backed. Each run writes `learning.json`; failures and remediations append observations to `.moregan/learning/observations.jsonl`, and aggregate confidence stats are written to `.moregan/learning/patterns.json`. Clean runs do not invent lessons.
+
 ## Skill Usage
 
 Claude Code:
@@ -422,6 +425,23 @@ Maintenance:
 - `moregan setup update` downloads the latest MoreGAN archive from GitHub and reinstalls existing targets.
 - `moregan setup doctor --check` reports duplicate installs, stale persona files, registry duplication, and missing files.
 - `/moregan update` and `/moregan doctor` remain available as Claude Code skill commands.
+
+## Skill vs Runtime
+
+MoreGAN has two execution modes:
+
+- Skill-only mode: Codex or Claude reads `SKILL.md` and the persona files, then follows the MoreGAN workflow inside the agent session. Personas are used automatically in this mode, but enforcement depends on the agent following the instructions.
+- Runtime mode: `moregan run ...` enforces routing, state, traces, retries, deterministic checks, context packs, and learning artifacts in Python. Persona stages execute only when `.moregan/workers.yaml` points at a provider command.
+
+To make runtime persona stages execute through Codex or Claude:
+
+```bash
+moregan adapters codex --activate
+export MOREGAN_CODEX_COMMAND='<command that reads prompt stdin and returns StageResult JSON>'
+moregan run "Add OAuth login"
+```
+
+Without a provider command, runtime stages produce honest `SKIP` results instead of pretending a persona ran.
 
 ## PyPI Trusted Publishing
 
@@ -455,6 +475,7 @@ Implemented in this repository:
 - provider-backed worker command contract
 - bounded remediation loop
 - compact context packs for token-aware worker execution
+- empirical learning observations and pattern statistics
 - run replay
 - Codex and Claude adapter templates
 - PyPI trusted-publishing workflow
@@ -463,7 +484,7 @@ Implemented in this repository:
 
 Next production-readiness work:
 
-- empirical learning backed by run observations
+- diff-aware adaptive routing
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
 - stack-specific deterministic tool presets

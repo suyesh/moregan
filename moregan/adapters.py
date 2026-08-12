@@ -150,6 +150,14 @@ These prompts are used by `python3 -m moregan.agent_worker`.
 
 Set `{env_name}` to a provider command that accepts the generated prompt on stdin and prints a single MoreGAN `StageResult` JSON object on stdout. Keep the command project-local or user-local; do not put tokens in `.moregan/workers.yaml`.
 
+Example shape:
+
+```bash
+export {env_name}='<your provider command that reads stdin and emits StageResult JSON>'
+```
+
+If `{env_name}` is unset, the worker returns an honest `SKIP` result.
+
 To activate this provider template:
 
 ```bash

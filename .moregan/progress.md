@@ -793,3 +793,47 @@ persona_execution:
   learning_curator: "PASS - next major numbered item is empirical learning"
 notes: "This completes the context/token-saving hardening under original item 4. The next major numbered item is item 5: empirical learning backed by run evidence."
 ---
+
+---
+timestamp: "2026-08-12T00:54:29-07:00"
+status: SUCCESS
+task_nickname: moregan-empirical-learning-system
+summary: "Implemented item 5: evidence-backed learning artifacts tied to run ids, failures, remediations, and outcomes."
+branch: "main"
+updates:
+  - file: "moregan/learning.py"
+    action: "Added empirical learning store with observations.jsonl and aggregate patterns.json confidence statistics."
+  - file: "moregan/runtime.py"
+    action: "Recorded learning.json for every run and surfaced learning in final_report.md."
+  - file: "moregan/replay.py"
+    action: "Included learning artifacts in replay dict and human replay output."
+  - file: "moregan/context.py"
+    action: "Included .moregan/learning as a compact context lesson source."
+  - file: "moregan/init.py"
+    action: "Created .moregan/learning and ignored it in .gitignore with .moregan/runs."
+  - file: "SKILL.md"
+    action: "Made feature-work skill usage runtime-first so skill and CLI converge on the same executable path."
+  - file: "moregan/adapters.py"
+    action: "Clarified generated provider env var behavior and SKIP behavior when unset."
+  - file: "tests/test_moregan_runtime.py"
+    action: "Added coverage for clean, unresolved, remediated, init, and replay learning artifacts."
+  - file: "tests/test_install.py"
+    action: "Added learning.py installer coverage and runtime-first skill contract coverage."
+  - file: "README.md, INSTALL.md, ROADMAP.md, .moregan/roadmap.yaml"
+    action: "Documented empirical learning, skill-vs-runtime convergence, and item 6 as next."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md"
+    action: "Bumped version to 1.7.0 for the new runtime feature."
+verification_evidence: "Targeted item-5 tests passed; python3 -m unittest discover -s tests -v passed 47 tests; python3 -m py_compile passed for install.py, tests, and all runtime modules including moregan/learning.py; git diff --check passed; .moregan/roadmap.yaml parsed as YAML; env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.7.0.tar.gz and dist/moregan-1.7.0-py3-none-any.whl; local wheel smoke installed moregan-1.7.0 and confirmed `moregan --help` plus `import moregan.learning`."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - runtime/docs change with no frontend surface"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "not scored - local branch has intentional implementation work before commit"
+  learning_curator: "PASS - recorded item 5 completion and item 6 next work"
+notes: "This completes the foundation for original item 5. The next major numbered item is item 6: adaptive routing using repository evidence."
+---
