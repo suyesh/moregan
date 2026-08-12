@@ -483,7 +483,23 @@ class DeterministicEvidenceRunner:
 
     def _run(self, tool: ToolCommand, command: Sequence[str]) -> CommandEvidence:
         started = time.perf_counter()
-        result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
+        try:
+            result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
+        except FileNotFoundError as exc:
+            return CommandEvidence(
+                name=tool.name,
+                command=list(command),
+                passed=not tool.required,
+                exit_code=127,
+                category=tool.category,
+                required=tool.required,
+                duration_ms=self._duration_ms(started),
+                remediation=tool.remediation,
+                source=tool.source,
+                skipped=not tool.required,
+                reason=f"command not found: {command[0]}" if command else "command not found",
+                stderr_tail=str(exc),
+            )
         return CommandEvidence(
             name=tool.name,
             command=list(command),

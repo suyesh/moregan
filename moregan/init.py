@@ -154,7 +154,7 @@ class MoreGANInitializer:
             lines.extend(
                 [
                     "",
-                    "# Detected but disabled by default. Review and set enabled: true when these commands fit your repo.",
+                    "# Detected stack presets. They are optional by default, so failures produce findings but do not block.",
                 ]
             )
             for suggestion in suggestions:
@@ -163,8 +163,9 @@ class MoreGANInitializer:
                         f"  - name: {suggestion.name}",
                         f"    command: {self._inline_list(suggestion.command)}",
                         f"    category: {suggestion.category}",
-                        "    required: false",
-                        "    enabled: false",
+                        f"    required: {str(suggestion.required).lower()}",
+                        f"    enabled: {str(suggestion.enabled).lower()}",
+                        f"    reason: {self._quote(suggestion.reason)}",
                         f"    remediation: {self._quote(suggestion.remediation)}",
                     ]
                 )

@@ -873,3 +873,37 @@ persona_execution:
   learning_curator: "PASS - recorded item 6 completion and item 7 next work"
 notes: "This completes the foundation for original item 6. The next major numbered item is item 7: competitive generators."
 ---
+
+---
+timestamp: "2026-08-12T01:16:41-07:00"
+status: SUCCESS
+task_nickname: moregan-stack-aware-tool-presets
+summary: "Hardening item 3: make moregan init generate useful optional deterministic presets for common engineering stacks."
+branch: "main"
+updates:
+  - file: "moregan/tools.py"
+    action: "Added enabled optional stack presets for Python, Node, Java/Spring Boot, Rails/Ruby, Go, and Rust."
+  - file: "moregan/init.py"
+    action: "Changed detected presets from disabled suggestions to enabled optional checks in .moregan/tools.yaml."
+  - file: "moregan/runtime.py"
+    action: "Made missing optional command executables become structured skips instead of runtime crashes."
+  - file: "tests/test_moregan_runtime.py"
+    action: "Added coverage for stack preset detection, Java/Spring Boot Maven and Gradle checks, init output, and optional missing executable skips."
+  - file: "README.md, INSTALL.md, ROADMAP.md, .moregan/roadmap.yaml"
+    action: "Documented stack-aware presets and reset benchmark harness as the next priority before competitive generators."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md"
+    action: "Bumped version to 1.9.0 for the new runtime feature."
+verification_evidence: "Targeted stack preset tests passed; python3 -m unittest discover -s tests -v passed 52 tests; python3 -m py_compile passed for install.py, tests, and all runtime modules; git diff --check passed; .moregan/roadmap.yaml parsed with Ruby YAML; env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.9.0.tar.gz and dist/moregan-1.9.0-py3-none-any.whl; initial wheel smoke install was blocked by sandboxed dependency resolution, then approved retry installed moregan-1.9.0 and confirmed `moregan --help` plus StackToolDetector import."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - runtime/docs change with no frontend surface"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "not scored - local branch has intentional implementation work before commit"
+  learning_curator: "PASS - recorded stack-aware preset completion and benchmark harness as next"
+notes: "This continues original item 3 after item 6 because the review moved stack-aware deterministic presets ahead of competitive generators. The next priority after commit is item 8: benchmark harness."
+---

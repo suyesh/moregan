@@ -18,7 +18,7 @@ ten_item_tracker:
     status: implemented_foundation
   - number: 3
     improvement: Deterministic evidence layer
-    status: implemented_foundation
+    status: implemented_and_improving
   - number: 4
     improvement: Execution trace
     status: implemented_and_improving
@@ -30,10 +30,10 @@ ten_item_tracker:
     status: implemented_foundation
   - number: 7
     improvement: Competitive generators
-    status: next_major_numbered_item
+    status: planned_later
   - number: 8
     improvement: Benchmark tasks
-    status: planned
+    status: next_priority
   - number: 9
     improvement: Measurable positioning
     status: partially_implemented
@@ -65,6 +65,14 @@ phases:
       - stack_command_detection
       - structured_tool_evidence
       - repository_local_overrides
+  - id: v1.9
+    name: Stack-Aware Tool Presets
+    status: implemented_current_branch
+    outcomes:
+      - python_node_java_rails_go_rust_detection
+      - enabled_optional_stack_presets
+      - missing_optional_tool_skips
+      - java_spring_boot_maven_gradle_checks
   - id: v2.0
     name: Worker Orchestration
     status: implemented_current_branch
@@ -98,7 +106,7 @@ phases:
       - safe_default_config_scaffolding
       - gitignore_trace_exclusion
       - force_and_dry_run_modes
-      - disabled_stack_tool_suggestions
+      - safe_stack_tool_suggestions
   - id: v2.4
     name: Agent CLI Adapters
     status: implemented_current_branch
@@ -122,7 +130,7 @@ phases:
       - request_and_diff_risk_model
       - route_selection_reasons
       - skipped_stage_reasons
-      - benchmark_tuned_thresholds
+      - diff_evidence_risk_adjustments
   - id: v2.7
     name: Context Curation
     status: implemented_current_branch
@@ -382,13 +390,31 @@ completed_work:
       - ".moregan/roadmap.yaml parsed as YAML."
       - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.8.0.tar.gz and dist/moregan-1.8.0-py3-none-any.whl."
       - "Local wheel smoke installed moregan-1.8.0 and confirmed `moregan --help` plus RiskClassifier import."
+  - id: stack-aware-tool-presets
+    phase: v1.9
+    original_list_number: 3
+    status: done
+    acceptance_criteria:
+      - "moregan init writes enabled optional presets for detected stacks."
+      - "Detected presets cover Python, Node, Java/Spring Boot, Rails/Ruby, Go, and Rust."
+      - "Java detection supports Maven and Gradle tests plus Checkstyle, SpotBugs, PMD, and OWASP Dependency-Check when configured."
+      - "Missing optional preset executables produce structured skips instead of runtime crashes."
+      - "Documentation describes detected stack presets accurately."
+    verification:
+      - "Targeted stack preset tests passed."
+      - "python3 -m unittest discover -s tests -v passed 52 tests."
+      - "python3 -m py_compile passed for install.py, tests, and all runtime modules."
+      - "git diff --check passed."
+      - ".moregan/roadmap.yaml parsed with Ruby YAML."
+      - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.9.0.tar.gz and dist/moregan-1.9.0-py3-none-any.whl."
+      - "Local wheel smoke installed moregan-1.9.0 and confirmed `moregan --help` plus StackToolDetector import."
 current_work:
-  id: competitive-generators
-  phase: v3.0
-  original_list_number: 7
+  id: benchmark-harness
+  phase: v3.5
+  original_list_number: 8
   status: next
   acceptance_criteria:
-    - "High-risk tasks can run multiple generator candidates with separate objectives."
-    - "Candidate outputs are isolated before selection."
-    - "A judge compares candidates against shared acceptance criteria and deterministic evidence."
-    - "Trace artifacts record candidate decisions and selected/synthesized outcome."
+    - "Add small benchmark task fixtures for bug fixes, features, refactors, security fixes, migrations, and regressions."
+    - "Measure baseline agent runs against agent plus MoreGAN runs."
+    - "Record success, tests, regressions, security findings, iterations, time, token usage, and cost when available."
+    - "Generate evidence-backed benchmark reports suitable for README claims."

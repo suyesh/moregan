@@ -27,12 +27,12 @@ This maps the original improvement list to the current implementation state.
 |---|-------------|----------------|
 | 1 | Real harness runtime | Implemented foundation: Python owns routing, state, stages, retries, and pass/fail trace output. |
 | 2 | Structured persona output | Implemented foundation: workers return `StageResult` JSON with verdicts, findings, evidence, confidence, and attempts. |
-| 3 | Deterministic evidence layer | Implemented foundation: `.moregan/tools.yaml`, built-ins, explicit commands, required/optional checks, and structured command evidence. |
+| 3 | Deterministic evidence layer | Implemented foundation plus stack presets: `.moregan/tools.yaml`, built-ins, explicit commands, required/optional checks, structured command evidence, and detected Python/Node/Java/Spring Boot/Rails/Go/Rust presets. |
 | 4 | Execution trace | Implemented and improving: run directories, events, state, stage artifacts, replay, remediation artifacts, and compact context packs. |
 | 5 | Empirical learning system | Implemented foundation: run-backed observations, outcomes, and aggregate pattern confidence. |
 | 6 | Adaptive routing | Implemented foundation: request keywords plus changed paths, dependency files, sensitive paths, file count, and changed-line evidence. |
-| 7 | Competitive generators | Next major numbered item. |
-| 8 | Benchmark tasks | Not implemented. |
+| 7 | Competitive generators | Planned later; benchmark and provider hardening moved earlier. |
+| 8 | Benchmark tasks | Next major evaluation item. |
 | 9 | Measurable positioning | Partially implemented: README claims are more conservative; needs benchmark-backed release claims. |
 | 10 | Real CLI | Partially implemented: `init`, `setup`, `run`, `status`, `inspect`, `replay`, and `adapters` exist; `benchmark`, `learn`, and stronger `doctor` remain. |
 
@@ -65,7 +65,18 @@ Goal: make zero-trust verification real.
 - Store tool output tails, exit codes, durations, and remediation hints in structured evidence.
 - Allow repository-local `.moregan/tools.yaml` overrides.
 
-Status: the first deterministic tool layer is implemented. MoreGAN loads `.moregan/tools.yaml` when present, supports built-in and explicit commands, records required/optional status, duration, output tails, and remediation text, and writes non-executing stack suggestions to `tool_suggestions.json`.
+Status: the first deterministic tool layer is implemented. MoreGAN loads `.moregan/tools.yaml` when present, supports built-in and explicit commands, records required/optional status, duration, output tails, and remediation text, and records detected stack suggestions in run traces.
+
+### v1.9: Stack-Aware Tool Presets
+
+Goal: make `moregan init` useful immediately in common engineering stacks.
+
+- Detect Python, Node, Java/Spring Boot, Rails/Ruby, Go, and Rust project files.
+- Write optional enabled presets for tests, linting, type checking, security scanning, and dependency auditing.
+- Skip optional presets cleanly when executables are missing.
+- Keep required defaults focused on broadly safe built-ins.
+
+Status: stack-aware presets are implemented. `moregan init` now writes enabled optional presets for detected stacks, and missing optional tools become structured skips instead of runtime crashes.
 
 ### v2.0: Worker Orchestration
 
@@ -198,4 +209,4 @@ Goal: let evidence tune the harness.
 
 ## Current Branch Focus
 
-This branch starts v1.6 through v2.9. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, isolated no-write worker execution, compact context packs, empirical learning artifacts, and diff-aware adaptive routing. The next major numbered item is competitive generators.
+This branch starts v1.6 through v2.9 plus stack-aware presets. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, stack-aware presets, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, isolated no-write worker execution, compact context packs, empirical learning artifacts, and diff-aware adaptive routing. The next priority is a small benchmark harness.

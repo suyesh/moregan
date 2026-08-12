@@ -15,7 +15,7 @@ from moregan.cli import main as moregan_main
 from moregan.init import MoreGANInitializer
 from moregan.runtime import DeterministicEvidenceRunner, MoreGANRuntime, RiskClassifier, latest_run
 from moregan.state import InvalidTransition, StateMachine, TaskState
-from moregan.tools import ToolConfigLoader
+from moregan.tools import StackToolDetector, ToolConfigLoader
 from moregan.workers import WorkerConfigLoader
 
 
@@ -603,6 +603,74 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertIn("npm_lint", names)
         self.assertIn("npm_typecheck", names)
         self.assertIn("npm_audit", names)
+        npm_lint = [suggestion for suggestion in suggestions if suggestion["name"] == "npm_lint"][0]
+        self.assertTrue(npm_lint["enabled"])
+        self.assertFalse(npm_lint["required"])
+
+    def test_stack_detection_writes_language_specific_presets(self):
+        (self.root / "tests").mkdir()
+        (self.root / "pyproject.toml").write_text("[tool.ruff]\n[tool.mypy]\n", encoding="utf-8")
+        (self.root / "requirements.txt").write_text("fastapi\n", encoding="utf-8")
+        (self.root / "mvnw").write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.root / "pom.xml").write_text(
+            "<project>"
+            "<artifactId>spring-boot-starter-web</artifactId>"
+            "<artifactId>maven-checkstyle-plugin</artifactId>"
+            "<artifactId>spotbugs-maven-plugin</artifactId>"
+            "<artifactId>maven-pmd-plugin</artifactId>"
+            "<artifactId>dependency-check-maven</artifactId>"
+            "</project>\n",
+            encoding="utf-8",
+        )
+        (self.root / "gradlew").write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.root / "build.gradle").write_text(
+            "plugins { id 'org.springframework.boot' version '3.3.0' }\n"
+            "apply plugin: 'checkstyle'\n"
+            "apply plugin: 'com.github.spotbugs'\n"
+            "apply plugin: 'pmd'\n"
+            "apply plugin: 'org.owasp.dependencycheck'\n",
+            encoding="utf-8",
+        )
+        (self.root / "Gemfile").write_text("gem 'rails'\n", encoding="utf-8")
+        (self.root / "go.mod").write_text("module example.com/moregan\n", encoding="utf-8")
+        (self.root / "Cargo.toml").write_text("[package]\nname = \"demo\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+
+        suggestions = StackToolDetector(self.root).suggest()
+        names = {suggestion.name for suggestion in suggestions}
+
+        for expected in [
+            "pytest",
+            "ruff_check",
+            "mypy",
+            "pip_audit",
+            "maven_test",
+            "maven_checkstyle",
+            "maven_spotbugs",
+            "maven_pmd",
+            "maven_dependency_check",
+            "gradle_test",
+            "gradle_checkstyle",
+            "gradle_spotbugs",
+            "gradle_pmd",
+            "gradle_dependency_check",
+            "rspec",
+            "rubocop",
+            "brakeman",
+            "bundle_audit",
+            "go_test",
+            "go_vet",
+            "staticcheck",
+            "cargo_test",
+            "cargo_clippy",
+            "cargo_audit",
+        ]:
+            self.assertIn(expected, names)
+        maven_test = [suggestion for suggestion in suggestions if suggestion.name == "maven_test"][0]
+        gradle_test = [suggestion for suggestion in suggestions if suggestion.name == "gradle_test"][0]
+        self.assertEqual(maven_test.command, ["./mvnw", "test"])
+        self.assertEqual(gradle_test.command, ["./gradlew", "test"])
+        self.assertIn("Spring Boot", maven_test.reason)
+        self.assertIn("Spring Boot", gradle_test.reason)
 
     def test_init_scaffolds_safe_repo_local_config(self):
         (self.root / "package.json").write_text(
@@ -624,12 +692,38 @@ class MoreGANRuntimeTests(unittest.TestCase):
         tools_yaml = (self.root / ".moregan" / "tools.yaml").read_text(encoding="utf-8")
         self.assertIn("builtin: git_diff_check", tools_yaml)
         self.assertIn("name: npm_lint", tools_yaml)
-        self.assertIn("enabled: false", tools_yaml)
+        self.assertIn("enabled: true", tools_yaml)
+        self.assertIn("required: false", tools_yaml)
+        self.assertIn("reason:", tools_yaml)
         self.assertEqual([tool.name for tool in ToolConfigLoader(self.root).load()], [
             "git_diff_check",
             "python_compile",
             "unit_tests",
+            "npm_test",
+            "npm_lint",
+            "npm_typecheck",
+            "npm_audit",
         ])
+
+    def test_optional_missing_stack_preset_is_structured_skip(self):
+        moregan_dir = self.root / ".moregan"
+        moregan_dir.mkdir()
+        (moregan_dir / "tools.yaml").write_text(
+            "version: 1\n"
+            "commands:\n"
+            "  - name: missing_optional_tool\n"
+            "    command: [\"definitely-not-a-moregan-tool\"]\n"
+            "    category: lint\n"
+            "    required: false\n"
+            "    remediation: \"Install or disable the missing tool.\"\n",
+            encoding="utf-8",
+        )
+
+        result = MoreGANRuntime(self.root).run("Run optional preset")
+        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.evidence[0].name, "missing_optional_tool")
+        self.assertTrue(result.evidence[0].skipped)
+        self.assertIn("command not found", result.evidence[0].reason)
 
     def test_init_preserves_existing_config_unless_forced(self):
         moregan_dir = self.root / ".moregan"

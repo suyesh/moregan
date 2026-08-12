@@ -68,6 +68,7 @@ flowchart TD
 - Structured findings, evidence, confidence, and verdicts for each stage.
 - Deterministic checks for tests, syntax, git diff validation, and repo-local commands.
 - Adaptive routing that combines request keywords with repository diff evidence.
+- Stack-aware deterministic presets for Python, Node, Java/Spring Boot, Rails/Ruby, Go, and Rust projects.
 - Bounded remediation attempts that feed failed findings back to the generator.
 - Isolated execution for no-write worker stages by default.
 - Compact context packs that keep worker prompts smaller while preserving useful run context.
@@ -357,6 +358,17 @@ Optional checks record findings without blocking the run:
 required: false
 ```
 
+`moregan init` detects common stacks and writes optional enabled presets when matching project files exist:
+
+- Python: `pytest`, `ruff`, `mypy`, `bandit`, `pip-audit`
+- Node: `npm test`, `npm run lint`, `npm run typecheck`, `npm audit`
+- Java/Spring Boot: Maven or Gradle tests, Checkstyle, SpotBugs, PMD, OWASP Dependency-Check
+- Rails/Ruby: `rspec`, `rubocop`, `brakeman`, `bundle-audit`
+- Go: `go test`, `go vet`, `staticcheck`
+- Rust: `cargo test`, `cargo clippy`, `cargo audit`
+
+Optional presets skip cleanly when their executable is not installed.
+
 ## Trace Artifacts
 
 Each run writes a directory like this. The exact `stages/*.json` files depend on the risk route:
@@ -481,6 +493,7 @@ Implemented in this repository:
 - compact context packs for token-aware worker execution
 - empirical learning observations and pattern statistics
 - diff-aware adaptive routing
+- stack-aware deterministic tool presets
 - run replay
 - Codex and Claude adapter templates
 - PyPI trusted-publishing workflow
@@ -489,11 +502,11 @@ Implemented in this repository:
 
 Next production-readiness work:
 
-- competitive generator mode
+- benchmark harness
+- provider/schema hardening
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
-- stack-specific deterministic tool presets
-- benchmark suite
+- competitive generator mode
 - first release publishing and `uvx` smoke testing
 
 See [ROADMAP.md](ROADMAP.md) for the detailed plan.

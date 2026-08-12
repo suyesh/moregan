@@ -29,6 +29,8 @@ class ToolSuggestion:
     command: List[str]
     reason: str
     remediation: str
+    required: bool = False
+    enabled: bool = True
 
 
 class ToolConfigError(ValueError):
@@ -215,6 +217,8 @@ class StackToolDetector:
         suggestions: List[ToolSuggestion] = []
         suggestions.extend(self._python_suggestions())
         suggestions.extend(self._node_suggestions())
+        suggestions.extend(self._java_suggestions())
+        suggestions.extend(self._ruby_suggestions())
         suggestions.extend(self._rust_suggestions())
         suggestions.extend(self._go_suggestions())
         suggestions.extend(self._security_suggestions())
@@ -225,11 +229,21 @@ class StackToolDetector:
         if (self.root / "tests").is_dir():
             suggestions.append(
                 ToolSuggestion(
+                    name="pytest",
+                    category="tests",
+                    command=["python3", "-m", "pytest"],
+                    reason="tests/ directory exists",
+                    remediation="Fix failing pytest tests or update them for intentional behavior changes.",
+                )
+            )
+            suggestions.append(
+                ToolSuggestion(
                     name="python_unittest",
                     category="tests",
                     command=["python3", "-m", "unittest", "discover", "-s", "tests"],
                     reason="tests/ directory exists",
-                    remediation="Fix failing Python tests or update them for intentional behavior changes.",
+                    remediation="Fix failing Python unittest tests or update them for intentional behavior changes.",
+                    enabled=False,
                 )
             )
         if self._contains_any("pyproject.toml", ["[tool.ruff]", "ruff"]):
@@ -250,6 +264,26 @@ class StackToolDetector:
                     command=["mypy", "."],
                     reason="mypy configuration exists",
                     remediation="Fix reported Python type errors.",
+                )
+            )
+        if self._contains_any("pyproject.toml", ["bandit"]) or (self.root / ".bandit").exists():
+            suggestions.append(
+                ToolSuggestion(
+                    name="bandit",
+                    category="security",
+                    command=["python3", "-m", "bandit", "-r", "."],
+                    reason="Bandit configuration or dependency reference exists",
+                    remediation="Fix validated Bandit security findings.",
+                )
+            )
+        if (self.root / "requirements.txt").exists() or self._contains_any("pyproject.toml", ["pip-audit"]):
+            suggestions.append(
+                ToolSuggestion(
+                    name="pip_audit",
+                    category="dependency_audit",
+                    command=["python3", "-m", "pip_audit"],
+                    reason="Python dependency manifest exists",
+                    remediation="Review and remediate vulnerable Python dependencies.",
                 )
             )
         return suggestions
@@ -291,6 +325,183 @@ class StackToolDetector:
             remediation=f"Fix failures from npm run {script}.",
         )
 
+    def _java_suggestions(self) -> List[ToolSuggestion]:
+        suggestions: List[ToolSuggestion] = []
+        suggestions.extend(self._maven_suggestions())
+        suggestions.extend(self._gradle_suggestions())
+        return suggestions
+
+    def _maven_suggestions(self) -> List[ToolSuggestion]:
+        pom = self.root / "pom.xml"
+        if not pom.exists():
+            return []
+
+        command = self._java_command("mvnw", "mvn")
+        text = pom.read_text(encoding="utf-8", errors="ignore").lower()
+        suggestions = [
+            ToolSuggestion(
+                "maven_test",
+                "tests",
+                command + ["test"],
+                self._java_reason("pom.xml exists", text),
+                "Fix failing Maven tests or update them for intentional behavior changes.",
+            )
+        ]
+        if "maven-checkstyle-plugin" in text or (self.root / "checkstyle.xml").exists():
+            suggestions.append(
+                ToolSuggestion(
+                    "maven_checkstyle",
+                    "lint",
+                    command + ["checkstyle:check"],
+                    "Maven Checkstyle configuration detected",
+                    "Fix reported Checkstyle violations.",
+                )
+            )
+        if "spotbugs-maven-plugin" in text or "findbugs-maven-plugin" in text:
+            suggestions.append(
+                ToolSuggestion(
+                    "maven_spotbugs",
+                    "security",
+                    command + ["spotbugs:check"],
+                    "Maven SpotBugs configuration detected",
+                    "Fix validated SpotBugs findings.",
+                )
+            )
+        if "maven-pmd-plugin" in text or (self.root / "pmd.xml").exists():
+            suggestions.append(
+                ToolSuggestion(
+                    "maven_pmd",
+                    "lint",
+                    command + ["pmd:check"],
+                    "Maven PMD configuration detected",
+                    "Fix reported PMD violations.",
+                )
+            )
+        if "dependency-check-maven" in text or "dependency-check" in text:
+            suggestions.append(
+                ToolSuggestion(
+                    "maven_dependency_check",
+                    "dependency_audit",
+                    command + ["dependency-check:check"],
+                    "OWASP Dependency-Check Maven configuration detected",
+                    "Review and remediate vulnerable Java dependencies.",
+                )
+            )
+        return suggestions
+
+    def _gradle_suggestions(self) -> List[ToolSuggestion]:
+        build_files = ["build.gradle", "build.gradle.kts"]
+        if not any((self.root / filename).exists() for filename in build_files):
+            return []
+
+        command = self._java_command("gradlew", "gradle")
+        text = self._read_many(build_files + ["settings.gradle", "settings.gradle.kts"]).lower()
+        suggestions = [
+            ToolSuggestion(
+                "gradle_test",
+                "tests",
+                command + ["test"],
+                self._java_reason("Gradle build file exists", text),
+                "Fix failing Gradle tests or update them for intentional behavior changes.",
+            )
+        ]
+        if "checkstyle" in text or (self.root / "config" / "checkstyle").is_dir():
+            suggestions.append(
+                ToolSuggestion(
+                    "gradle_checkstyle",
+                    "lint",
+                    command + ["checkstyleMain", "checkstyleTest"],
+                    "Gradle Checkstyle configuration detected",
+                    "Fix reported Checkstyle violations.",
+                )
+            )
+        if "spotbugs" in text or "findbugs" in text:
+            suggestions.append(
+                ToolSuggestion(
+                    "gradle_spotbugs",
+                    "security",
+                    command + ["spotbugsMain", "spotbugsTest"],
+                    "Gradle SpotBugs configuration detected",
+                    "Fix validated SpotBugs findings.",
+                )
+            )
+        if "pmd" in text or (self.root / "config" / "pmd").is_dir():
+            suggestions.append(
+                ToolSuggestion(
+                    "gradle_pmd",
+                    "lint",
+                    command + ["pmdMain", "pmdTest"],
+                    "Gradle PMD configuration detected",
+                    "Fix reported PMD violations.",
+                )
+            )
+        if "dependencycheck" in text or "dependency-check" in text:
+            suggestions.append(
+                ToolSuggestion(
+                    "gradle_dependency_check",
+                    "dependency_audit",
+                    command + ["dependencyCheckAnalyze"],
+                    "OWASP Dependency-Check Gradle configuration detected",
+                    "Review and remediate vulnerable Java dependencies.",
+                )
+            )
+        return suggestions
+
+    def _java_command(self, wrapper_name: str, fallback: str) -> List[str]:
+        wrapper = self.root / wrapper_name
+        if wrapper.exists():
+            return [f"./{wrapper_name}"]
+        return [fallback]
+
+    def _java_reason(self, base: str, text: str) -> str:
+        if "spring-boot" in text or "org.springframework.boot" in text:
+            return f"{base}; Spring Boot detected"
+        return base
+
+    def _ruby_suggestions(self) -> List[ToolSuggestion]:
+        gemfile = self.root / "Gemfile"
+        if not gemfile.exists():
+            return []
+        text = gemfile.read_text(encoding="utf-8", errors="ignore")
+        suggestions = [
+            ToolSuggestion(
+                "bundle_audit",
+                "dependency_audit",
+                ["bundle", "exec", "bundle-audit", "check", "--update"],
+                "Gemfile exists",
+                "Review and remediate vulnerable Ruby dependencies.",
+            )
+        ]
+        if "rails" in text.lower() or (self.root / "config" / "routes.rb").exists():
+            suggestions.append(
+                ToolSuggestion(
+                    "rspec",
+                    "tests",
+                    ["bundle", "exec", "rspec"],
+                    "Rails or RSpec project files detected",
+                    "Fix failing RSpec examples or update specs for intentional behavior changes.",
+                )
+            )
+            suggestions.append(
+                ToolSuggestion(
+                    "rubocop",
+                    "lint",
+                    ["bundle", "exec", "rubocop"],
+                    "Rails or Ruby project files detected",
+                    "Fix reported RuboCop violations.",
+                )
+            )
+            suggestions.append(
+                ToolSuggestion(
+                    "brakeman",
+                    "security",
+                    ["bundle", "exec", "brakeman", "--no-pager"],
+                    "Rails project files detected",
+                    "Fix validated Brakeman security findings.",
+                )
+            )
+        return suggestions
+
     def _rust_suggestions(self) -> List[ToolSuggestion]:
         if not (self.root / "Cargo.toml").exists():
             return []
@@ -303,6 +514,13 @@ class StackToolDetector:
                 "Cargo.toml exists",
                 "Fix reported Clippy lints.",
             ),
+            ToolSuggestion(
+                "cargo_audit",
+                "dependency_audit",
+                ["cargo", "audit"],
+                "Cargo.toml exists",
+                "Review and remediate vulnerable Rust dependencies.",
+            ),
         ]
 
     def _go_suggestions(self) -> List[ToolSuggestion]:
@@ -311,6 +529,13 @@ class StackToolDetector:
         return [
             ToolSuggestion("go_test", "tests", ["go", "test", "./..."], "go.mod exists", "Fix failing Go tests."),
             ToolSuggestion("go_vet", "lint", ["go", "vet", "./..."], "go.mod exists", "Fix reported go vet issues."),
+            ToolSuggestion(
+                "staticcheck",
+                "lint",
+                ["staticcheck", "./..."],
+                "go.mod exists",
+                "Fix reported staticcheck issues.",
+            ),
         ]
 
     def _security_suggestions(self) -> List[ToolSuggestion]:
@@ -343,6 +568,14 @@ class StackToolDetector:
             return False
         text = path.read_text(encoding="utf-8", errors="ignore")
         return any(needle in text for needle in needles)
+
+    def _read_many(self, relative_paths: List[str]) -> str:
+        chunks = []
+        for relative_path in relative_paths:
+            path = self.root / relative_path
+            if path.exists():
+                chunks.append(path.read_text(encoding="utf-8", errors="ignore"))
+        return "\n".join(chunks)
 
     def _dedupe(self, suggestions: List[ToolSuggestion]) -> List[ToolSuggestion]:
         seen = set()

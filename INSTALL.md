@@ -160,6 +160,7 @@ Learning artifacts are written under `.moregan/learning/` and summarized in each
 Risk routing uses both request keywords and repository evidence such as changed paths, dependency files, auth/payment/migration files, file count, and changed-line count.
 When a required deterministic check or routed worker fails after generation, the runtime can run bounded remediation attempts and writes `remediation.json` plus attempt-specific stage artifacts.
 Repository-local deterministic checks are configured in `.moregan/tools.yaml`.
+`moregan init` detects common Python, Node, Java/Spring Boot, Rails/Ruby, Go, and Rust project files and writes optional enabled presets for tests, linting, type checks, security scans, and dependency audits. Optional presets skip cleanly when the executable is not installed.
 Worker stages are recorded as dry-run `SKIP` results until a provider command is configured in `.moregan/workers.yaml`.
 Codex and Claude can read the installed skill instructions directly, but these executable runtime and maintenance commands need local Python 3.8+.
 Provider-backed workers support `execution: auto`, `execution: isolated`, and `execution: repository`. In `auto`, no-write workers run in isolated snapshots by default, while write-enabled generator workers run in the repository checkout.
