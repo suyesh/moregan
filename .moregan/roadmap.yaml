@@ -27,10 +27,10 @@ ten_item_tracker:
     status: implemented_foundation
   - number: 6
     improvement: Adaptive routing
-    status: next_major_numbered_item
+    status: implemented_foundation
   - number: 7
     improvement: Competitive generators
-    status: planned
+    status: next_major_numbered_item
   - number: 8
     improvement: Benchmark tasks
     status: planned
@@ -117,7 +117,7 @@ phases:
       - bounded_failure_reports
   - id: v2.6
     name: Adaptive Routing
-    status: partially_implemented
+    status: implemented_current_branch
     outcomes:
       - request_and_diff_risk_model
       - route_selection_reasons
@@ -365,13 +365,30 @@ completed_work:
       - ".moregan/roadmap.yaml parsed as YAML."
       - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.7.0.tar.gz and dist/moregan-1.7.0-py3-none-any.whl."
       - "Local wheel smoke installed moregan-1.7.0 and confirmed `moregan --help` plus `import moregan.learning`."
+  - id: diff-aware-adaptive-routing
+    phase: v2.9
+    original_list_number: 6
+    status: done
+    acceptance_criteria:
+      - "Risk classification includes git diff size, changed paths, and file categories."
+      - "Auth, payments, migrations, dependency, infra, and public API file changes raise route risk."
+      - "Risk reasons record both request keyword and repository evidence."
+      - "Tests cover routing decisions from diff evidence."
+    verification:
+      - "Targeted item-6 routing/version tests passed."
+      - "python3 -m unittest discover -s tests -v passed 50 tests."
+      - "python3 -m py_compile passed for install.py, tests, and all runtime modules."
+      - "git diff --check passed."
+      - ".moregan/roadmap.yaml parsed as YAML."
+      - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.8.0.tar.gz and dist/moregan-1.8.0-py3-none-any.whl."
+      - "Local wheel smoke installed moregan-1.8.0 and confirmed `moregan --help` plus RiskClassifier import."
 current_work:
-  id: diff-aware-adaptive-routing
-  phase: v2.9
-  original_list_number: 6
+  id: competitive-generators
+  phase: v3.0
+  original_list_number: 7
   status: next
   acceptance_criteria:
-    - "Risk classification includes git diff size, changed paths, and file categories."
-    - "Auth, payments, migrations, dependency, infra, and public API file changes raise route risk."
-    - "Risk reasons record both request keyword and repository evidence."
-    - "Tests cover low, medium, high, and critical routing decisions from diff evidence."
+    - "High-risk tasks can run multiple generator candidates with separate objectives."
+    - "Candidate outputs are isolated before selection."
+    - "A judge compares candidates against shared acceptance criteria and deterministic evidence."
+    - "Trace artifacts record candidate decisions and selected/synthesized outcome."

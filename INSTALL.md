@@ -157,6 +157,7 @@ moregan replay latest
 The runtime writes auditable artifacts under `.moregan/runs/`, including `state.json`, `states.jsonl`, `tool_suggestions.json`, and structured stage files in `stages/*.json`.
 It also writes compact context packs under `.moregan/runs/<run>/context/` so workers can read useful run context without receiving oversized inline prompts.
 Learning artifacts are written under `.moregan/learning/` and summarized in each run's `learning.json`; observations are tied to actual failures, remediations, and outcomes.
+Risk routing uses both request keywords and repository evidence such as changed paths, dependency files, auth/payment/migration files, file count, and changed-line count.
 When a required deterministic check or routed worker fails after generation, the runtime can run bounded remediation attempts and writes `remediation.json` plus attempt-specific stage artifacts.
 Repository-local deterministic checks are configured in `.moregan/tools.yaml`.
 Worker stages are recorded as dry-run `SKIP` results until a provider command is configured in `.moregan/workers.yaml`.

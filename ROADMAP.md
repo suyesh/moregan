@@ -30,8 +30,8 @@ This maps the original improvement list to the current implementation state.
 | 3 | Deterministic evidence layer | Implemented foundation: `.moregan/tools.yaml`, built-ins, explicit commands, required/optional checks, and structured command evidence. |
 | 4 | Execution trace | Implemented and improving: run directories, events, state, stage artifacts, replay, remediation artifacts, and compact context packs. |
 | 5 | Empirical learning system | Implemented foundation: run-backed observations, outcomes, and aggregate pattern confidence. |
-| 6 | Adaptive routing | Next major numbered item. Request-risk routing exists; diff, touched-file, dependency, and stack-aware routing still needed. |
-| 7 | Competitive generators | Not implemented. |
+| 6 | Adaptive routing | Implemented foundation: request keywords plus changed paths, dependency files, sensitive paths, file count, and changed-line evidence. |
+| 7 | Competitive generators | Next major numbered item. |
 | 8 | Benchmark tasks | Not implemented. |
 | 9 | Measurable positioning | Partially implemented: README claims are more conservative; needs benchmark-backed release claims. |
 | 10 | Real CLI | Partially implemented: `init`, `setup`, `run`, `status`, `inspect`, `replay`, and `adapters` exist; `benchmark`, `learn`, and stronger `doctor` remain. |
@@ -144,6 +144,8 @@ Goal: spend rigor where risk justifies it.
 - Record why stages were selected or skipped.
 - Let benchmarks tune routing thresholds.
 
+Status: the first adaptive routing foundation is implemented. Risk classification now combines request keywords with local git evidence including changed paths, dependency/config/infra files, auth/payment/migration paths, touched-file count, and changed-line count.
+
 ### v2.7: Context Curation
 
 Goal: reduce token/context cost while preserving useful worker context.
@@ -196,4 +198,4 @@ Goal: let evidence tune the harness.
 
 ## Current Branch Focus
 
-This branch starts v1.6 through v2.8. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, isolated no-write worker execution, compact context packs, and empirical learning artifacts. The next major numbered item is diff-aware adaptive routing.
+This branch starts v1.6 through v2.9. The runtime now has repository initialization, Codex/Claude adapter templates, structured stage output, an enforced state machine, configurable deterministic tools, dry-run worker orchestration, provider-backed local command workers, read-only run replay, bounded remediation attempts, isolated no-write worker execution, compact context packs, empirical learning artifacts, and diff-aware adaptive routing. The next major numbered item is competitive generators.

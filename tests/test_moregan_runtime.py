@@ -27,6 +27,11 @@ class MoreGANRuntimeTests(unittest.TestCase):
     def tearDown(self):
         self.tempdir.cleanup()
 
+    def _init_git_repo(self):
+        subprocess.run(["git", "init"], cwd=self.root, check=True, capture_output=True, text=True)
+        subprocess.run(["git", "config", "user.email", "moregan@example.com"], cwd=self.root, check=True)
+        subprocess.run(["git", "config", "user.name", "MoreGAN"], cwd=self.root, check=True)
+
     def test_risk_classifier_routes_security_sensitive_work_to_critical_path(self):
         risk = RiskClassifier().classify("Replace authentication token handling")
 
@@ -34,6 +39,39 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertIn("architect", risk.route)
         self.assertIn("security_evaluator", risk.route)
         self.assertIn("learning_curator", risk.route)
+
+    def test_risk_classifier_uses_dependency_diff_evidence(self):
+        self._init_git_repo()
+        (self.root / "package.json").write_text('{"dependencies": {"left-pad": "1.0.0"}}\n', encoding="utf-8")
+
+        risk = RiskClassifier(self.root).classify("Change button copy")
+
+        self.assertEqual(risk.level, "high")
+        self.assertIn("security_evaluator", risk.route)
+        self.assertTrue(any("repository high-risk paths changed" in reason for reason in risk.reasons))
+        self.assertEqual(risk.evidence["changed_files"], ["package.json"])
+
+    def test_risk_classifier_uses_auth_path_evidence(self):
+        self._init_git_repo()
+        auth_dir = self.root / "app" / "auth"
+        auth_dir.mkdir(parents=True)
+        (auth_dir / "tokens.py").write_text("TOKEN_TTL = 300\n", encoding="utf-8")
+
+        risk = RiskClassifier(self.root).classify("Small cleanup")
+
+        self.assertEqual(risk.level, "critical")
+        self.assertIn("designer_decision", risk.route)
+        self.assertTrue(any("repository critical-risk paths changed" in reason for reason in risk.reasons))
+
+    def test_risk_classifier_uses_diff_size_evidence(self):
+        self._init_git_repo()
+        for index in range(8):
+            (self.root / f"module_{index}.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+        risk = RiskClassifier(self.root).classify("Change wording")
+
+        self.assertEqual(risk.level, "high")
+        self.assertTrue(any("repository diff touches 8 files" in reason for reason in risk.reasons))
 
     def test_runtime_creates_auditable_trace_without_checks(self):
         result = MoreGANRuntime(self.root).run("Change button copy", run_checks=False)

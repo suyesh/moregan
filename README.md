@@ -67,6 +67,7 @@ flowchart TD
 - Enforced workflow instead of hoping an agent remembers every instruction.
 - Structured findings, evidence, confidence, and verdicts for each stage.
 - Deterministic checks for tests, syntax, git diff validation, and repo-local commands.
+- Adaptive routing that combines request keywords with repository diff evidence.
 - Bounded remediation attempts that feed failed findings back to the generator.
 - Isolated execution for no-write worker stages by default.
 - Compact context packs that keep worker prompts smaller while preserving useful run context.
@@ -157,15 +158,18 @@ This creates:
   tools.yaml
   workers.yaml
   runs/
+  learning/
 ```
 
-It also adds `.moregan/runs/` to `.gitignore`. Existing config is preserved unless `--force` is passed.
+It also adds `.moregan/runs/` and `.moregan/learning/` to `.gitignore`. Existing config is preserved unless `--force` is passed.
 
 Run MoreGAN:
 
 ```bash
 moregan run "Add OAuth login"
 ```
+
+Risk routing uses both the request and local repository evidence. Auth, payments, migrations, dependency files, infrastructure files, public API paths, broad diffs, and large line changes can raise the route even when the request sounds small.
 
 Inspect the latest run:
 
@@ -476,6 +480,7 @@ Implemented in this repository:
 - bounded remediation loop
 - compact context packs for token-aware worker execution
 - empirical learning observations and pattern statistics
+- diff-aware adaptive routing
 - run replay
 - Codex and Claude adapter templates
 - PyPI trusted-publishing workflow
@@ -484,7 +489,7 @@ Implemented in this repository:
 
 Next production-readiness work:
 
-- diff-aware adaptive routing
+- competitive generator mode
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
 - stack-specific deterministic tool presets

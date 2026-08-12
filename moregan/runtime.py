@@ -15,7 +15,7 @@ import time
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from moregan.context import ContextPackWriter
 from moregan.learning import EmpiricalLearningStore
@@ -69,6 +69,43 @@ RISK_KEYWORDS: Dict[str, List[str]] = {
     ],
 }
 
+RISK_LEVEL_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+CRITICAL_PATH_PATTERNS = [
+    "auth",
+    "authentication",
+    "authorization",
+    "permission",
+    "payment",
+    "billing",
+    "stripe",
+    "secret",
+    "token",
+    "migration",
+]
+
+HIGH_PATH_PATTERNS = [
+    "database",
+    "schema",
+    "deploy",
+    "dockerfile",
+    "docker-compose",
+    "terraform",
+    "kubernetes",
+    ".github/workflows",
+    "requirements.txt",
+    "pyproject.toml",
+    "package.json",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "gemfile",
+    "cargo.toml",
+    "go.mod",
+]
+
+MEDIUM_PATH_PATTERNS = ["api", "controller", "route", "service", "config", "test", "spec"]
+
 ROUTES_BY_RISK: Dict[str, List[str]] = {
     "low": ["generator", "deterministic_evidence", "evaluator"],
     "medium": ["planner", "generator", "deterministic_evidence", "evaluator", "code_reviewer"],
@@ -103,24 +140,136 @@ ROUTES_BY_RISK: Dict[str, List[str]] = {
 class RiskClassifier:
     """Routes work by risk before persona selection."""
 
+    def __init__(self, root: Optional[Path] = None):
+        self.root = root.resolve() if root else None
+
     def classify(self, request: str) -> RiskClassification:
         normalized = request.lower()
+        selected_level = "low"
+        reasons: List[str] = []
+        confidence = 0.6
         for level in ("critical", "high", "medium"):
             matches = [keyword for keyword in RISK_KEYWORDS[level] if keyword in normalized]
             if matches:
-                return RiskClassification(
-                    level=level,
-                    reasons=[f"matched request keyword: {keyword}" for keyword in matches],
-                    route=ROUTES_BY_RISK[level],
-                    confidence=0.8,
-                )
+                selected_level = level
+                reasons.extend(f"matched request keyword: {keyword}" for keyword in matches)
+                confidence = max(confidence, 0.8)
+                break
 
+        repository_evidence = self._repository_evidence()
+        repository_level, repository_reasons = self._repository_risk(repository_evidence)
+        if repository_reasons:
+            reasons.extend(repository_reasons)
+            confidence = max(confidence, 0.75)
+        selected_level = self._max_level(selected_level, repository_level)
+        if not reasons:
+            reasons.append("no high-risk request keywords or repository changes matched")
         return RiskClassification(
-            level="low",
-            reasons=["no high-risk request keywords matched"],
-            route=ROUTES_BY_RISK["low"],
-            confidence=0.6,
+            level=selected_level,  # type: ignore[arg-type]
+            reasons=reasons,
+            route=ROUTES_BY_RISK[selected_level],
+            confidence=confidence,
+            evidence=repository_evidence,
         )
+
+    def _repository_evidence(self) -> Dict[str, object]:
+        if self.root is None:
+            return {"source": "not_configured", "changed_files": [], "changed_file_count": 0}
+        if not (self.root / ".git").exists():
+            return {"source": "no_git_repository", "changed_files": [], "changed_file_count": 0}
+
+        status = self._git_lines(["git", "status", "--short", "--untracked-files=all"])
+        changed_files = self._changed_files_from_status(status)
+        diff = self._diff_stats()
+        return {
+            "source": "git",
+            "changed_files": changed_files,
+            "changed_file_count": len(changed_files),
+            "status": status[:120],
+            "diff": diff,
+        }
+
+    def _repository_risk(self, evidence: Dict[str, object]) -> Tuple[str, List[str]]:
+        changed_files = [str(item) for item in evidence.get("changed_files", []) if item]
+        diff = evidence.get("diff", {})
+        insertions = int(diff.get("insertions", 0)) if isinstance(diff, dict) else 0
+        deletions = int(diff.get("deletions", 0)) if isinstance(diff, dict) else 0
+        total_changed_lines = insertions + deletions
+        reasons = []
+        level = "low"
+
+        critical_paths = [path for path in changed_files if self._matches_any(path, CRITICAL_PATH_PATTERNS)]
+        high_paths = [path for path in changed_files if self._matches_any(path, HIGH_PATH_PATTERNS)]
+        medium_paths = [path for path in changed_files if self._matches_any(path, MEDIUM_PATH_PATTERNS)]
+
+        if critical_paths:
+            level = self._max_level(level, "critical")
+            reasons.append(f"repository critical-risk paths changed: {', '.join(critical_paths[:5])}")
+        if high_paths:
+            level = self._max_level(level, "high")
+            reasons.append(f"repository high-risk paths changed: {', '.join(high_paths[:5])}")
+        if medium_paths:
+            level = self._max_level(level, "medium")
+            reasons.append(f"repository medium-risk paths changed: {', '.join(medium_paths[:5])}")
+        if len(changed_files) >= 8:
+            level = self._max_level(level, "high")
+            reasons.append(f"repository diff touches {len(changed_files)} files")
+        elif len(changed_files) >= 3:
+            level = self._max_level(level, "medium")
+            reasons.append(f"repository diff touches {len(changed_files)} files")
+        if total_changed_lines >= 400:
+            level = self._max_level(level, "high")
+            reasons.append(f"repository diff changes {total_changed_lines} lines")
+        elif total_changed_lines >= 80:
+            level = self._max_level(level, "medium")
+            reasons.append(f"repository diff changes {total_changed_lines} lines")
+        return level, reasons
+
+    def _git_lines(self, command: Sequence[str]) -> List[str]:
+        if self.root is None:
+            return []
+        result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
+        if result.returncode != 0:
+            return []
+        return [line for line in result.stdout.splitlines() if line]
+
+    def _changed_files_from_status(self, lines: Sequence[str]) -> List[str]:
+        changed = []
+        for line in lines:
+            if len(line) < 4:
+                continue
+            path = line[3:].strip()
+            if " -> " in path:
+                path = path.split(" -> ", 1)[1]
+            changed.append(path)
+        return sorted(set(changed))
+
+    def _diff_stats(self) -> Dict[str, int]:
+        if self.root is None:
+            return {"files": 0, "insertions": 0, "deletions": 0}
+        files = set()
+        insertions = 0
+        deletions = 0
+        for command in (["git", "diff", "--numstat"], ["git", "diff", "--cached", "--numstat"]):
+            result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
+            if result.returncode != 0:
+                continue
+            for line in result.stdout.splitlines():
+                parts = line.split("\t")
+                if len(parts) < 3:
+                    continue
+                added, removed, path = parts[0], parts[1], parts[2]
+                files.add(path)
+                insertions += int(added) if added.isdigit() else 0
+                deletions += int(removed) if removed.isdigit() else 0
+        return {"files": len(files), "insertions": insertions, "deletions": deletions}
+
+    def _matches_any(self, path: str, patterns: Sequence[str]) -> bool:
+        normalized = path.lower()
+        return any(pattern in normalized for pattern in patterns)
+
+    def _max_level(self, left: str, right: str) -> str:
+        return left if RISK_LEVEL_ORDER[left] >= RISK_LEVEL_ORDER[right] else right
 
 
 class TraceWriter:
@@ -376,7 +525,7 @@ class MoreGANRuntime:
     def __init__(self, root: Path, max_remediation_attempts: int = 3):
         self.root = root.resolve()
         self.max_remediation_attempts = max(0, max_remediation_attempts)
-        self.classifier = RiskClassifier()
+        self.classifier = RiskClassifier(self.root)
         self.trace_writer = TraceWriter(self.root)
         self.context_writer = ContextPackWriter(self.root)
         self.learning_store = EmpiricalLearningStore(self.root)

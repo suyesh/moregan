@@ -49,6 +49,7 @@ class RiskClassification:
     reasons: List[str]
     route: List[str]
     confidence: float
+    evidence: Dict[str, object] = field(default_factory=dict)
 
 
 @dataclass

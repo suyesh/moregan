@@ -837,3 +837,39 @@ persona_execution:
   learning_curator: "PASS - recorded item 5 completion and item 6 next work"
 notes: "This completes the foundation for original item 5. The next major numbered item is item 6: adaptive routing using repository evidence."
 ---
+
+---
+timestamp: "2026-08-12T01:00:28-07:00"
+status: SUCCESS
+task_nickname: moregan-diff-aware-adaptive-routing
+summary: "Implemented item 6 foundation: risk routing now combines request keywords with local repository evidence."
+branch: "main"
+updates:
+  - file: "moregan/schemas.py"
+    action: "Added repository evidence to RiskClassification."
+  - file: "moregan/runtime.py"
+    action: "Made RiskClassifier root-aware; added changed-file, diff-size, dependency, infra, auth, payment, migration, and API path risk signals."
+  - file: "tests/test_moregan_runtime.py"
+    action: "Added coverage for dependency-file high risk, auth-path critical risk, broad diff high risk, and version consistency."
+  - file: "README.md"
+    action: "Documented adaptive routing and .moregan/learning init artifact."
+  - file: "INSTALL.md"
+    action: "Documented request-plus-repository risk routing."
+  - file: "ROADMAP.md, .moregan/roadmap.yaml"
+    action: "Marked original item 6 implemented foundation and set item 7 competitive generators as next."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md"
+    action: "Bumped version to 1.8.0 for the new runtime feature."
+verification_evidence: "Targeted item-6 routing/version tests passed; python3 -m unittest discover -s tests -v passed 50 tests; python3 -m py_compile passed for install.py, tests, and all runtime modules; git diff --check passed; .moregan/roadmap.yaml parsed as YAML; env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.8.0.tar.gz and dist/moregan-1.8.0-py3-none-any.whl; local wheel smoke installed moregan-1.8.0 and confirmed `moregan --help` plus RiskClassifier import."
+persona_execution:
+  planner: "PASS"
+  architect: "PASS"
+  designer: "not needed - runtime/docs change with no frontend surface"
+  generator: "PASS"
+  evaluator: "PASS"
+  security_evaluator: "PASS"
+  code_reviewer: "PASS"
+  production_readiness_reviewer: "PASS"
+  mr_readiness_analyzer: "not scored - local branch has intentional implementation work before commit"
+  learning_curator: "PASS - recorded item 6 completion and item 7 next work"
+notes: "This completes the foundation for original item 6. The next major numbered item is item 7: competitive generators."
+---
