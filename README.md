@@ -224,6 +224,7 @@ and [provider execution](https://github.com/suyesh/moregan/blob/main/docs/provid
 
 - [Getting started and troubleshooting](https://github.com/suyesh/moregan/blob/main/docs/getting-started.md)
 - [Current capabilities, gaps and priorities](https://github.com/suyesh/moregan/blob/main/docs/product-status.md)
+- [Planned turnkey installation, skill parity, safe rollback and parallel generators](https://github.com/suyesh/moregan/blob/main/docs/turnkey-product.md)
 - [Worker JSON contract](https://github.com/suyesh/moregan/blob/main/docs/worker-contract.md)
 - [Benchmarks and measurement limits](https://github.com/suyesh/moregan/blob/main/docs/benchmarks.md)
 - [Roadmap and original ten-item tracker](https://github.com/suyesh/moregan/blob/main/ROADMAP.md)
@@ -241,6 +242,12 @@ git diff --check
 Runtime tests use local subprocesses and simulated providers. No measured
 improvement over standalone agents is claimed. Competitive generators, native
 provider bridges, release CI and stronger containment remain work to do.
+
+The product target is easy installation with built-in provider connections and
+the same runtime enforcement from CLI, Codex skill and Claude skill. Safe rollback,
+parallel generators and CI/PR integrations are explicit roadmap milestones, not
+current features. Parity means the same prompts, checks and verdict rules, not
+identical code from different models or repeated live generations.
 
 ## License
 

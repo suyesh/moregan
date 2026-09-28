@@ -120,7 +120,14 @@ merge/deployment, untrusted-code isolation or guaranteed security approval.
 2. Native provider bridges, safer activation UX and one runtime-consistent skill contract.
 3. Windows child-tree cleanup and stronger process isolation where required.
 4. Representative paired benchmarks with actual token/cost/time and human review data.
-5. Only then expand competitive generators or tune routing from measured benefit.
+5. Safe transactional generation/recovery, then bounded parallel reviews and
+   competing generators; add permissioned CI/PR integrations and measured tuning.
+
+The requested destination is a turnkey tool, not a permanent custom-bridge
+framework. [Product milestones](turnkey-product.md) define easy installation,
+built-in providers, CLI/skill parity, rollback, parallel generators and integration
+acceptance criteria. Removing unsupported present-tense claims did not drop those
+goals. They remain planned until implementation and verification land.
 
 The original ten-item tracker remains in [ROADMAP.md](../ROADMAP.md). This audit
 changes documentation and adds documentation checks; it does not claim to have

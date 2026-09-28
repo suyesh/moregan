@@ -96,8 +96,8 @@ class DocumentationTests(unittest.TestCase):
             self.assertEqual(stage.findings[0].severity, "high")
 
     def test_repository_links_in_user_guides_resolve(self):
-        files = ["README.md", "INSTALL.md", "docs/getting-started.md", "docs/worker-contract.md",
-                 "docs/product-status.md", "docs/releases.md"]
+        files = ["README.md", "INSTALL.md", "ROADMAP.md", "docs/getting-started.md", "docs/worker-contract.md",
+                 "docs/product-status.md", "docs/releases.md", "docs/turnkey-product.md"]
         github_prefix = "https://github.com/suyesh/moregan/blob/main/"
         for name in files:
             source = REPO / name

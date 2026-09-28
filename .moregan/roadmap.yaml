@@ -1,7 +1,7 @@
 nickname: moregan-roadmap
 created: "2026-08-11"
 status: active
-north_star: "Executable adversarial orchestration for coding agents, with enforced workflow state and evidence engineers can inspect."
+north_star: "An installable engineering tool with one runtime and equivalent CLI, Codex skill and Claude skill enforcement, verified patches and inspectable evidence."
 principles:
   - runtime_enforces_protocol
   - structured_stage_outputs
@@ -9,6 +9,8 @@ principles:
   - adaptive_routing_by_risk
   - empirical_learning_only
   - benchmarked_claims
+  - one_runtime_across_entry_points
+  - preserve_user_work_during_recovery
 ten_item_tracker:
   - number: 1
     improvement: Real harness runtime
@@ -30,7 +32,7 @@ ten_item_tracker:
     status: implemented_and_improving
   - number: 7
     improvement: Competitive generators
-    status: planned_later
+    status: planned_m5
   - number: 8
     improvement: Benchmark tasks
     status: implemented_foundation
@@ -40,6 +42,43 @@ ten_item_tracker:
   - number: 10
     improvement: Real CLI
     status: partially_implemented
+product_milestones:
+  specification: docs/turnkey-product.md
+  parity_contract: "Same resolved request/configuration, canonical persona prompts, checks and verdict rules; identical normalized fixture results, not guaranteed identical live model output."
+  milestones:
+    - id: M1
+      name: Reliable distribution
+      status: next
+      acceptance: "Supported matrix and installed-package tests gate publishing; PyPI remains paused."
+    - id: M2
+      name: No-glue provider onboarding
+      status: planned
+      depends_on: [M1]
+      acceptance: "Built-in Codex/Claude bridges, guided prerequisite setup and safe activation; no user-written bridge on the supported path."
+    - id: M3
+      name: Skill and CLI parity
+      status: planned
+      depends_on: [M2]
+      acceptance: "Both skills dispatch the same runtime and canonical personas, with installed-launcher parity fixtures and host smoke tests."
+    - id: M4
+      name: Safe changes and recovery
+      status: planned
+      depends_on: [M1, M2, M3]
+      acceptance: "Isolated generation, conditional patch application and owned-change recovery preserve pre-existing and subsequent user edits."
+    - id: M5
+      name: Bounded parallelism and competition
+      status: planned
+      depends_on: [M4]
+      acceptance: "Immutable concurrent reviews and isolated competing candidates use common gates, bounded execution and measured overhead."
+    - id: M6
+      name: Engineering integrations
+      status: planned
+      depends_on: [M1, M2, M3]
+      acceptance: "CI evidence exports and GitHub/GitLab review integration bind results to revisions and require explicit permission for external writes; patch-producing flows also require M4."
+    - id: M7
+      name: Measured quality and efficiency
+      status: implemented_foundation
+      acceptance: "Representative paired trials, measured usage and safe context/evidence reuse guide routing; starts alongside M1-M3 and supplies M5 baselines."
 phases:
   - id: v1.6
     name: Structured Runtime Outputs
@@ -513,6 +552,7 @@ completed_work:
       - "Simulated providers only, no live-agent effectiveness claim or PyPI publication."
 current_work:
   id: release-ci-supported-platforms
+  product_milestone: M1
   original_list_numbers: [1, 10]
   status: next
   acceptance_criteria:
@@ -524,3 +564,6 @@ current_work:
     - provider_bridges_activation_and_skill_contract_alignment
     - windows_child_tree_cleanup
     - representative_benchmarks_and_measured_provider_usage
+    - transactional_generation_and_safe_recovery
+    - bounded_parallel_reviews_and_competitive_generators
+    - permissioned_ci_and_pr_integrations

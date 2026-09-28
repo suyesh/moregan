@@ -26,11 +26,33 @@ The project is alpha. Completed foundations are not a claim of production readin
 
 ## Next
 
-1. Supported-version CI, package checks, and release gates.
-2. Native provider bridges, clearer worker activation, and runtime-consistent skill/persona instructions.
-3. Windows child-tree supervision and platform validation.
-4. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
-   and independent human evaluation.
+The product target is one installable runtime with three first-class entry points:
+CLI, Codex skill, and Claude skill. Users should not need to write a provider
+bridge or maintain a second prompt-only workflow. This is a target, not today's
+installation experience.
+
+| Milestone | Deliverable | Status |
+|---|---|---|
+| M1 | Supported-version CI, installed-package checks, and test-gated releases | Next |
+| M2 | Built-in Codex/Claude bridges, guided setup, safe activation, prerequisite diagnostics | Planned |
+| M3 | Thin skills using the same runtime and canonical persona prompts, with parity tests | Planned |
+| M4 | Transactional generation, safe patch application and scoped undo/automatic recovery | Planned |
+| M5 | Opt-in parallel reviewers and isolated competing generators with bounded concurrency | Planned |
+| M6 | CI/PR integrations and machine-readable reports with explicit write permissions | Planned |
+| M7 | Measured quality/cost, context reuse and evidence-tuned routing | Foundation exists; ongoing |
+
+M1-M3 are the first adoption milestone: install, connect a supported authenticated
+provider, and run from the terminal or a skill without writing Python glue.
+Platform/process hardening and representative benchmarks continue alongside them;
+measure sequential performance before enabling M5 competition by default.
+
+**Parity means the same policy, persona prompts, checks, repair limits and verdict
+rules for the same resolved inputs.** It does not promise identical generated code
+across stochastic runs or across Codex and Claude models. Deterministic fixtures
+must produce identical normalized results through all three entry points.
+
+Acceptance criteria, safety boundaries and dependencies:
+[Turnkey product milestones](docs/turnkey-product.md).
 
 Details and code pointers: [September review](docs/review-2026-09-27.md).
 User-facing capabilities and remaining integration gaps: [Product assessment](docs/product-status.md).
@@ -42,11 +64,11 @@ Provider limits and process scope: [Provider execution](docs/provider-execution.
 
 ## Later
 
-- Competitive generators with the same acceptance criteria and evidence gates.
-- Routing and evaluator selection tuned by measured benefit and cost.
-- Stronger process isolation and repository configuration validation.
-- Empirical learning calibrated across independent runs.
-- Richer `doctor` and `learn` commands.
+M4-M7 above retain the advanced product goals; removing unsupported claims from
+the install guide did not cancel them. Automatic rollback and integrations now
+have explicit acceptance criteria rather than descriptive configuration alone.
+Broader enterprise connectors, living-documentation automation, stronger OS
+sandboxing and calibrated cross-project learning follow validated core workflows.
 
 ## Original Ten Items
 
@@ -58,10 +80,10 @@ Provider limits and process scope: [Provider execution](docs/provider-execution.
 | 4 | Execution trace | Implemented; replay attempt fidelity repaired in 1.12.0 |
 | 5 | Empirical learning | Foundation implemented; calibration pending |
 | 6 | Adaptive routing | Intake and post-generation escalation implemented in 1.12.0; heuristic tuning remains |
-| 7 | Competitive generators | Deferred until benchmarks and reliability improve |
+| 7 | Competitive generators | Planned in M5; isolated candidates, common gates, measured overhead |
 | 8 | Benchmarks | Foundation implemented in 1.10.0; live effectiveness study pending |
 | 9 | Measurable positioning | Limitations documented; no effectiveness claims yet |
-| 10 | Real CLI | Init, setup, adapters, run, status, inspect, replay, benchmark; doctor/learn pending |
+| 10 | Real CLI | Existing commands implemented; turnkey onboarding and skill parity in M2-M3; runtime doctor/learn pending |
 
 Every feature gets a package version bump. Completed milestones are tested,
 committed, and pushed to `main`. PyPI publishing remains paused until requested.

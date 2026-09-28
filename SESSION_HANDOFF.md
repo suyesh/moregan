@@ -1,6 +1,6 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 after capability audit and user-documentation corrections.
+Updated: 2026-09-27 after capability audit and turnkey product milestone definition.
 Benchmark, completion/provider hardening, adaptive routing, check execution and workspace milestones are
 implemented and tested; production hardening continues.
 
@@ -8,7 +8,7 @@ implemented and tested; production hardening continues.
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed milestone: `356f196 Bound provider I/O and supervise nested worker processes`, version 1.15.0.
+- Previous pushed milestone: `65fe651 Clarify capabilities, provider setup, and published release status`, version 1.15.0.
 - Current feature version: 1.15.0, bounded provider I/O and nested process supervision.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
@@ -181,6 +181,18 @@ configured Checkstyle, SpotBugs, PMD, and OWASP Dependency-Check integrations.
 ## Review Findings And Next Work
 
 Read `docs/review-2026-09-27.md` first for concrete code references and impact.
+Read `docs/turnkey-product.md` for the requested product destination and acceptance
+criteria. The user wants native provider connections, easy CLI/skill installation,
+equivalent runtime enforcement from both host skills, safe rollback, parallel
+generators and real integrations. These are not being removed from product scope.
+
+ROADMAP.md and .moregan/roadmap.yaml now track M1-M7 for distribution, onboarding,
+parity, transactional recovery, parallelism, integrations and measured efficiency.
+These labels supplement, rather than replace, the original ten-item tracker.
+Parity requires identical normalized fixture results through the same runtime;
+do not promise identical live model output across hosts/providers. Rollback must
+preserve user work and stop on conflicting subsequent edits, never reset a checkout.
+This milestone definition changes no runtime/skill behavior or package version.
 
 The next milestone is release CI and supported-platform validation, before
 publishing any release. The workflow currently builds/publishes without tests;
@@ -202,7 +214,10 @@ After that:
 2. Add Windows child-tree cleanup with native platform tests and stronger isolation.
 3. Expand fixtures to representative real repositories and collect actual
    provider token/cost measurements before running effectiveness studies.
-4. Introduce competitive generators only after this evidence and hardening.
+4. Add transactional generation and owned-patch recovery before opt-in parallel
+   reviewers and competing generators. Benchmark the added overhead.
+5. Deliver revision-bound CI/PR integrations with explicit external-write permissions.
+   M7 measurement is ongoing alongside this work, not postponed until the end.
 
 Risk policy and remaining limits are documented in docs/risk-routing.md. Routing
 is heuristic and request-only outside Git. Fixed-baseline evidence includes

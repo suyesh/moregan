@@ -1097,3 +1097,27 @@ execution_note: "No live model calls or Java build; Maven example configs were p
 next: "Release CI and support matrix; then provider bridges, activation UX and runtime-consistent skill/persona instructions."
 publishing: "PyPI remains paused; no release tag or workflow dispatch."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-turnkey-product-milestones
+summary: "Made easy installation, native providers, skill parity, safe recovery, parallelism and integrations explicit product milestones."
+branch: "main"
+package_version: "1.15.0"
+updates:
+  - file: "docs/turnkey-product.md, ROADMAP.md, .moregan/roadmap.yaml"
+    action: "Defined M1-M7 with acceptance criteria and dependencies while preserving the original ten-item tracker."
+  - file: "README.md, docs/product-status.md, SESSION_HANDOFF.md"
+    action: "Separated planned product scope from current capabilities; captured the user's requested destination and runtime parity contract."
+  - file: "tests/test_documentation.py"
+    action: "Extended repository-link checks to the public roadmap and new product milestone specification."
+verification_evidence:
+  - "203 tests passed on macOS with Python 3.14.0; three documentation tests also passed with Python 3.12.11."
+  - "Roadmap YAML parsed; M1-M7 IDs, dependency references and the original ten items validated."
+  - "Wheel and sdist built; the wheel includes docs/turnkey-product.md."
+  - "git diff --check passed."
+execution_note: "Roadmap and documentation changes only; no new runtime/skill behavior, parity guarantee or feature version bump. No live provider calls."
+next: "M1 release CI, then M2 native-provider onboarding and M3 shared runtime/persona skill parity. Benchmark and platform hardening continue alongside these."
+publishing: "PyPI remains paused; no release tag or workflow dispatch."
+---
