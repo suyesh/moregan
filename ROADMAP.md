@@ -35,7 +35,7 @@ installation experience.
 
 | Milestone | Deliverable | Status |
 |---|---|---|
-| M1 | Supported-version CI, installed-package checks, and test-gated releases | Implemented; native CI validation pending |
+| M1 | Supported-version CI, installed-package checks, and test-gated releases | Native CI passed; release validation in progress |
 | M2 | Built-in Codex/Claude bridges, guided setup, safe activation, prerequisite diagnostics | Planned |
 | M3 | Thin skills using the same runtime and canonical persona prompts, with parity tests | Planned |
 | M4 | Transactional generation, safe patch application and scoped undo/automatic recovery | Planned |

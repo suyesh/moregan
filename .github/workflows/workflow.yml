@@ -56,7 +56,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.preflight.outputs.tag }}
         run: |
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          if state=$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease'); then
+            if [ "$state" != "false" ]; then
+              echo "Existing release must be published and stable before PyPI publication." >&2
+              exit 1
+            fi
+          else
             gh release create "$RELEASE_TAG" dist/* --verify-tag \
               --title "MoreGAN $RELEASE_TAG" \
               --notes-file "docs/release-notes/${RELEASE_TAG#v}.md"

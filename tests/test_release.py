@@ -217,6 +217,29 @@ class ReleaseTests(unittest.TestCase):
                 self.assertIn(f"MoreGAN {self.version}", result.stdout)
                 self.assertEqual(log.read_text().splitlines(), ["sync --python python3", "run python install.py"])
 
+    @unittest.skipUnless(os.name == "posix", "Release job uses Bash")
+    def test_release_creation_rejects_existing_draft_or_prerelease(self):
+        workflow = yaml.safe_load((REPO / ".github/workflows/workflow.yml").read_text())
+        command = next(step["run"] for step in workflow["jobs"]["github-release"]["steps"] if "run" in step)
+        binary = self.root / "bin"
+        binary.mkdir()
+        gh = binary / "gh"
+        gh.write_text('#!/bin/sh\nif [ "$2" = "view" ]; then\n'
+                      '  if [ "$RELEASE_STATE" = "missing" ]; then exit 1; fi\n'
+                      '  printf "%s\\n" "$RELEASE_STATE"\n'
+                      'elif [ "$2" = "create" ]; then printf "created" > "$CREATE_LOG"; else exit 2; fi\n',
+                      encoding="utf-8")
+        gh.chmod(0o755)
+        for state, expected in (("missing", 0), ("false", 0), ("true", 1), ("unexpected", 1)):
+            with self.subTest(state=state):
+                log = self.root / f"{state}.log"
+                env = dict(os.environ, PATH=str(binary) + os.pathsep + os.environ["PATH"],
+                           RELEASE_STATE=state, RELEASE_TAG=self.tag, CREATE_LOG=str(log))
+                result = subprocess.run(["bash", "-e", "-c", command], cwd=self.root, env=env,
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, expected, result.stderr)
+                self.assertEqual(log.exists(), state == "missing")
+
 
 if __name__ == "__main__":
     unittest.main()

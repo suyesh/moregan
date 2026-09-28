@@ -1142,3 +1142,18 @@ execution_note: "Native hosted CI and publication are not yet verified. Provider
 next: "Push M1 for native CI, fix any failures, then tag the verified release and confirm GitHub/PyPI publication. M2 follows."
 publishing: "The maintainer resumed publishing. Create releases for meaningful features/fixes/distribution changes; explicitly skip unnecessary documentation-only releases."
 ---
+
+---
+timestamp: "2026-09-27"
+status: RELEASE_VALIDATION
+task_nickname: moregan-m1-native-ci
+package_version: "1.16.0"
+summary: "All 13 native CI jobs passed after fixing Windows integrity timestamps and smoke-console encoding."
+verification_evidence:
+  - "CI run 36386333966 passed for d04fef0: 214 tests per Linux/macOS Python 3.10-3.14 job, exact-wheel smoke, and Windows 3.10/3.14 smoke."
+  - "Windows now compares stat/fstat ctime within each API, retaining file identity checks and POSIX cross-API checks; raw-byte hashing uses binary mode."
+  - "Source archive includes workflows, lock and release-test inputs; release tests passed from the extracted archive."
+  - "Eleven release tests pass, including simulated existing draft/prerelease rejection in the actual release-creation shell step. Total suite is now 215 tests."
+next: "Tag the verified 1.16.0 candidate; the release workflow repeats shared CI on that exact commit. Confirm GitHub release and PyPI files, then mark M1 complete and move to M2."
+publishing: "Intermediate diagnostic commits are consolidated into the one meaningful 1.16.0 release, not published separately."
+---

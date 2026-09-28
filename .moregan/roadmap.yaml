@@ -48,7 +48,7 @@ product_milestones:
   milestones:
     - id: M1
       name: Reliable distribution
-      status: implemented_pending_native_ci
+      status: release_validation
       acceptance: "Python 3.10-3.14 Linux/macOS tests and installed-package checks gate publishing; Windows has packaging smoke only. Meaningful changes get releases after gates pass."
     - id: M2
       name: No-glue provider onboarding
@@ -554,7 +554,7 @@ current_work:
   id: release-ci-supported-platforms
   product_milestone: M1
   original_list_numbers: [1, 10]
-  status: implemented_pending_native_ci
+  status: release_validation
   acceptance_criteria:
     - "Declare Python 3.10+ and test 3.10-3.14 on Linux/macOS, with explicitly limited Windows packaging smoke."
     - "Add test and installed-package smoke CI for the supported matrix and make publication depend on passing checks."

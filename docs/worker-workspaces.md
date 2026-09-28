@@ -74,6 +74,14 @@ cannot interrupt an OS filesystem call that blocks inside the kernel.
 
 ## Failure Policy
 
+Since 1.16.0, file reads explicitly use binary mode. Pathname and open-handle
+metadata are each compared before/after reading; file identity, size, mode and
+modification time are also compared across them. On Windows, cross-API `ctime`
+comparison is excluded because CPython can report creation time from `stat` and
+change time from `fstat`. Each API's own `ctime` must still remain stable. POSIX
+keeps the cross-API timestamp comparison. See the
+[CPython issue](https://github.com/python/cpython/issues/157671).
+
 A difference produces `no_write_violation`, with changed paths and a comparison
 summary in stage evidence. The current implementation shows up to 20 path names
 in the finding, bounded to 1,000 characters, plus the total changed count.

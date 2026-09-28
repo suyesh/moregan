@@ -197,8 +197,9 @@ do not promise identical live model output across hosts/providers. Rollback must
 preserve user work and stop on conflicting subsequent edits, never reset a checkout.
 This milestone definition changes no runtime/skill behavior or package version.
 
-M1 implementation is now present in 1.16.0; native CI and actual release validation
-are pending. Shared ci.yml builds once, checks source/archive metadata and README,
+M1 implementation is now present in 1.16.0; native CI passed in run 36386333966
+for commit d04fef0. Actual release validation is in progress. Shared ci.yml builds
+once, checks source/archive metadata and README,
 runs the full Linux/macOS Python 3.10-3.14 suite, and installs that wheel in clean
 environments. Windows 3.10/3.14 runs packaging/simulated-provider/skill smoke only.
 workflow.yml validates version tags and notes, runs shared CI, creates the GitHub
