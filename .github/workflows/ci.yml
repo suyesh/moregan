@@ -1,0 +1,82 @@
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[test]" build twine
+      - run: python scripts/ci/release.py
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - run: python scripts/ci/release.py --dist dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moregan-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install ".[test]"
+      - run: python -m unittest discover -s tests -q
+      - run: python -m compileall -q install.py moregan scripts/ci tests
+      - run: git diff --exit-code
+      - uses: actions/download-artifact@v4
+        with:
+          name: moregan-dist
+          path: dist/
+      - name: Install and exercise the release wheel outside the checkout
+        run: python scripts/ci/installed_smoke.py --dist dist
+
+  windows-install:
+    name: Windows packaging smoke (not process containment)
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: moregan-dist
+          path: dist/
+      - run: python scripts/ci/installed_smoke.py --dist dist

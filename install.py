@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 from urllib.request import urlopen
 
-VERSION = "1.15.0"
+VERSION = "1.16.0"
 BRAND_NAME = "MoreGAN"
 SKILL_NAME = "moregan"
 DEFAULT_REPOSITORY_URL = "https://github.com/suyesh/moregan"

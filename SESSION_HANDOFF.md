@@ -1,6 +1,6 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 after capability audit and turnkey product milestone definition.
+Updated: 2026-09-27 during M1 distribution implementation and release validation.
 Benchmark, completion/provider hardening, adaptive routing, check execution and workspace milestones are
 implemented and tested; production hardening continues.
 
@@ -8,12 +8,15 @@ implemented and tested; production hardening continues.
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed milestone: `65fe651 Clarify capabilities, provider setup, and published release status`, version 1.15.0.
-- Current feature version: 1.15.0, bounded provider I/O and nested process supervision.
+- Previous pushed change: `c2212e1 Explain GAN inspiration in README introduction`.
+- Current feature version: 1.16.0, M1 distribution and release gates.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
-- PyPI publishing is paused. A push to main does not trigger the existing release workflow.
-  Live PyPI JSON metadata checked during this audit: latest 1.5.0, uploaded 2026-08-12.
+- The user explicitly resumed publishing: meaningful features/fixes/distribution
+  changes should get releases; use judgment to skip docs-only releases and say so.
+  Main pushes run CI; version tags also create a GitHub release and publish to PyPI
+  after shared CI passes. Confirm actual publication, not just tag/release creation.
+  The prior audit found PyPI at 1.5.0; this is historical, not current verification.
 - Runtime is the product; skills call the runtime. Provider commands are required
   for actual persona execution. No claim of production readiness or measured
   agent improvement has been established.
@@ -194,12 +197,18 @@ do not promise identical live model output across hosts/providers. Rollback must
 preserve user work and stop on conflicting subsequent edits, never reset a checkout.
 This milestone definition changes no runtime/skill behavior or package version.
 
-The next milestone is release CI and supported-platform validation, before
-publishing any release. The workflow currently builds/publishes without tests;
-Python 3.8 is advertised but install.py uses str.removesuffix. Verify the declared
-range or adjust it deliberately, add supported-version tests and installed-package
-smoke checks, and gate release publishing on them. Preserve workflow.yml for PyPI
-Trusted Publishing. Do not dispatch or create a release/tag while publishing is paused.
+M1 implementation is now present in 1.16.0; native CI and actual release validation
+are pending. Shared ci.yml builds once, checks source/archive metadata and README,
+runs the full Linux/macOS Python 3.10-3.14 suite, and installs that wheel in clean
+environments. Windows 3.10/3.14 runs packaging/simulated-provider/skill smoke only.
+workflow.yml validates version tags and notes, runs shared CI, creates the GitHub
+release, then publishes the tested artifact without rebuilding. New scripts live
+under scripts/ci, with regression coverage in tests/test_release.py.
+
+Python metadata now requires 3.10+. Setup scripts check that floor and show the
+runtime version. New adapter templates bind to sys.executable; regenerate them
+after moving environments. Existing configs remain untouched. Native provider
+bridges and skill-contract changes still belong to M2/M3, not this milestone.
 
 Use CI to establish platform evidence before claiming Windows support. The shared
 executor's Windows path still terminates only direct children and uses daemon I/O
@@ -270,11 +279,13 @@ validation cannot establish that the provider's claims are true.
 - No paid Codex/Claude benchmark run or PyPI publication was performed.
 - The full supported Python/OS matrix is not yet certified. Source review found
   a preexisting Python 3.8 incompatibility in install.py (str.removesuffix).
+  M1 deliberately raises the floor to 3.10; native CI results must be checked before
+  marking the new matrix validated.
 
 ## Useful Commands
 
 ```bash
-python3 -m unittest discover -s tests -v
+uv run --extra test python -m unittest discover -s tests -v
 python3 -m py_compile install.py moregan/*.py tests/*.py
 git diff --check
 ruby -e "require 'yaml'; YAML.load_file('.moregan/roadmap.yaml')"

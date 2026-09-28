@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import sys
 from typing import Dict, List
 
 from moregan.agent_worker import PROVIDER_COMMAND_ENV
@@ -132,7 +133,7 @@ class AgentAdapterScaffolder:
 
     def _command(self, provider: str, stage: str) -> str:
         values = [
-            "python3",
+            sys.executable,
             "-m",
             "moregan.agent_worker",
             "--provider",
@@ -148,7 +149,8 @@ class AgentAdapterScaffolder:
         env_name = PROVIDER_COMMAND_ENV[provider]
         return f"""# MoreGAN {provider.title()} Adapter Templates
 
-These prompts are used by `python3 -m moregan.agent_worker`.
+Worker commands use the Python interpreter that generated this configuration.
+Regenerate the templates if you move or replace that environment.
 
 Set `{env_name}` to a provider command that accepts the generated prompt on stdin and prints a single MoreGAN `StageResult` JSON object on stdout. Keep the command project-local or user-local; do not put tokens in `.moregan/workers.yaml`.
 

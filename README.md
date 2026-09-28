@@ -24,10 +24,10 @@ for human review.
 manual. Installing MoreGAN does not automatically connect Codex or Claude, and a
 passing run is not a guarantee that the code is correct.
 
-**Distribution status, checked September 27, 2026:** GitHub contains **1.15.0**;
-[PyPI](https://pypi.org/project/moregan/) contains **1.5.0**. The newer runtime
-features below require the GitHub version. Pushing to `main` does not publish to
-PyPI. See [release status](https://github.com/suyesh/moregan/blob/main/docs/releases.md).
+This README describes **1.16.0**. Releases now run package validation, regression
+tests and installed-wheel checks before publishing. A `main` push runs CI; a
+version-tag push also creates a GitHub release and publishes the tested artifacts.
+See [release policy and status](https://github.com/suyesh/moregan/blob/main/docs/releases.md).
 
 ## What You Can Do
 
@@ -45,15 +45,13 @@ independent reasoning or different models.
 
 ## Install
 
-For the current GitHub implementation, use a virtual environment. These commands
-are for macOS/Linux shells; use Python 3.12 or 3.14 for the locally tested path.
+Use **Python 3.10+** and a virtual environment. These commands are for macOS/Linux
+shells and require a published release of 1.16.0 or newer:
 
 ```bash
-git clone https://github.com/suyesh/moregan.git
-cd moregan
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e .
+python -m pip install --upgrade "moregan>=1.16.0"
 moregan --help
 ```
 
@@ -61,16 +59,17 @@ Keep that environment active when working in another repository. Git is needed
 for diff-aware routing and benchmarks. Install your project's build/test tools
 and your chosen provider command separately.
 
-To install the **older published release** instead:
+For unreleased source, or while a release is still passing its publication gates:
 
 ```bash
-python3 -m pip install --upgrade moregan
+git clone https://github.com/suyesh/moregan.git
+cd moregan
+python -m pip install -e .
 ```
 
-That currently installs 1.5.0, not this README's 1.15.0 functionality. Metadata
-advertises Python 3.8+, but the full support matrix is not certified and the
-installer has a known Python 3.8 incompatibility. Windows process-tree cleanup is
-unfinished. See [installation details](https://github.com/suyesh/moregan/blob/main/INSTALL.md).
+CI covers Python 3.10-3.14 on Linux and macOS. Windows has installation/simulated
+provider smoke checks only; process-tree cleanup remains unfinished. See
+[installation details](https://github.com/suyesh/moregan/blob/main/INSTALL.md).
 
 ## First Run
 
@@ -235,15 +234,15 @@ and [provider execution](https://github.com/suyesh/moregan/blob/main/docs/provid
 ## Development
 
 ```bash
-uv sync
-uv run python -m unittest discover -s tests -q
+uv sync --extra test
+uv run --extra test python -m unittest discover -s tests -q
 uv run python -m compileall -q install.py moregan tests
 git diff --check
 ```
 
 Runtime tests use local subprocesses and simulated providers. No measured
 improvement over standalone agents is claimed. Competitive generators, native
-provider bridges, release CI and stronger containment remain work to do.
+provider bridges and stronger containment remain work to do.
 
 The product target is easy installation with built-in provider connections and
 the same runtime enforcement from CLI, Codex skill and Claude skill. Safe rollback,

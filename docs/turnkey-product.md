@@ -2,7 +2,8 @@
 
 Agreed product direction, September 27, 2026. These are planned deliverables with
 acceptance criteria, not available commands or a production-readiness claim.
-See [current capabilities](product-status.md) for what actually ships in 1.15.0
+M1 is implemented in 1.16.0, with native CI verification tracked in ROADMAP.md.
+See [current capabilities](product-status.md) for runtime behavior
 and [ROADMAP.md](../ROADMAP.md) for progress against the original ten items.
 
 ## Product Contract
@@ -38,8 +39,8 @@ provider capabilities. Prerequisites and possible model charges must be explicit
 - Require tests, metadata/version consistency, package validation and installed
   smoke checks before publication. Keep `workflow.yml` for Trusted Publishing.
 - Document recovery from a failed install/update without modifying user projects.
-- Do not publish while publishing is paused; a roadmap change is not authorization
-  to create a release, push a release tag or dispatch the publishing workflow.
+- Publication resumed with the maintainer's explicit authorization. Release
+  meaningful changes after quality gates; docs-only changes need not be released.
 
 Done when clean supported environments can install and execute the tested package,
 and a failed quality gate prevents publication. Depends on no new provider feature.

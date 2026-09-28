@@ -4,6 +4,7 @@
 # Uses uv for fast Python dependency management
 
 set -e
+cd -- "$(dirname -- "$0")"
 
 # Colors for output
 RED='\033[0;31m'
@@ -19,27 +20,27 @@ NC='\033[0m' # No Color
 echo -e "${MAGENTA}${BOLD}"
 echo "╔══════════════════════════════════════════════╗"
 echo "║             MoreGAN Installer               ║"
-echo "║              Version 1.5.0                  ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
 # Check for Python
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}❌ Python 3 is required but not installed.${NC}"
-    echo -e "${YELLOW}Please install Python 3.8 or higher.${NC}"
+    echo -e "${YELLOW}Please install Python 3.10 or higher.${NC}"
     exit 1
 fi
 
 # Check Python version
 PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-REQUIRED_VERSION="3.8"
+REQUIRED_VERSION="3.10"
 
-if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+if ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))'; then
     echo -e "${RED}❌ Python $REQUIRED_VERSION or higher is required (found $PYTHON_VERSION)${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}✓${NC} Python $PYTHON_VERSION detected"
+python3 -c 'from moregan import __version__; print("MoreGAN " + __version__)'
 
 # Check for uv and install if needed
 if ! command -v uv &> /dev/null; then

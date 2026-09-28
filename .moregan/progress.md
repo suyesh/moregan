@@ -1121,3 +1121,24 @@ execution_note: "Roadmap and documentation changes only; no new runtime/skill be
 next: "M1 release CI, then M2 native-provider onboarding and M3 shared runtime/persona skill parity. Benchmark and platform hardening continue alongside these."
 publishing: "PyPI remains paused; no release tag or workflow dispatch."
 ---
+
+---
+timestamp: "2026-09-27"
+status: IMPLEMENTED_PENDING_NATIVE_CI
+task_nickname: moregan-m1-release-gates
+package_version: "1.16.0"
+summary: "Implemented shared CI, installed-wheel smoke, strict release validation and version-tag publication."
+updates:
+  - "Declared Python 3.10+; CI covers 3.10-3.14 on Linux/macOS and limited Windows packaging smoke on 3.10/3.14."
+  - "Added source/archive/event validation, exact-wheel smoke for CLI/adapters/skills, and negative release-gate tests."
+  - "workflow.yml reuses CI and publishes tested artifacts only; version tags create GitHub releases after quality gates."
+  - "Setup scripts check the Python floor and show the current version; new worker templates use the active interpreter."
+  - "Aligned package/runtime/installer/skill/lock versions and updated installation/release documentation."
+verification_evidence:
+  - "212 tests passed on Python 3.12.11; earlier 210-test runs also passed on Python 3.10.20 and 3.14.0."
+  - "Fresh-venv wheel smoke passed outside checkout, including both adapters and both skill asset installations."
+  - "Source/wheel/sdist metadata validation, strict Twine checks, compilation, shell syntax and lock consistency passed."
+execution_note: "Native hosted CI and publication are not yet verified. Provider calls are simulated; Windows process-tree containment is still unsupported."
+next: "Push M1 for native CI, fix any failures, then tag the verified release and confirm GitHub/PyPI publication. M2 follows."
+publishing: "The maintainer resumed publishing. Create releases for meaningful features/fixes/distribution changes; explicitly skip unnecessary documentation-only releases."
+---

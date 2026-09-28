@@ -48,8 +48,8 @@ product_milestones:
   milestones:
     - id: M1
       name: Reliable distribution
-      status: next
-      acceptance: "Supported matrix and installed-package tests gate publishing; PyPI remains paused."
+      status: implemented_pending_native_ci
+      acceptance: "Python 3.10-3.14 Linux/macOS tests and installed-package checks gate publishing; Windows has packaging smoke only. Meaningful changes get releases after gates pass."
     - id: M2
       name: No-glue provider onboarding
       status: planned
@@ -554,11 +554,11 @@ current_work:
   id: release-ci-supported-platforms
   product_milestone: M1
   original_list_numbers: [1, 10]
-  status: next
+  status: implemented_pending_native_ci
   acceptance_criteria:
-    - "Verify or deliberately adjust the advertised Python support range, including the Python 3.8 installer incompatibility."
+    - "Declare Python 3.10+ and test 3.10-3.14 on Linux/macOS, with explicitly limited Windows packaging smoke."
     - "Add test and installed-package smoke CI for the supported matrix and make publication depend on passing checks."
-    - "Keep workflow.yml as the Trusted Publishing workflow and do not dispatch a release while PyPI is paused."
+    - "Keep workflow.yml as the Trusted Publishing workflow; version tags create releases and publish tested artifacts only after shared CI passes."
     - "Record native platform evidence and remaining limitations without claiming unverified Windows child-tree containment."
   follow_up:
     - provider_bridges_activation_and_skill_contract_alignment

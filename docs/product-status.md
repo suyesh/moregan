@@ -2,7 +2,14 @@
 
 Reviewed September 27, 2026 against GitHub runtime version **1.15.0**. This is a
 source-backed product assessment, not a security certification or a live-agent
-effectiveness study. PyPI still contains **1.5.0**; see [release status](releases.md).
+effectiveness study. PyPI contained **1.5.0** at that audit; see [release status](releases.md)
+for the subsequent publication policy.
+
+**Distribution follow-up in 1.16.0:** the Python minimum is now 3.10, CI and
+installed-package gates have been implemented, setup banners use the runtime
+version, and the maintainer has resumed meaningful releases. New worker templates
+use the active interpreter. The findings below describe the original audit;
+provider onboarding and skill-parity gaps remain open. See [release notes](release-notes/1.16.0.md).
 
 ## Bottom Line
 

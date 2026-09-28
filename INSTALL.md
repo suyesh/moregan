@@ -5,14 +5,10 @@ three separate steps. Only the CLI is required to use the runtime.
 
 ## Choose A Version
 
-As checked on September 27, 2026:
-
-| Source | Version | Notes |
-|---|---|---|
-| GitHub `main` | 1.15.0 | Current runtime; this documentation describes it |
-| [PyPI](https://pypi.org/project/moregan/) | 1.5.0 | Older release; lacks the subsequent hardening and features |
-
-GitHub pushes do not publish packages. See [release status](docs/releases.md).
+This guide describes **1.16.0**, requiring Python **3.10+**. Use a published
+[PyPI release](https://pypi.org/project/moregan/) or install the source below.
+Main-branch pushes run CI; version tags also trigger a checked GitHub/PyPI release.
+See [release policy](docs/releases.md).
 
 ## Current Runtime
 
@@ -28,14 +24,15 @@ moregan --help
 python -c "import moregan; print(moregan.__version__, moregan.__file__)"
 ```
 
-Use Python 3.12 or 3.14 for the locally verified path. Keep the environment active
-when moving to your application repository so `moregan` and the generated
-`python3 -m moregan.agent_worker` command resolve to the same installation.
+Keep the environment active when moving to your application repository so
+`moregan` resolves to the intended installation. New worker templates record that
+interpreter's path. Regenerate them if the environment moves or is replaced;
+existing configurations are preserved, not automatically migrated.
 
 For checkout development with uv:
 
 ```bash
-uv sync
+uv sync --extra test
 uv run moregan --help
 uv run moregan --root /absolute/path/to/your-project init
 ```
@@ -44,22 +41,25 @@ uv run moregan --root /absolute/path/to/your-project init
 risk inspection and is required for benchmark fixtures. Project build tools and
 provider CLIs/bridges are separate dependencies; MoreGAN does not install them.
 
-Metadata currently allows Python 3.8+, but that entire range is not certified;
-the installer uses `str.removesuffix`, unavailable in 3.8. Linux/Windows native
-validation and Windows child-tree containment remain pending. Windows users can
-create a venv with `python -m venv .venv` and activate it with
-`.\.venv\Scripts\Activate.ps1`, but should not treat that as a tested support claim.
+CI runs the regression suite and installed-wheel smoke on Linux/macOS with Python
+3.10-3.14. Windows smoke coverage is limited to installation, simulated workers,
+CLI outcomes and skill assets on 3.10/3.14; the full runtime and descendant-process
+containment remain experimental. Windows users can create a venv with
+`python -m venv .venv` and activate it with `.\.venv\Scripts\Activate.ps1`.
+Python 3.8/3.9 are no longer supported. Newer interpreter versions are not claimed
+as tested until added to the matrix.
 
 ## Published Package
 
-To use the older published version:
+Inside an active virtual environment, install a release matching this guide:
 
 ```bash
-python3 -m pip install --upgrade moregan
+python -m pip install --upgrade "moregan>=1.16.0"
 ```
 
-This currently installs 1.5.0. Updating the installed package requires a new
-published distribution; a newer GitHub README does not update it automatically.
+If the requested release is not yet published, use the source path above or wait
+for its publication gates. A newer GitHub README does not update an installed
+package automatically.
 
 ## Optional Skill Installation
 
@@ -77,8 +77,8 @@ steps. Without `--target`, the installer detects environments and prompts.
 
 `moregan setup` invokes the Python installer directly. It does **not** execute
 `./setup.sh`. The shell/batch setup scripts bootstrap uv and invoke that same
-installer; they are not necessary for a pip-installed CLI. Their historical
-1.5.0 banners should not be used to identify the current runtime version.
+installer; they are not necessary for a pip-installed CLI. Both scripts check the
+Python minimum and display the runtime version instead of a fixed old banner.
 
 | Target | Installed files |
 |---|---|

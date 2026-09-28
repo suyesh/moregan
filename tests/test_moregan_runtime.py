@@ -815,6 +815,14 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertTrue(stages["code_reviewer"].no_write)
         self.assertEqual(stages["code_reviewer"].execution, "auto")
         self.assertIn("moregan.agent_worker", stages["generator"].command)
+        self.assertTrue(all(command.command[0] == sys.executable for command in commands))
+
+    def test_agent_adapter_quotes_active_interpreter_paths(self):
+        for executable in (r"C:\Program Files\Python\python.exe", "/home/test env/bin/python"):
+            with self.subTest(executable=executable), patch("moregan.adapters.sys.executable", executable):
+                AgentAdapterScaffolder(self.root).scaffold("codex", activate=True, force=True)
+                commands = WorkerConfigLoader(self.root).load()
+                self.assertTrue(all(command.command[0] == executable for command in commands))
 
     def test_agent_adapter_scaffold_preserves_active_workers_unless_forced(self):
         moregan_dir = self.root / ".moregan"

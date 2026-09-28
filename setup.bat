@@ -3,11 +3,11 @@ REM MoreGAN Quick Setup Script for Windows
 REM Uses uv for fast Python dependency management
 
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
 echo.
 echo ╔══════════════════════════════════════════════╗
 echo ║             MoreGAN Installer               ║
-echo ║              Version 1.5.0                  ║
 echo ╚══════════════════════════════════════════════╝
 echo.
 
@@ -15,11 +15,17 @@ REM Check for Python
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ❌ Python 3 is required but not installed.
-    echo Please install Python 3.8 or higher from python.org
+    echo Please install Python 3.10 or higher from python.org
     pause
     exit /b 1
 )
 
+python -c "import sys; sys.exit(sys.version_info < (3, 10))"
+if errorlevel 1 (
+    echo Python 3.10 or higher is required.
+    exit /b 1
+)
+python -c "from moregan import __version__; print('MoreGAN ' + __version__)"
 echo ✓ Python detected
 
 REM Check for uv

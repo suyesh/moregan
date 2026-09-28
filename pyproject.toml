@@ -1,9 +1,9 @@
 [project]
 name = "moregan"
-version = "1.15.0"
+version = "1.16.0"
 description = "Adversarial orchestration for coding agents"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
     { name = "MoreGAN contributors" },
@@ -24,12 +24,11 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Testing",
 ]
@@ -37,6 +36,9 @@ dependencies = [
     "rich>=13.0.0",
     "questionary>=2.0.1",
 ]
+
+[project.optional-dependencies]
+test = ["PyYAML>=6,<7", "tomli>=2,<3; python_version < '3.11'"]
 
 [project.scripts]
 moregan = "moregan.cli:main"
@@ -109,6 +111,7 @@ include = [
     "/assets",
     "/.moregan",
     "/tests",
+    "/scripts/ci",
     "/docs",
     "/install.py",
     "/SKILL.md",
@@ -123,4 +126,4 @@ include = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py38"
+target-version = "py310"

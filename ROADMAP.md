@@ -21,6 +21,8 @@ The project is alpha. Completed foundations are not a claim of production readin
   Codex/Claude POSIX process supervision before workspace cleanup.
 - Compact context packs, local learning observations, traces, and read-only replay.
 - CLI initialization, skill setup, and package/publishing configuration.
+- M1 implementation in 1.16.0: shared release CI, Python 3.10+ metadata,
+  installed-wheel/skill smoke checks and version-tag publication gates.
 - Benchmark foundation: six isolated Python fixtures, independent acceptance checks,
   generator-only versus full-route runs, baseline imports, and paired reports.
 
@@ -33,7 +35,7 @@ installation experience.
 
 | Milestone | Deliverable | Status |
 |---|---|---|
-| M1 | Supported-version CI, installed-package checks, and test-gated releases | Next |
+| M1 | Supported-version CI, installed-package checks, and test-gated releases | Implemented; native CI validation pending |
 | M2 | Built-in Codex/Claude bridges, guided setup, safe activation, prerequisite diagnostics | Planned |
 | M3 | Thin skills using the same runtime and canonical persona prompts, with parity tests | Planned |
 | M4 | Transactional generation, safe patch application and scoped undo/automatic recovery | Planned |
@@ -85,7 +87,9 @@ sandboxing and calibrated cross-project learning follow validated core workflows
 | 9 | Measurable positioning | Limitations documented; no effectiveness claims yet |
 | 10 | Real CLI | Existing commands implemented; turnkey onboarding and skill parity in M2-M3; runtime doctor/learn pending |
 
-Every feature gets a package version bump. Completed milestones are tested,
-committed, and pushed to `main`. PyPI publishing remains paused until requested.
+Meaningful features, fixes and distribution changes get a package version bump,
+release notes and a GitHub/PyPI release after checks pass. Documentation-only
+changes can be pushed without a release; explain that decision. Publication is
+resumed at the maintainer's request. Completed work is committed and pushed to `main`.
 Historical implementation notes remain in `.moregan/roadmap.yaml` and
 `.moregan/progress.md`; old phase labels there are not promised release versions.
