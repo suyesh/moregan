@@ -1,6 +1,6 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 during M1 distribution implementation and release validation.
+Updated: 2026-09-27 after M1 release validation (September 28 UTC).
 Benchmark, completion/provider hardening, adaptive routing, check execution and workspace milestones are
 implemented and tested; production hardening continues.
 
@@ -8,15 +8,15 @@ implemented and tested; production hardening continues.
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed change: `c2212e1 Explain GAN inspiration in README introduction`.
-- Current feature version: 1.16.0, M1 distribution and release gates.
+- Released commit: `1bed1ac4f8ba01e2dfa05a6c8fa4fb3824b2ecf3`, tag `v1.16.0`.
+- Current feature version: 1.16.0, M1 complete; M2 provider onboarding is next.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
 - The user explicitly resumed publishing: meaningful features/fixes/distribution
   changes should get releases; use judgment to skip docs-only releases and say so.
   Main pushes run CI; version tags also create a GitHub release and publish to PyPI
   after shared CI passes. Confirm actual publication, not just tag/release creation.
-  The prior audit found PyPI at 1.5.0; this is historical, not current verification.
+  PyPI 1.16.0 and its wheel/sdist were verified after release run 36386900004.
 - Runtime is the product; skills call the runtime. Provider commands are required
   for actual persona execution. No claim of production readiness or measured
   agent improvement has been established.
@@ -197,9 +197,12 @@ do not promise identical live model output across hosts/providers. Rollback must
 preserve user work and stop on conflicting subsequent edits, never reset a checkout.
 This milestone definition changes no runtime/skill behavior or package version.
 
-M1 implementation is now present in 1.16.0; native CI passed in run 36386333966
-for commit d04fef0. Actual release validation is in progress. Shared ci.yml builds
-once, checks source/archive metadata and README,
+M1 is complete in published 1.16.0. Release run 36386900004 passed all 16 jobs
+on the exact tagged commit 1bed1ac, including 215 tests per Linux/macOS matrix job.
+GitHub and PyPI both contain the wheel and sdist with matching SHA-256 digests.
+A fresh public-PyPI install outside the checkout passed version/import, pip check
+and CLI help checks. See docs/releases.md for direct evidence links.
+Shared ci.yml builds once, checks source/archive metadata and README,
 runs the full Linux/macOS Python 3.10-3.14 suite, and installs that wheel in clean
 environments. Windows 3.10/3.14 runs packaging/simulated-provider/skill smoke only.
 workflow.yml validates version tags and notes, runs shared CI, creates the GitHub
@@ -210,6 +213,13 @@ Python metadata now requires 3.10+. Setup scripts check that floor and show the
 runtime version. New adapter templates bind to sys.executable; regenerate them
 after moving environments. Existing configs remain untouched. Native provider
 bridges and skill-contract changes still belong to M2/M3, not this milestone.
+
+Native CI exposed Windows stat/fstat ctime differences and console encoding
+failures. Integrity reads now use binary mode, compare each API's metadata for
+stability and preserve cross-API identity checks; POSIX retains ctime comparison.
+Smoke diagnostics escape unsupported console characters. Regression tests cover
+these cases. Final completion-record edits are documentation-only and do not
+require another release; the next runtime feature must get a new version.
 
 Use CI to establish platform evidence before claiming Windows support. The shared
 executor's Windows path still terminates only direct children and uses daemon I/O

@@ -1157,3 +1157,20 @@ verification_evidence:
 next: "Tag the verified 1.16.0 candidate; the release workflow repeats shared CI on that exact commit. Confirm GitHub release and PyPI files, then mark M1 complete and move to M2."
 publishing: "Intermediate diagnostic commits are consolidated into the one meaningful 1.16.0 release, not published separately."
 ---
+
+---
+timestamp: "2026-09-27"
+status: COMPLETE
+task_nickname: moregan-m1-published
+package_version: "1.16.0"
+summary: "M1 is complete: tag v1.16.0 passed its release gates and published to GitHub and PyPI."
+verification_evidence:
+  - "Release workflow https://github.com/suyesh/moregan/actions/runs/36386900004 passed all 16 jobs at commit 1bed1ac4f8ba01e2dfa05a6c8fa4fb3824b2ecf3."
+  - "215 tests and exact-wheel smoke on Linux/macOS Python 3.10-3.14, plus Windows 3.10/3.14 smoke. Final local suite: 215 tests passed."
+  - "https://github.com/suyesh/moregan/releases/tag/v1.16.0 and https://pypi.org/project/moregan/1.16.0/ are published."
+  - "Wheel SHA-256 b3e25cb08218be8f594a03628a3b6bd92e3876fd36fc408ca50966959bb26312 matches between GitHub and PyPI."
+  - "Sdist SHA-256 31ef3bec0d008c5b6d5c6ace43b81e9669a3ec55fd883332a5414d3203aaeaf3 matches between GitHub and PyPI."
+  - "Fresh pip install from public PyPI outside checkout passed version/import, pip check and CLI help."
+next: "M2 native Codex/Claude bridges, prerequisite diagnostics and safe config activation; M3 canonical persona prompts and skill/runtime parity follow."
+publishing: "The final completion record is documentation-only, so no additional release is needed. Meaningful future features/fixes get a version bump, release notes and a checked GitHub/PyPI release."
+---

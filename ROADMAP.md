@@ -35,8 +35,8 @@ installation experience.
 
 | Milestone | Deliverable | Status |
 |---|---|---|
-| M1 | Supported-version CI, installed-package checks, and test-gated releases | Native CI passed; release validation in progress |
-| M2 | Built-in Codex/Claude bridges, guided setup, safe activation, prerequisite diagnostics | Planned |
+| M1 | Supported-version CI, installed-package checks, and test-gated releases | Complete; 1.16.0 published and freshly installed from PyPI |
+| M2 | Built-in Codex/Claude bridges, guided setup, safe activation, prerequisite diagnostics | Next |
 | M3 | Thin skills using the same runtime and canonical persona prompts, with parity tests | Planned |
 | M4 | Transactional generation, safe patch application and scoped undo/automatic recovery | Planned |
 | M5 | Opt-in parallel reviewers and isolated competing generators with bounded concurrency | Planned |

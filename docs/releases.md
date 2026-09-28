@@ -15,6 +15,22 @@ the [Actions run](https://github.com/suyesh/moregan/actions/workflows/workflow.y
 [GitHub releases](https://github.com/suyesh/moregan/releases) and
 [PyPI files](https://pypi.org/project/moregan/#files), not a successful Git push.
 
+## Verified Release: 1.16.0
+
+Published September 28, 2026 UTC (September 27 Pacific):
+
+- [Release workflow](https://github.com/suyesh/moregan/actions/runs/36386900004)
+  passed all 16 jobs on tag `v1.16.0`, commit
+  `1bed1ac4f8ba01e2dfa05a6c8fa4fb3824b2ecf3`.
+- All 215 tests and installed-wheel checks passed on Linux/macOS Python 3.10-3.14;
+  Windows 3.10/3.14 installation and simulated-worker smoke passed.
+- [GitHub release](https://github.com/suyesh/moregan/releases/tag/v1.16.0) and
+  [PyPI release](https://pypi.org/project/moregan/1.16.0/) contain matching wheel
+  and source archives. Their SHA-256 digests were compared after publication.
+- A fresh install from public PyPI, outside the checkout, passed version/import,
+  `pip check` and `moregan --help` checks. M1 is complete; M2 provider onboarding
+  is next. This does not establish live-provider or full Windows-runtime support.
+
 ## Pipeline
 
 1. A push to `main` or a pull request runs [CI](../.github/workflows/ci.yml).

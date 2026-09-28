@@ -48,11 +48,11 @@ product_milestones:
   milestones:
     - id: M1
       name: Reliable distribution
-      status: release_validation
+      status: done
       acceptance: "Python 3.10-3.14 Linux/macOS tests and installed-package checks gate publishing; Windows has packaging smoke only. Meaningful changes get releases after gates pass."
     - id: M2
       name: No-glue provider onboarding
-      status: planned
+      status: next
       depends_on: [M1]
       acceptance: "Built-in Codex/Claude bridges, guided prerequisite setup and safe activation; no user-written bridge on the supported path."
     - id: M3
@@ -550,18 +550,31 @@ completed_work:
       - "Windows still terminates direct children only; native platform validation is pending."
       - "Escaped POSIX groups and custom wrappers with extra process layers are not contained; not a sandbox."
       - "Simulated providers only, no live-agent effectiveness claim or PyPI publication."
+  - id: release-ci-supported-platforms
+    package_version: "1.16.0"
+    product_milestone: M1
+    original_list_numbers: [1, 10]
+    status: done
+    verification:
+      - "Release run 36386900004 passed all 16 jobs for tag v1.16.0 at 1bed1ac4f8ba01e2dfa05a6c8fa4fb3824b2ecf3."
+      - "215 tests and installed-wheel smoke passed on Linux/macOS Python 3.10-3.14; Windows 3.10/3.14 installation/simulated-worker smoke passed."
+      - "GitHub release and PyPI wheel/sdist are published, with matching SHA-256 digests."
+      - "Fresh public-PyPI installation outside the checkout passed version/import, pip check and CLI help checks."
+    limitations:
+      - "Windows process-tree containment and live-provider compatibility are not established by the smoke checks."
+      - "Native bridges and canonical skill/runtime parity remain M2/M3."
 current_work:
-  id: release-ci-supported-platforms
-  product_milestone: M1
-  original_list_numbers: [1, 10]
-  status: release_validation
+  id: native-provider-onboarding
+  product_milestone: M2
+  original_list_numbers: [1, 2, 10]
+  status: next
   acceptance_criteria:
-    - "Declare Python 3.10+ and test 3.10-3.14 on Linux/macOS, with explicitly limited Windows packaging smoke."
-    - "Add test and installed-package smoke CI for the supported matrix and make publication depend on passing checks."
-    - "Keep workflow.yml as the Trusted Publishing workflow; version tags create releases and publish tested artifacts only after shared CI passes."
-    - "Record native platform evidence and remaining limitations without claiming unverified Windows child-tree containment."
+    - "Use documented, version-supported Codex/Claude noninteractive interfaces; preserve strict validation without requiring user-written JSON bridges."
+    - "Diagnose provider/runtime prerequisites and authentication without exposing credentials or silently installing provider tools."
+    - "Activate empty generated config intentionally, preserving customized workers and making provider selection explicit."
+    - "Cover fresh/repeated setup, provider switches, missing auth, unsupported versions and failure paths; run opt-in live smoke before claiming live compatibility."
   follow_up:
-    - provider_bridges_activation_and_skill_contract_alignment
+    - canonical_persona_prompts_and_skill_runtime_parity
     - windows_child_tree_cleanup
     - representative_benchmarks_and_measured_provider_usage
     - transactional_generation_and_safe_recovery

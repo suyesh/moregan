@@ -2,7 +2,8 @@
 
 Agreed product direction, September 27, 2026. These are planned deliverables with
 acceptance criteria, not available commands or a production-readiness claim.
-M1 is implemented in 1.16.0, with native CI verification tracked in ROADMAP.md.
+M1 is complete in published 1.16.0, with verification in [release status](releases.md).
+M2 provider onboarding is next.
 See [current capabilities](product-status.md) for runtime behavior
 and [ROADMAP.md](../ROADMAP.md) for progress against the original ten items.
 
