@@ -165,6 +165,8 @@ cp .moregan/workers.{provider}.yaml .moregan/workers.yaml
 ```
 
 Review workers before activation. Review, evaluation, security, production, MR readiness, and planning workers default to `MOREGAN_NO_WRITE=1` with `execution: auto`, which runs no-write workers in isolated snapshots by default. The generator stage defaults to write-enabled repository execution.
+
+Temporary snapshots are removed after worker execution. MoreGAN verifies the original checkout's contents for no-write workers; integrity or cleanup failures stop the run for inspection without automatic reverts. Snapshots are not a process sandbox, and execution paths in completed traces are historical.
 """
 
     def _prompt(self, provider: str, stage: str) -> str:

@@ -485,7 +485,8 @@ class MoreGANRuntimeTests(unittest.TestCase):
         execution = [item for item in evaluator_stage["evidence"] if item["kind"] == "execution_context"][0]
         self.assertEqual(execution["name"], "isolated_snapshot")
         self.assertNotEqual(Path(execution["path"]).resolve(), self.root.resolve())
-        self.assertTrue((Path(execution["path"]) / "review-marker.txt").exists())
+        self.assertFalse(Path(execution["path"]).exists())
+        self.assertTrue(any(item["name"] == "snapshot_removed" for item in evaluator_stage["evidence"]))
         context_env = [item for item in evaluator_stage["evidence"] if item["name"] == "context_pack_env"][0]
         self.assertEqual(context_env["summary"], "True")
         relative_context_path = Path(context_env["path"]).resolve().relative_to(Path(execution["path"]).resolve())

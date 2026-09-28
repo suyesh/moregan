@@ -1,15 +1,15 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 after bounded deterministic execution.
-Benchmark, completion/provider hardening, adaptive routing and check execution milestones are
+Updated: 2026-09-27 after workspace cleanup and no-write integrity hardening.
+Benchmark, completion/provider hardening, adaptive routing, check execution and workspace milestones are
 implemented and tested; production hardening continues.
 
 ## Repository And Decisions
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed milestone: `40de23c Reassess generated patch risk and preserve review attempts`, version 1.12.0.
-- Current feature version: 1.13.0, bounded deterministic tool execution.
+- Previous pushed milestone: `6017098 Bound deterministic check execution and record timeout evidence`, version 1.13.0.
+- Current feature version: 1.14.0, workspace cleanup and no-write verification.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
 - PyPI publishing is paused. A push to main does not trigger the existing release workflow.
@@ -108,28 +108,55 @@ configured Checkstyle, SpotBugs, PMD, and OWASP Dependency-Check integrations.
   fail-then-pass remediation. Provider execution remains on its old capture path.
 - Bumped package/skill/installer/lock to 1.13.0; added docs/tool-execution.md.
 
+## Completed In 1.14.0
+
+- Added workspaces.py with per-invocation ownership of temporary snapshot parents.
+  Cleanup runs in finally paths for success, failure, bad provider output, reported
+  timeout, interruption, failed copies and failed context preparation.
+- Handle read-only copied files/directories; report cleanup failures with the
+  remaining path. No silent successful cleanup claims. Never delete the checkout.
+- No-write workers hash original checkout contents before/after both execution
+  modes, including already-dirty files. Compare modes, symlink entries, Git index,
+  HEAD commit and symbolic reference. Non-Git directories are also checked.
+- Git ignored/untracked build/cache/generated output is excluded. Tracked files
+  remain covered even under excluded names. Git worktrees/unborn repos supported.
+- Scan budgets: 30 seconds, 100,000 paths, 1 GiB read; Git capture capped at 1 MiB.
+  Errors, truncation and unsupported submodules fail closed. No partial PASS.
+- Snapshot copies preserve links initially, reject external/looping targets, and
+  rebase internal links to the copy. Reject TMPDIR inside the checkout.
+- Integrity/cleanup failures stop the runtime with worker.manual_review_required;
+  no automatic generator remediation or rollback. Other failures retain retries.
+- Persist cleanup and integrity evidence; removed execution paths are historical.
+- Added 37 tests, adjusted old persistent-snapshot assertions, bumped all versions
+  and lock to 1.14.0, and added docs/worker-workspaces.md.
+
 ## Review Findings And Next Work
 
 Read `docs/review-2026-09-27.md` first for concrete code references and impact.
 
-The next milestone is worker snapshot cleanup and stronger no-write checks.
-CommandWorker._execution_root still leaves temporary copies behind. Repository
-no-write mode compares Git status text and misses edits to already-dirty files.
-Read workers.py and its tests, clean up snapshots in finally paths, and detect
-content changes without reverting preexisting user changes. Test success, failure,
-timeout, interruption, tracked/untracked changes and already-dirty files. Snapshots
-are not a sandbox; describe the actual protection without overclaiming.
+The next milestone is provider execution bounds and process supervision.
+CommandWorker._run_command and AgentWorkerRunner.run still use subprocess.run
+with capture_output, text mode and a timeout. They buffer output without a bound;
+nested provider children can survive or hold inherited pipes open. Snapshot cleanup
+cannot run until that call returns, so this remains important.
+
+Extend processes.py where it removes duplication: provider env, bounded prompt
+delivery, explicit oversized/invalid-encoding result failures, and process-tree
+supervision. JSON stdout must never be silently truncated then parsed as a valid
+result. Consider the nested wrapper: starting each layer in a separate POSIX group
+can let the actual provider escape the outer worker deadline. Preserve schemas,
+runtime-owned timing, structured failures and workspace cleanup/integrity ordering.
+Test noisy providers, blocked stdin, hung children, parent exit, interruption and
+both scaffolded adapters. Existing provider-contract tests mock subprocess.run;
+update focused test boundaries rather than weakening the contract tests.
 
 After that:
 
-1. Bound provider output and supervise worker processes. Deterministic execution
-   now has a small processes.py helper; extending it to JSON providers needs
-   bounded stdin, explicit oversized-result failures and nested-process handling.
-2. Add Windows child-tree cleanup and validate the OS matrix.
-3. Add release CI and verify or adjust the advertised Python 3.8+ support.
-4. Expand fixtures to representative real repositories and collect actual
+1. Add Windows child-tree cleanup and validate the OS matrix.
+2. Add release CI and verify or adjust the advertised Python 3.8+ support.
+3. Expand fixtures to representative real repositories and collect actual
    provider token/cost measurements before running effectiveness studies.
-5. Introduce competitive generators only after this evidence and hardening.
+4. Introduce competitive generators only after this evidence and hardening.
 
 Risk policy and remaining limits are documented in docs/risk-routing.md. Routing
 is heuristic and request-only outside Git. Fixed-baseline evidence includes
@@ -148,7 +175,7 @@ validation cannot establish that the provider's claims are true.
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Runtime | Implemented; truthful outcomes in 1.11.0 |
+| 1 | Runtime | Truthful outcomes in 1.11.0; workspace cleanup and integrity in 1.14.0 |
 | 2 | Structured persona output | Shared strict provider validation in 1.11.0 |
 | 3 | Deterministic evidence | Presets, deadlines, bounded output and POSIX cleanup in 1.13.0; Windows tree cleanup pending |
 | 4 | Execution trace | Implemented; replay attempt fidelity fixed in 1.12.0 |
@@ -161,15 +188,15 @@ validation cannot establish that the provider's claims are true.
 
 ## Verification And Limits
 
-- Full unittest suite passed 135 tests on macOS under Python 3.12.11 and 3.14.0.
+- Full unittest suite passed 172 tests on macOS under Python 3.12.11 and 3.14.0.
 - Build: `uv build --clear --default-index https://pypi.org/simple`.
 - Lock validation: `uv lock --check --default-index https://pypi.org/simple`.
-- Wheel smoke environment: `/private/tmp/moregan-1.13.0-smoke.GZLlHk/venv`.
-- Smoke script: `/private/tmp/moregan-1.13.0-smoke.GZLlHk/smoke.py`.
-- Installed CLI exercised outside checkout: init, incomplete exit 1, both provider
-  adapters, noisy output, timeout remediation, required failure exit 1, advisory
-  optional timeout, inspect and attempt-correct replay. These used simulated
-  provider commands, not live models.
+- Wheel smoke environment: `/private/tmp/moregan-1.14.0-smoke.gejnAZ/venv`.
+- Smoke script: `/private/tmp/moregan-1.14.0-smoke.gejnAZ/smoke.py`.
+- All 37 workspace tests also passed against the installed wheel outside checkout.
+- Installed CLI exercised init, both provider adapters, isolated scratch writes,
+  snapshot deletion, preserved dirty files, no-write violations in both execution
+  modes, manual-review stop without retries, and replay. Simulated providers only.
 - Fixture verifiers tested against both broken source and known repaired source.
 - No paid Codex/Claude benchmark run or PyPI publication was performed.
 - The full supported Python/OS matrix is not yet certified. Source review found

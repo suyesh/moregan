@@ -1,7 +1,7 @@
 ---
 name: moregan
 description: Implements the MoreGAN high-reliability engineering loop with multi-generator collaboration, enterprise tool integration, living documentation, and executable trace foundations for Claude Code and Codex. Trigger when a user wants to "implement a feature," "start MoreGAN," "use MoreGAN," "use moregan," or "build with verification."
-version: 1.13.0
+version: 1.14.0
 ---
 ## Objective
 

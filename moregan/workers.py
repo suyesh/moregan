@@ -7,8 +7,8 @@ import os
 import shutil
 import shlex
 import subprocess
-import tempfile
 import time
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Protocol
@@ -19,6 +19,7 @@ from moregan.schemas import (
 )
 from moregan.state import TaskState
 from moregan.tools import ToolConfigError, ToolConfigLoader
+from moregan.workspaces import CheckoutFingerprint, WorkerWorkspace
 
 
 WORKER_STAGE_TO_STATE: Dict[str, str] = {
@@ -139,15 +140,63 @@ class CommandWorker:
     def run(self, context: WorkerContext) -> StageResult:
         started = time.perf_counter()
         started_at = _timestamp()
+        isolated = self.command.execution == "isolated" or (
+            self.command.execution == "auto" and self.command.no_write
+        )
         try:
-            execution_root = self._execution_root(context)
-            context_pack_path = self._context_pack_for_execution(context, execution_root)
-            no_write_before = self._git_status(context.root) if self.command.no_write and execution_root == context.root else None
-        except OSError as exc:
+            workspace = WorkerWorkspace(context.root, isolated, self.stage)
+        except (OSError, ValueError, RuntimeError) as exc:
             return self._failure_result(
-                started, context.attempt, description=f"Could not prepare {self.stage} worker: {exc}",
-                remediation="Check workspace access, snapshot storage, and Git availability.",
+                started, context.attempt, description=f"Could not resolve worker workspace: {exc}",
+                remediation="Check the repository path and symlinks before retrying.",
             )
+        stage_result = None
+        no_write_before = None
+        try:
+            if self.command.no_write:
+                no_write_before = CheckoutFingerprint.capture(context.root)
+            execution_root = workspace.prepare()
+            context_pack_path = self._context_pack_for_execution(context, execution_root)
+            stage_result = self._run_command(context, execution_root, context_pack_path, started, started_at)
+        except (OSError, ValueError) as exc:
+            stage_result = self._failure_result(
+                started, context.attempt, description=f"Could not prepare {self.stage} worker: {exc}",
+                remediation="Check workspace access, integrity scan limits, snapshot storage, symlinks and Git availability.",
+            )
+            if self.command.no_write and no_write_before is None:
+                stage_result.findings[0].category = "no_write_check_failed"
+        finally:
+            try:
+                workspace.cleanup()
+            except (OSError, ValueError, NotImplementedError) as exc:
+                if stage_result is None:
+                    warnings.warn(f"Worker interrupted; snapshot cleanup failed at {workspace.temporary_root}: {exc}",
+                                  RuntimeWarning)
+                else:
+                    stage_result.verdict = "fail"
+                    stage_result.findings.append(Finding(
+                        severity="high", category="workspace_cleanup_failed",
+                        description=f"Could not remove temporary worker snapshot at {workspace.temporary_root}: {exc}",
+                        remediation="Inspect permissions and running worker processes, then remove the reported temporary snapshot.",
+                    ))
+            else:
+                if stage_result is not None and workspace.temporary_root is not None:
+                    stage_result.evidence.append(EvidenceReference(
+                        kind="workspace_cleanup", name="snapshot_removed",
+                        summary="Temporary worker snapshot removed; its execution path is historical.",
+                        path=str(workspace.execution_root),
+                    ))
+
+        stage_result = self._finalize_result(stage_result, context, workspace.execution_root, no_write_before, workspace.root)
+        stage_result.started_at = started_at
+        stage_result.completed_at = _timestamp()
+        stage_result.duration_ms = _duration_ms(started)
+        return stage_result
+
+    def _run_command(
+        self, context: WorkerContext, execution_root: Path, context_pack_path: Optional[str],
+        started: float, started_at: str,
+    ) -> StageResult:
         env = os.environ.copy()
         env.update(
             {
@@ -162,7 +211,7 @@ class CommandWorker:
                 "MOREGAN_REMEDIATION_CONTEXT": json.dumps(context.remediation_context or {}, sort_keys=True),
                 "MOREGAN_CONTEXT_PACK": context_pack_path or "",
                 "MOREGAN_CONTEXT_TOKENS": str(context.context_estimated_tokens),
-                "MOREGAN_EXECUTION_MODE": "isolated" if execution_root != context.root else "repository",
+                "MOREGAN_EXECUTION_MODE": "isolated" if execution_root != context.root.resolve() else "repository",
                 "MOREGAN_EXECUTION_ROOT": str(execution_root),
             }
         )
@@ -178,76 +227,51 @@ class CommandWorker:
                 env=env,
             )
         except subprocess.TimeoutExpired as exc:
-            return self._finalize_result(
-                self._failure_result(
-                    started,
-                    context.attempt,
-                    description=f"{self.stage} worker timed out after {self.command.timeout_seconds}s.",
-                    remediation="Increase timeout_seconds or fix the worker command so it completes.",
-                    stdout_tail=exc.stdout or "",
-                    stderr_tail=exc.stderr or "",
-                ),
-                context,
-                execution_root,
-                no_write_before,
+            return self._failure_result(
+                started, context.attempt,
+                description=f"{self.stage} worker timed out after {self.command.timeout_seconds}s.",
+                remediation="Increase timeout_seconds or fix the worker command so it completes.",
+                stdout_tail=exc.stdout or "", stderr_tail=exc.stderr or "",
             )
         except (OSError, ValueError) as exc:
-            return self._finalize_result(
-                self._failure_result(
-                    started, context.attempt,
-                    description=f"{self.stage} worker command could not run: {exc}",
-                    remediation="Check the worker executable, arguments, permissions, and output encoding.",
-                ), context, execution_root, no_write_before,
+            return self._failure_result(
+                started, context.attempt,
+                description=f"{self.stage} worker command could not run: {exc}",
+                remediation="Check the worker executable, arguments, permissions, and output encoding.",
             )
 
         if result.returncode != 0:
-            return self._finalize_result(
-                self._failure_result(
-                    started,
-                    context.attempt,
-                    description=f"{self.stage} worker command exited with {result.returncode}.",
-                    remediation="Fix the worker command or its provider configuration.",
-                    stdout_tail=result.stdout,
-                    stderr_tail=result.stderr,
-                ),
-                context,
-                execution_root,
-                no_write_before,
+            return self._failure_result(
+                started, context.attempt,
+                description=f"{self.stage} worker command exited with {result.returncode}.",
+                remediation="Fix the worker command or its provider configuration.",
+                stdout_tail=result.stdout, stderr_tail=result.stderr,
             )
 
         try:
             payload = parse_stage_json(result.stdout)
         except StageResultValidationError as exc:
-            return self._finalize_result(
-                self._failure_result(
-                    started,
-                    context.attempt,
-                    description=f"{self.stage} worker did not emit valid JSON on stdout: {exc}",
-                    remediation="Make the worker command print one StageResult-compatible JSON object.",
-                    stdout_tail=result.stdout,
-                    stderr_tail=result.stderr,
-                ),
-                context,
-                execution_root,
-                no_write_before,
+            return self._failure_result(
+                started, context.attempt,
+                description=f"{self.stage} worker did not emit valid JSON on stdout: {exc}",
+                remediation="Make the worker command print one StageResult-compatible JSON object.",
+                stdout_tail=result.stdout, stderr_tail=result.stderr,
             )
 
-        stage_result = self._stage_result_from_payload(payload, started, context.attempt, started_at)
-        return self._finalize_result(stage_result, context, execution_root, no_write_before)
+        return self._stage_result_from_payload(payload, started, context.attempt, started_at)
 
     def _finalize_result(
         self,
         stage_result: StageResult,
         context: WorkerContext,
         execution_root: Path,
-        no_write_before: Optional[str],
+        no_write_before: Optional[CheckoutFingerprint],
+        repository_root: Path,
     ) -> StageResult:
-        self._attach_execution_evidence(stage_result, context.root, execution_root)
+        self._attach_execution_evidence(stage_result, repository_root, execution_root)
         self._attach_context_evidence(stage_result, context)
-        no_write_violation = self._no_write_violation(no_write_before, context.root)
-        if no_write_violation:
-            stage_result.verdict = "fail"
-            stage_result.findings.append(no_write_violation)
+        if no_write_before is not None:
+            self._verify_checkout(stage_result, no_write_before, repository_root)
         return stage_result
 
     def _stage_result_from_payload(self, payload: object, started: float, attempt: int, started_at: str) -> StageResult:
@@ -322,18 +346,10 @@ class CommandWorker:
             duration_ms=_duration_ms(started),
         )
 
-    def _execution_root(self, context: WorkerContext) -> Path:
-        execution = self.command.execution
-        if execution == "repository":
-            return context.root
-        if execution == "isolated" or (execution == "auto" and self.command.no_write):
-            return self._create_isolated_snapshot(context)
-        return context.root
-
     def _context_pack_for_execution(self, context: WorkerContext, execution_root: Path) -> Optional[str]:
         if not context.context_pack_path:
             return None
-        if execution_root == context.root:
+        if execution_root == context.root.resolve():
             return context.context_pack_path
 
         source = Path(context.context_pack_path)
@@ -344,42 +360,6 @@ class CommandWorker:
         shutil.copy2(source, target)
         return str(target)
 
-    def _create_isolated_snapshot(self, context: WorkerContext) -> Path:
-        target = Path(
-            tempfile.mkdtemp(
-                prefix=f"moregan-{context.run_id}-{self.stage}-attempt{context.attempt}-"
-            )
-        )
-        target.rmdir()
-        shutil.copytree(context.root, target, ignore=self._ignore_for_snapshot)
-        return target
-
-    def _ignore_for_snapshot(self, directory: str, names: List[str]) -> List[str]:
-        ignored = []
-        common_ignored = {
-            ".git",
-            "__pycache__",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".ruff_cache",
-            ".venv",
-            "venv",
-            "node_modules",
-            "dist",
-            "build",
-        }
-        for name in names:
-            path = Path(directory) / name
-            if name in common_ignored:
-                ignored.append(name)
-                continue
-            if path.match("*.pyc"):
-                ignored.append(name)
-                continue
-            if name == "runs" and path.parent.name == ".moregan":
-                ignored.append(name)
-        return ignored
-
     def _attach_execution_evidence(self, result: StageResult, repository_root: Path, execution_root: Path) -> None:
         isolated = execution_root != repository_root
         result.evidence.append(
@@ -387,9 +367,9 @@ class CommandWorker:
                 kind="execution_context",
                 name="isolated_snapshot" if isolated else "repository_checkout",
                 summary=(
-                    "Worker ran in an isolated snapshot; base checkout was not used as cwd."
+                    "Provider execution directory was a temporary snapshot, not the base checkout."
                     if isolated
-                    else "Worker ran in the repository checkout."
+                    else "Provider execution directory was the repository checkout."
                 ),
                 path=str(execution_root),
             )
@@ -407,30 +387,33 @@ class CommandWorker:
             )
         )
 
-    def _git_status(self, root: Path) -> Optional[str]:
-        if not (root / ".git").exists():
-            return None
-        result = subprocess.run(
-            ["git", "status", "--porcelain", "--untracked-files=all"],
-            cwd=root,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        return result.stdout if result.returncode == 0 else None
-
-    def _no_write_violation(self, before: Optional[str], root: Path) -> Optional[Finding]:
-        if before is None:
-            return None
-        after = self._git_status(root)
-        if after is None or after == before:
-            return None
-        return Finding(
-            severity="high",
-            category="no_write_violation",
-            description="A no-write worker changed the repository checkout.",
-            remediation="Run no-write workers with execution: isolated or fix the worker command so it does not write.",
-        )
+    def _verify_checkout(self, result: StageResult, before: CheckoutFingerprint, root: Path) -> None:
+        try:
+            after = CheckoutFingerprint.capture(root)
+        except (OSError, ValueError) as exc:
+            result.verdict = "fail"
+            result.findings.append(Finding(
+                severity="high", category="no_write_check_failed",
+                description=f"Could not verify the checkout after the no-write worker: {exc}",
+                remediation="Inspect the checkout manually and fix the integrity scan failure before retrying.",
+            ))
+            return
+        changed = after.changes_from(before)
+        summary = f"Compared content, modes and symlinks for {len(before.files)} before / {len(after.files)} after paths"
+        if before.git_state or after.git_state:
+            summary += ", plus Git index and HEAD"
+        result.evidence.append(EvidenceReference(
+            kind="workspace_integrity", name="no_write_check",
+            summary=summary + f"; {len(changed)} changed path(s). No files were restored or reverted.",
+        ))
+        if changed:
+            result.verdict = "fail"
+            paths = ", ".join(repr(name) for name in changed[:20])[:1000]
+            result.findings.append(Finding(
+                severity="high", category="no_write_violation", file=changed[0],
+                description=f"A no-write worker left checkout changes in {len(changed)} path(s): {paths}.",
+                remediation="Inspect and reconcile these changes manually; MoreGAN did not revert user work. Fix the worker before retrying.",
+            ))
 
 
 class ConfigErrorWorker:

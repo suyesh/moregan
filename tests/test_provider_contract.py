@@ -180,7 +180,7 @@ class ProviderContractTests(unittest.TestCase):
                 json.dumps(asdict(result))
 
     def test_worker_preparation_error_is_structured(self):
-        with patch.object(CommandWorker, "_execution_root", side_effect=OSError("disk full")):
+        with patch("moregan.workers.WorkerWorkspace.prepare", side_effect=OSError("disk full")):
             result = self._run_adapter("command")
         self.assertEqual(result.verdict, "fail")
         self.assertIn("disk full", result.findings[0].description)

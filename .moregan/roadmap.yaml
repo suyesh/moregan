@@ -477,16 +477,32 @@ completed_work:
     limitations:
       - "Windows only terminates the direct child; no Windows execution was verified."
       - "Escaped POSIX sessions and provider output bounds require further work."
+  - id: worker-snapshot-cleanup-and-no-write
+    package_version: "1.14.0"
+    original_list_numbers: [1, 2]
+    status: done_with_documented_scope
+    acceptance_criteria:
+      - "Own and remove each temporary worker copy on normal, failure, preparation, timeout and interruption paths."
+      - "Cleanup failures are structured failures, not successful stages."
+      - "Hash checkout contents and compare modes, symlinks, Git index and HEAD for no-write workers."
+      - "Verify both execution modes, including already-dirty files, without restoring or reverting user work."
+      - "Integrity and cleanup failures stop generator retries for manual inspection."
+    verification:
+      - "172 tests passed on macOS with Python 3.12.11 and 3.14.0, including 37 workspace tests."
+      - "Built wheel and sdist; all 37 workspace tests also passed against the installed wheel."
+      - "Installed Codex/Claude adapter smoke covered scratch snapshots, preserved dirty files, violations in both modes and replay."
+    limitations:
+      - "Documented scan exclusions and limits; submodules fail closed and must be checked separately."
+      - "Snapshots are not a sandbox; provider descendants/output bounds and Windows validation remain pending."
 current_work:
-  id: worker-snapshot-cleanup-and-no-write
+  id: provider-execution-bounds
   original_list_numbers: [1, 2]
   status: next
   acceptance_criteria:
-    - "Temporary worker snapshots are removed on success, failure, timeout and interruption."
-    - "No-write checks detect content changes even in already-dirty files."
-    - "Preexisting user changes are preserved and violations are structured failures."
-    - "Tests cover cleanup and repository content integrity across execution outcomes."
+    - "Provider stdout/stderr capture and prompt delivery are bounded without silently accepting truncated JSON."
+    - "Timeout and interruption stop provider processes and normal descendants on supported platforms."
+    - "Nested Codex/Claude wrappers cannot outlive the outer worker deadline or hold pipes open indefinitely."
+    - "Workspace cleanup and integrity verification occur after provider supervision completes."
   follow_up:
-    - provider_output_bounds_and_process_supervision
     - windows_child_tree_cleanup
     - release_ci_and_supported_python_matrix

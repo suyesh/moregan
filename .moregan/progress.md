@@ -1017,3 +1017,29 @@ execution_note: "Simulated providers only. Windows child-tree cleanup, escaped P
 next: "Worker snapshot cleanup and content-based no-write enforcement without reverting user changes."
 publishing: "PyPI remains paused; no release tag or workflow dispatch."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-workspace-integrity
+summary: "Hardened runtime worker lifecycle and no-write verification in 1.14.0."
+branch: "main"
+updates:
+  - file: "moregan/workspaces.py, moregan/workers.py"
+    action: "Own and clean temporary snapshots; fingerprint checkout content, modes, links, Git index and HEAD; fail closed on incomplete verification."
+  - file: "moregan/runtime.py"
+    action: "Stop integrity and cleanup failures for manual inspection without retries or automatic rollback."
+  - file: "tests/test_workspaces.py, tests/test_moregan_runtime.py, tests/test_provider_contract.py"
+    action: "Added 37 lifecycle/integrity tests and updated expectations for removed snapshots."
+  - file: "README.md, docs/worker-workspaces.md, docs/review-2026-09-27.md, moregan/adapters.py, ROADMAP.md, SESSION_HANDOFF.md, .moregan/roadmap.yaml"
+    action: "Documented workspace guarantees, exclusions and non-sandbox status; set provider process supervision next."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md, uv.lock"
+    action: "Bumped package version to 1.14.0 and aligned the lock."
+verification_evidence:
+  - "172 tests passed on Python 3.12.11 and 3.14.0 on macOS."
+  - "Built wheel and sdist; all 37 workspace tests passed against the installed wheel outside checkout."
+  - "Installed Codex/Claude adapter smoke verified snapshot cleanup, preserved dirty files, violations in both modes, no retries and replay."
+execution_note: "Simulated providers only. No sandbox, Windows coverage, or live-agent effectiveness claim. Scan exclusions/limits and surviving provider children remain explicit."
+next: "Bound provider output and prompt delivery, supervise nested processes, then validate Windows and release CI."
+publishing: "PyPI remains paused; no release tag or workflow dispatch."
+---

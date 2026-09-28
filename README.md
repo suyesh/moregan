@@ -278,7 +278,16 @@ execution: isolated    # always run in a temporary repository snapshot
 execution: repository  # run in the real checkout
 ```
 
-MoreGAN passes `MOREGAN_EXECUTION_MODE` and `MOREGAN_EXECUTION_ROOT` to provider commands and records the execution context in stage evidence. If a `no_write: true` worker is forced to `execution: repository` and changes the git status, MoreGAN fails that stage with a `no_write_violation` finding.
+MoreGAN passes `MOREGAN_EXECUTION_MODE` and `MOREGAN_EXECUTION_ROOT` to provider commands
+and records the execution context. Temporary snapshots are removed after each worker,
+including failure and interruption paths. Their recorded paths are historical.
+
+For `no_write: true`, MoreGAN compares checkout contents, file modes, symlink targets,
+and Git index/HEAD state before and after execution, even when the worker runs in a
+snapshot. This detects edits to already-dirty files. Violations, verification errors,
+and cleanup failures stop the run for manual inspection, without automatic retries
+or reverts. Snapshots and checks are **not a sandbox**; see
+[worker workspace guarantees and exclusions](docs/worker-workspaces.md).
 
 MoreGAN also passes compact context instead of oversized inline history:
 
@@ -561,8 +570,10 @@ imports, artifacts, and comparison rules.
 MoreGAN is alpha. Risk routing uses path, size, and keyword heuristics, not semantic
 proof; projects without Git fall back to request-only classification.
 Deterministic checks have bounded output and deadlines, with process-group cleanup
-on POSIX. Windows child-tree cleanup, provider output bounds, snapshot cleanup,
-and stronger process isolation still need work. Provider results are validated structurally;
+on POSIX. Worker snapshots have cleanup and content-based no-write checks, but do
+not contain processes or protect files outside the documented scan scope. Windows
+child-tree cleanup, provider output bounds, and stronger process isolation still
+need work. Provider results are validated structurally;
 validation cannot establish whether a model's claims are true. See
 [the review and next fixes](docs/review-2026-09-27.md).
 
@@ -589,11 +600,12 @@ Implemented in this repository:
 - isolated benchmark runner, baseline execution, and paired comparisons
 - truthful incomplete outcomes and strict shared provider validation
 - post-generation risk escalation and attempt-correct replay
+- bounded deterministic checks and worker snapshot cleanup/integrity verification
 
 Next production-readiness work:
 
 - larger benchmark suites and repeated live-agent measurements
-- bounded tool execution and snapshot cleanup
+- provider output bounds, process supervision, and Windows child-tree cleanup
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
 - competitive generator mode
