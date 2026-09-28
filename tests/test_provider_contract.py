@@ -1,7 +1,6 @@
 import io
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -13,6 +12,7 @@ from unittest.mock import patch
 from moregan.adapters import AgentAdapterScaffolder
 from moregan.agent_worker import AgentWorkerRunner
 from moregan.cli import main
+from moregan.processes import ProcessResult
 from moregan.runtime import MoreGANRuntime, RiskClassifier
 from moregan.schemas import (
     WORKER_STAGES, StageResultValidationError, parse_stage_json, validate_stage_result,
@@ -39,7 +39,7 @@ class ProviderContractTests(unittest.TestCase):
             completed_at="2026-09-27T12:00:01", duration_ms=1000,
         )
 
-    def _run_adapter(self, adapter, stdout=None, command=None, side_effect=None, returncode=0):
+    def _run_adapter(self, adapter, stdout=None, command=None, process_result=None, returncode=0):
         command = command or [sys.executable, "-c", "pass"]
         context = WorkerContext(self.root, "test", "Change copy", RiskClassifier().classify("Change copy"), [], attempt=2)
         worker = CommandWorker(WorkerCommand("generator", command, 1, False, "test", "repository"))
@@ -48,10 +48,11 @@ class ProviderContractTests(unittest.TestCase):
             "MOREGAN_CODEX_COMMAND": json.dumps(command), "MOREGAN_CLAUDE_COMMAND": json.dumps(command),
             "MOREGAN_ATTEMPT": "2",
         }):
-            if stdout is None and side_effect is None:
+            if stdout is None and process_result is None:
                 return worker.run(context) if adapter == "command" else runner.run()
-            completed = subprocess.CompletedProcess(command, returncode, stdout, "provider stderr")
-            with patch("subprocess.run", return_value=completed, side_effect=side_effect):
+            completed = process_result or ProcessResult(returncode, stdout, "provider stderr")
+            boundary = "moregan.workers" if adapter == "command" else "moregan.agent_worker"
+            with patch(f"{boundary}.run_bounded", return_value=completed):
                 return worker.run(context) if adapter == "command" else runner.run()
 
     def test_minimal_result_and_runtime_owned_metadata(self):
@@ -150,7 +151,7 @@ class ProviderContractTests(unittest.TestCase):
     def test_real_provider_processes_and_launch_errors(self):
         for adapter in ("command", "codex", "claude"):
             with self.subTest(adapter=adapter):
-                command = [sys.executable, "-c", f"print({json.dumps(valid_result())!r})"]
+                command = [sys.executable, "-c", f"import sys; sys.stdin.read(); print({json.dumps(valid_result())!r})"]
                 self.assertEqual(self._run_adapter(adapter, command=command).verdict, "pass")
                 self.assertEqual(self._run_adapter(adapter, command=["definitely-not-a-moregan-provider"]).verdict, "fail")
                 self.assertEqual(self._run_adapter(adapter, command=[sys.executable, "-c", "raise SystemExit(7)"]).verdict, "fail")
@@ -158,10 +159,12 @@ class ProviderContractTests(unittest.TestCase):
                 self.assertEqual(self._run_adapter(adapter, command=command).verdict, "fail")
 
     def test_timeout_bytes_are_serializable_and_bounded(self):
-        error = subprocess.TimeoutExpired("provider", 1, output=b"x" * 2000 + b"\xff", stderr=b"error\xff")
+        error = ProcessResult(124, stdout_tail=(b"x" * 2000 + b"\xff").decode("utf-8", errors="replace"),
+                              stderr_tail=b"error\xff".decode("utf-8", errors="replace"),
+                              timed_out=True, error_kind="timeout", reason="Command timed out")
         for adapter in ("command", "codex", "claude"):
             with self.subTest(adapter=adapter):
-                result = self._run_adapter(adapter, side_effect=error)
+                result = self._run_adapter(adapter, process_result=error)
                 self.assertEqual(result.verdict, "fail")
                 self.assertEqual(result.attempt, 2)
                 tails = [item.summary for item in result.evidence if item.kind.endswith("_tail")]

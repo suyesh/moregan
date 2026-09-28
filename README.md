@@ -281,6 +281,12 @@ execution: repository  # run in the real checkout
 MoreGAN passes `MOREGAN_EXECUTION_MODE` and `MOREGAN_EXECUTION_ROOT` to provider commands
 and records the execution context. Temporary snapshots are removed after each worker,
 including failure and interruption paths. Their recorded paths are historical.
+If process cleanup cannot be confirmed, the snapshot is retained for manual inspection.
+
+Provider JSON stdout and generated prompts default to a 1 MiB limit. Stderr is
+drained with a bounded tail, and timeouts cover blocked stdin and inherited pipes.
+Oversized or invalid-UTF-8 JSON fails instead of being truncated into a result.
+See [provider limits and process supervision](docs/provider-execution.md).
 
 For `no_write: true`, MoreGAN compares checkout contents, file modes, symlink targets,
 and Git index/HEAD state before and after execution, even when the worker runs in a
@@ -569,10 +575,10 @@ imports, artifacts, and comparison rules.
 
 MoreGAN is alpha. Risk routing uses path, size, and keyword heuristics, not semantic
 proof; projects without Git fall back to request-only classification.
-Deterministic checks have bounded output and deadlines, with process-group cleanup
+Deterministic checks and providers have bounded output and deadlines, with process-group cleanup
 on POSIX. Worker snapshots have cleanup and content-based no-write checks, but do
 not contain processes or protect files outside the documented scan scope. Windows
-child-tree cleanup, provider output bounds, and stronger process isolation still
+child-tree cleanup, escaped POSIX groups, and stronger process isolation still
 need work. Provider results are validated structurally;
 validation cannot establish whether a model's claims are true. See
 [the review and next fixes](docs/review-2026-09-27.md).
@@ -601,11 +607,13 @@ Implemented in this repository:
 - truthful incomplete outcomes and strict shared provider validation
 - post-generation risk escalation and attempt-correct replay
 - bounded deterministic checks and worker snapshot cleanup/integrity verification
+- bounded provider JSON, prompt delivery, and nested POSIX process supervision
 
 Next production-readiness work:
 
 - larger benchmark suites and repeated live-agent measurements
-- provider output bounds, process supervision, and Windows child-tree cleanup
+- supported-version CI, package checks, and release gates
+- Windows child-tree cleanup and platform validation
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
 - competitive generator mode

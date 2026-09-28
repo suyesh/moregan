@@ -1,6 +1,6 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 after workspace cleanup and no-write integrity hardening.
+Updated: 2026-09-27 after bounded provider execution and nested process supervision.
 Benchmark, completion/provider hardening, adaptive routing, check execution and workspace milestones are
 implemented and tested; production hardening continues.
 
@@ -8,8 +8,8 @@ implemented and tested; production hardening continues.
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed milestone: `6017098 Bound deterministic check execution and record timeout evidence`, version 1.13.0.
-- Current feature version: 1.14.0, workspace cleanup and no-write verification.
+- Previous pushed milestone: `9c5dbdb Clean worker snapshots and verify no-write checkout integrity`, version 1.14.0.
+- Current feature version: 1.15.0, bounded provider I/O and nested process supervision.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
 - PyPI publishing is paused. A push to main does not trigger the existing release workflow.
@@ -130,30 +130,53 @@ configured Checkstyle, SpotBugs, PMD, and OWASP Dependency-Check integrations.
 - Added 37 tests, adjusted old persistent-snapshot assertions, bumped all versions
   and lock to 1.14.0, and added docs/worker-workspaces.md.
 
+## Completed In 1.15.0
+
+- Both CommandWorker and AgentWorkerRunner now use the shared bounded executor.
+  JSON stdout defaults to 1 MiB and fails on overflow or invalid UTF-8. Never
+  parse a truncated tail as a result; strict StageResult validation remains.
+- Provider stderr is continuously drained with at most a 4,000-byte tail.
+  Successful results record provider_io counts, limits, truncation and errors;
+  failure diagnostics still cap tails at 1,000 characters.
+- Wrapper prompt templates are bounded regular UTF-8 files. Combined prompt,
+  runtime context and formatting are capped (default 1 MiB) before launch.
+- POSIX selectors write prompt stdin while reading both outputs. A blocked write,
+  waiting child or inherited open pipe is bounded by the same deadline. Early
+  stdin closure before delivery fails. Windows fallback adds a daemon writer.
+- Generated direct Python wrappers inherit the outer worker's POSIX process
+  group after a direct-parent/group-leader check. Standalone wrappers own their
+  provider group. Kill ordinary descendants before snapshot cleanup/verification.
+- Process cleanup failure stops for manual inspection without retries or diff
+  reassessment, retains snapshots and skips checkout verification. Interruption
+  plus cleanup failure also retains the snapshot and warns before propagating.
+- New per-worker max_output_bytes/max_prompt_bytes settings, strict ranges,
+  unknown-field rejection, inherited CLI defaults and scaffold configuration.
+- Added 28 provider execution tests, retained the malformed-contract matrix, and
+  updated metadata assertions. All version constants and lock bumped to 1.15.0.
+- Docs/provider-execution.md covers limits, custom-wrapper cooperation, and
+  non-sandbox scope. Windows trees and escaped POSIX groups remain uncontained.
+
 ## Review Findings And Next Work
 
 Read `docs/review-2026-09-27.md` first for concrete code references and impact.
 
-The next milestone is provider execution bounds and process supervision.
-CommandWorker._run_command and AgentWorkerRunner.run still use subprocess.run
-with capture_output, text mode and a timeout. They buffer output without a bound;
-nested provider children can survive or hold inherited pipes open. Snapshot cleanup
-cannot run until that call returns, so this remains important.
+The next milestone is release CI and supported-platform validation, before
+publishing any release. The workflow currently builds/publishes without tests;
+Python 3.8 is advertised but install.py uses str.removesuffix. Verify the declared
+range or adjust it deliberately, add supported-version tests and installed-package
+smoke checks, and gate release publishing on them. Preserve workflow.yml for PyPI
+Trusted Publishing. Do not dispatch or create a release/tag while publishing is paused.
 
-Extend processes.py where it removes duplication: provider env, bounded prompt
-delivery, explicit oversized/invalid-encoding result failures, and process-tree
-supervision. JSON stdout must never be silently truncated then parsed as a valid
-result. Consider the nested wrapper: starting each layer in a separate POSIX group
-can let the actual provider escape the outer worker deadline. Preserve schemas,
-runtime-owned timing, structured failures and workspace cleanup/integrity ordering.
-Test noisy providers, blocked stdin, hung children, parent exit, interruption and
-both scaffolded adapters. Existing provider-contract tests mock subprocess.run;
-update focused test boundaries rather than weakening the contract tests.
+Use CI to establish platform evidence before claiming Windows support. The shared
+executor's Windows path still terminates only direct children and uses daemon I/O
+threads. Add Windows child-tree supervision as a follow-up, not a claimed guarantee.
+POSIX escaped sessions/custom wrappers with extra process layers remain documented
+limitations. Native macOS validation is not certification of the whole matrix.
 
 After that:
 
-1. Add Windows child-tree cleanup and validate the OS matrix.
-2. Add release CI and verify or adjust the advertised Python 3.8+ support.
+1. Add Windows child-tree cleanup with native platform tests.
+2. Strengthen process containment separately from copied workspaces.
 3. Expand fixtures to representative real repositories and collect actual
    provider token/cost measurements before running effectiveness studies.
 4. Introduce competitive generators only after this evidence and hardening.
@@ -175,8 +198,8 @@ validation cannot establish that the provider's claims are true.
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Runtime | Truthful outcomes in 1.11.0; workspace cleanup and integrity in 1.14.0 |
-| 2 | Structured persona output | Shared strict provider validation in 1.11.0 |
+| 1 | Runtime | Truthful outcomes, workspace integrity and bounded provider execution through 1.15.0 |
+| 2 | Structured persona output | Strict schema, output size and UTF-8 checks through 1.15.0 |
 | 3 | Deterministic evidence | Presets, deadlines, bounded output and POSIX cleanup in 1.13.0; Windows tree cleanup pending |
 | 4 | Execution trace | Implemented; replay attempt fidelity fixed in 1.12.0 |
 | 5 | Empirical learning | Foundation implemented |
@@ -188,15 +211,16 @@ validation cannot establish that the provider's claims are true.
 
 ## Verification And Limits
 
-- Full unittest suite passed 172 tests on macOS under Python 3.12.11 and 3.14.0.
+- Full unittest suite passed 200 tests on macOS under Python 3.12.11 and 3.14.0.
 - Build: `uv build --clear --default-index https://pypi.org/simple`.
 - Lock validation: `uv lock --check --default-index https://pypi.org/simple`.
-- Wheel smoke environment: `/private/tmp/moregan-1.14.0-smoke.gejnAZ/venv`.
-- Smoke script: `/private/tmp/moregan-1.14.0-smoke.gejnAZ/smoke.py`.
-- All 37 workspace tests also passed against the installed wheel outside checkout.
-- Installed CLI exercised init, both provider adapters, isolated scratch writes,
-  snapshot deletion, preserved dirty files, no-write violations in both execution
-  modes, manual-review stop without retries, and replay. Simulated providers only.
+- Wheel smoke environment: `/private/tmp/moregan-1.15.0-smoke.Xzp0tj/venv`.
+- Smoke script: `/private/tmp/moregan-1.15.0-smoke.Xzp0tj/smoke.py`.
+- All 28 provider execution tests also passed against the installed wheel outside checkout.
+- Wheel and sdist built; installed CLI smoke passed for both provider adapters.
+- Installed CLI exercises both adapters, pass, oversize/invalid-UTF-8 output,
+  timeouts, scratch snapshots, preserved user files, inspect and replay.
+  Simulated providers only; no live model access.
 - Fixture verifiers tested against both broken source and known repaired source.
 - No paid Codex/Claude benchmark run or PyPI publication was performed.
 - The full supported Python/OS matrix is not yet certified. Source review found

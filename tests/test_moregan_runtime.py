@@ -917,7 +917,8 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertEqual(payload["verdict"], "pass")
         self.assertEqual(payload["confidence"], 0.77)
         self.assertEqual(payload["evidence"][0]["summary"], "True")
-        self.assertEqual(payload["evidence"][-1]["kind"], "agent_provider")
+        self.assertTrue(any(item["kind"] == "agent_provider" for item in payload["evidence"]))
+        self.assertTrue(any(item["kind"] == "provider_io" for item in payload["evidence"]))
 
     def test_cli_run_status_and_inspect_use_trace_artifacts(self):
         self.assertEqual(moregan_main(["--root", str(self.root), "run", "Add API endpoint", "--no-checks"]), 1)

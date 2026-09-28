@@ -494,15 +494,32 @@ completed_work:
     limitations:
       - "Documented scan exclusions and limits; submodules fail closed and must be checked separately."
       - "Snapshots are not a sandbox; provider descendants/output bounds and Windows validation remain pending."
+  - id: provider-execution-bounds
+    package_version: "1.15.0"
+    original_list_numbers: [1, 2]
+    status: done_with_platform_limits
+    acceptance_criteria:
+      - "Both provider boundaries use bounded I/O; oversized or invalid-UTF-8 stdout cannot pass."
+      - "Prompt templates and combined runtime prompts are bounded; blocked stdin obeys the process deadline."
+      - "Generated direct Codex/Claude wrappers share the outer POSIX group so ordinary descendants cannot escape its timeout."
+      - "Process cleanup precedes snapshot removal and verification; unconfirmed cleanup retains snapshots and stops retries."
+      - "Strict provider contracts, attempt ownership and deterministic log-truncation semantics remain intact."
+    verification:
+      - "200 tests passed on macOS with Python 3.12.11 and 3.14.0, including 28 new provider execution tests."
+      - "Wheel/sdist built; 28 installed provider tests and both adapter CLI smoke tests passed outside checkout."
+    limitations:
+      - "Windows still terminates direct children only; native platform validation is pending."
+      - "Escaped POSIX groups and custom wrappers with extra process layers are not contained; not a sandbox."
+      - "Simulated providers only, no live-agent effectiveness claim or PyPI publication."
 current_work:
-  id: provider-execution-bounds
-  original_list_numbers: [1, 2]
+  id: release-ci-supported-platforms
+  original_list_numbers: [1, 10]
   status: next
   acceptance_criteria:
-    - "Provider stdout/stderr capture and prompt delivery are bounded without silently accepting truncated JSON."
-    - "Timeout and interruption stop provider processes and normal descendants on supported platforms."
-    - "Nested Codex/Claude wrappers cannot outlive the outer worker deadline or hold pipes open indefinitely."
-    - "Workspace cleanup and integrity verification occur after provider supervision completes."
+    - "Verify or deliberately adjust the advertised Python support range, including the Python 3.8 installer incompatibility."
+    - "Add test and installed-package smoke CI for the supported matrix and make publication depend on passing checks."
+    - "Keep workflow.yml as the Trusted Publishing workflow and do not dispatch a release while PyPI is paused."
+    - "Record native platform evidence and remaining limitations without claiming unverified Windows child-tree containment."
   follow_up:
     - windows_child_tree_cleanup
-    - release_ci_and_supported_python_matrix
+    - representative_benchmarks_and_measured_provider_usage

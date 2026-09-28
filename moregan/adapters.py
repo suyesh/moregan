@@ -122,6 +122,8 @@ class AgentAdapterScaffolder:
                     f"  - stage: {stage}",
                     f"    command: {self._command(provider, stage)}",
                     f"    timeout_seconds: {timeout}",
+                    "    max_output_bytes: 1048576",
+                    "    max_prompt_bytes: 1048576",
                     f"    no_write: {no_write}",
                     f"    execution: {execution}",
                 ]
@@ -167,6 +169,8 @@ cp .moregan/workers.{provider}.yaml .moregan/workers.yaml
 Review workers before activation. Review, evaluation, security, production, MR readiness, and planning workers default to `MOREGAN_NO_WRITE=1` with `execution: auto`, which runs no-write workers in isolated snapshots by default. The generator stage defaults to write-enabled repository execution.
 
 Temporary snapshots are removed after worker execution. MoreGAN verifies the original checkout's contents for no-write workers; integrity or cleanup failures stop the run for inspection without automatic reverts. Snapshots are not a process sandbox, and execution paths in completed traces are historical.
+
+Worker commands have bounded JSON stdout (`max_output_bytes`, default 1048576), prompt input (`max_prompt_bytes`, default 1048576), and stderr tails (at most 4000 bytes). Oversized or non-UTF-8 stdout fails, never partial JSON. The deadline includes stdin delivery and output-pipe closure. These direct Python wrappers share the outer worker's POSIX process group so ordinary provider descendants are stopped before snapshot cleanup. Windows currently stops only direct children. Unconfirmed process cleanup retains the snapshot and stops for manual inspection.
 """
 
     def _prompt(self, provider: str, stage: str) -> str:

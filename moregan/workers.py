@@ -6,13 +6,15 @@ import json
 import os
 import shutil
 import shlex
-import subprocess
 import time
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Protocol
 
+from moregan.processes import (
+    MAX_INPUT_BYTES, MAX_OUTPUT_BYTES, MAX_TIMEOUT_SECONDS, SUPERVISOR_ENV, ProcessCleanupInterrupted, run_bounded,
+)
 from moregan.schemas import (
     EvidenceReference, Finding, RiskClassification, StageResult, StageResultValidationError,
     output_tail, parse_stage_json, validate_stage_result,
@@ -72,6 +74,8 @@ class WorkerCommand:
     no_write: bool
     source: str
     execution: str = "auto"
+    max_output_bytes: int = MAX_OUTPUT_BYTES
+    max_prompt_bytes: int = MAX_INPUT_BYTES
 
 
 class WorkerAdapter(Protocol):
@@ -152,12 +156,16 @@ class CommandWorker:
             )
         stage_result = None
         no_write_before = None
+        cleanup_unconfirmed = False
         try:
             if self.command.no_write:
                 no_write_before = CheckoutFingerprint.capture(context.root)
             execution_root = workspace.prepare()
             context_pack_path = self._context_pack_for_execution(context, execution_root)
             stage_result = self._run_command(context, execution_root, context_pack_path, started, started_at)
+        except ProcessCleanupInterrupted:
+            cleanup_unconfirmed = True
+            raise
         except (OSError, ValueError) as exc:
             stage_result = self._failure_result(
                 started, context.attempt, description=f"Could not prepare {self.stage} worker: {exc}",
@@ -166,7 +174,12 @@ class CommandWorker:
             if self.command.no_write and no_write_before is None:
                 stage_result.findings[0].category = "no_write_check_failed"
         finally:
+            cleanup_unconfirmed = cleanup_unconfirmed or (stage_result is not None and any(
+                finding.category == "worker_cleanup_failed" for finding in stage_result.findings
+            ))
             try:
+                if workspace.temporary_root is not None and cleanup_unconfirmed:
+                    raise OSError("Provider process cleanup is unconfirmed; snapshot retained for manual inspection")
                 workspace.cleanup()
             except (OSError, ValueError, NotImplementedError) as exc:
                 if stage_result is None:
@@ -213,25 +226,18 @@ class CommandWorker:
                 "MOREGAN_CONTEXT_TOKENS": str(context.context_estimated_tokens),
                 "MOREGAN_EXECUTION_MODE": "isolated" if execution_root != context.root.resolve() else "repository",
                 "MOREGAN_EXECUTION_ROOT": str(execution_root),
+                "MOREGAN_MAX_OUTPUT_BYTES": str(self.command.max_output_bytes),
+                "MOREGAN_MAX_PROMPT_BYTES": str(self.command.max_prompt_bytes),
+                "MOREGAN_WORKER_TIMEOUT_SECONDS": str(self.command.timeout_seconds),
+                SUPERVISOR_ENV: str(os.getpid()),
             }
         )
 
         try:
-            result = subprocess.run(
-                self.command.command,
-                cwd=execution_root,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=self.command.timeout_seconds,
-                env=env,
-            )
-        except subprocess.TimeoutExpired as exc:
-            return self._failure_result(
-                started, context.attempt,
-                description=f"{self.stage} worker timed out after {self.command.timeout_seconds}s.",
-                remediation="Increase timeout_seconds or fix the worker command so it completes.",
-                stdout_tail=exc.stdout or "", stderr_tail=exc.stderr or "",
+            result = run_bounded(
+                self.command.command, execution_root, env=env,
+                timeout_seconds=self.command.timeout_seconds,
+                max_output_bytes=self.command.max_output_bytes, strict_stdout=True,
             )
         except (OSError, ValueError) as exc:
             return self._failure_result(
@@ -240,25 +246,34 @@ class CommandWorker:
                 remediation="Check the worker executable, arguments, permissions, and output encoding.",
             )
 
-        if result.returncode != 0:
-            return self._failure_result(
+        if result.error_kind or result.exit_code != 0:
+            stage_result = self._failure_result(
                 started, context.attempt,
-                description=f"{self.stage} worker command exited with {result.returncode}.",
-                remediation="Fix the worker command or its provider configuration.",
-                stdout_tail=result.stdout, stderr_tail=result.stderr,
+                description=f"{self.stage} worker: {result.reason or f'command exited with {result.exit_code}.'}",
+                remediation="Check the provider command, execution limits, and process cleanup.",
+                stdout_tail=result.stdout_tail, stderr_tail=result.stderr_tail,
             )
-
-        try:
-            payload = parse_stage_json(result.stdout)
-        except StageResultValidationError as exc:
-            return self._failure_result(
-                started, context.attempt,
-                description=f"{self.stage} worker did not emit valid JSON on stdout: {exc}",
-                remediation="Make the worker command print one StageResult-compatible JSON object.",
-                stdout_tail=result.stdout, stderr_tail=result.stderr,
-            )
-
-        return self._stage_result_from_payload(payload, started, context.attempt, started_at)
+            if result.error_kind == "cleanup_error":
+                stage_result.findings[0].category = "worker_cleanup_failed"
+        else:
+            try:
+                payload = parse_stage_json(result.stdout_tail)
+            except StageResultValidationError as exc:
+                stage_result = self._failure_result(
+                    started, context.attempt,
+                    description=f"{self.stage} worker did not emit valid JSON on stdout: {exc}",
+                    remediation="Make the worker command print one StageResult-compatible JSON object.",
+                    stdout_tail=result.stdout_tail, stderr_tail=result.stderr_tail,
+                )
+            else:
+                stage_result = self._stage_result_from_payload(payload, started, context.attempt, started_at)
+        stage_result.evidence.append(EvidenceReference(
+            kind="provider_io", name="worker_process",
+            summary=f"stdout_bytes={result.stdout_bytes}; stderr_bytes={result.stderr_bytes}; "
+                    f"stderr_truncated={result.stderr_truncated}; error_kind={result.error_kind or 'none'}; "
+                    f"stdout_limit={self.command.max_output_bytes}; timeout_seconds={self.command.timeout_seconds}.",
+        ))
+        return stage_result
 
     def _finalize_result(
         self,
@@ -271,7 +286,13 @@ class CommandWorker:
         self._attach_execution_evidence(stage_result, repository_root, execution_root)
         self._attach_context_evidence(stage_result, context)
         if no_write_before is not None:
-            self._verify_checkout(stage_result, no_write_before, repository_root)
+            if any(finding.category == "worker_cleanup_failed" for finding in stage_result.findings):
+                stage_result.evidence.append(EvidenceReference(
+                    kind="workspace_integrity", name="no_write_check_unverified",
+                    summary="Checkout verification skipped because provider process cleanup is unconfirmed.",
+                ))
+            else:
+                self._verify_checkout(stage_result, no_write_before, repository_root)
         return stage_result
 
     def _stage_result_from_payload(self, payload: object, started: float, attempt: int, started_at: str) -> StageResult:
@@ -516,6 +537,9 @@ class WorkerConfigLoader:
         return "\n".join(lines)
 
     def _coerce_worker(self, payload: Dict[str, object]) -> WorkerCommand:
+        allowed = {"stage", "command", "timeout_seconds", "no_write", "execution", "max_output_bytes", "max_prompt_bytes"}
+        if any(key not in allowed for key in payload):
+            raise WorkerConfigError("unknown worker setting; check field names")
         stage = str(payload.get("stage", "")).strip()
         if stage not in WORKER_STAGE_TO_STATE:
             raise WorkerConfigError(f"unsupported worker stage: {stage}")
@@ -525,8 +549,13 @@ class WorkerConfigLoader:
             raise WorkerConfigError(f"{stage} worker needs a command")
 
         timeout = payload.get("timeout_seconds", 120)
-        if type(timeout) is not int or timeout < 1:
-            raise WorkerConfigError("worker timeout_seconds must be a positive integer")
+        output_limit = payload.get("max_output_bytes", MAX_OUTPUT_BYTES)
+        prompt_limit = payload.get("max_prompt_bytes", MAX_INPUT_BYTES)
+        for name, value, maximum in (("timeout_seconds", timeout, MAX_TIMEOUT_SECONDS),
+                                     ("max_output_bytes", output_limit, MAX_OUTPUT_BYTES),
+                                     ("max_prompt_bytes", prompt_limit, MAX_INPUT_BYTES)):
+            if type(value) is not int or not 1 <= value <= maximum:
+                raise WorkerConfigError(f"worker {name} must be an integer between 1 and {maximum}")
         return WorkerCommand(
             stage=stage,
             command=self._coerce_command(command),
@@ -534,6 +563,8 @@ class WorkerConfigLoader:
             no_write=self._coerce_bool(payload.get("no_write", True)),
             source=str(self.CONFIG_PATH),
             execution=self._coerce_execution(payload.get("execution", "auto")),
+            max_output_bytes=output_limit,
+            max_prompt_bytes=prompt_limit,
         )
 
     def _coerce_command(self, value: object) -> List[str]:

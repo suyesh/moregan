@@ -722,6 +722,16 @@ class MoreGANRuntime:
                 )
             stages.append(stage_result)
 
+            manual_failures = [finding.category for finding in stage_result.findings if finding.category in {
+                "no_write_violation", "no_write_check_failed", "workspace_cleanup_failed", "worker_cleanup_failed",
+            }]
+            if stage_result.verdict == "fail" and manual_failures:
+                status = "fail"
+                terminal_reason = f"{route_stage} workspace or process cleanup check failed; manual inspection required"
+                self.trace_writer.event(run_dir, "worker.manual_review_required", stage=route_stage,
+                                        categories=manual_failures)
+                break
+
             if route_stage == "generator":
                 if remediation_context is not None:
                     self.trace_writer.event(
@@ -744,15 +754,6 @@ class MoreGANRuntime:
                     break
 
             if stage_result.verdict == "fail":
-                workspace_failures = [finding.category for finding in stage_result.findings if finding.category in {
-                    "no_write_violation", "no_write_check_failed", "workspace_cleanup_failed",
-                }]
-                if workspace_failures:
-                    status = "fail"
-                    terminal_reason = f"{route_stage} workspace check failed; manual inspection required"
-                    self.trace_writer.event(run_dir, "worker.manual_review_required", stage=route_stage,
-                                            categories=workspace_failures)
-                    break
                 remediated = self._attempt_remediation(
                     run_dir=run_dir,
                     state_machine=state_machine,

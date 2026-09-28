@@ -423,7 +423,7 @@ class WorkspaceTests(unittest.TestCase):
     def test_runtime_does_not_remediate_integrity_or_cleanup_errors(self):
         folder = self.root / ".moregan"
         folder.mkdir()
-        for category in ("no_write_check_failed", "workspace_cleanup_failed"):
+        for category in ("no_write_check_failed", "workspace_cleanup_failed", "worker_cleanup_failed"):
             with self.subTest(category=category):
                 payload = dict(stage="evaluator", verdict="fail", confidence=1, findings=[dict(
                     severity="high", category=category, description="Workspace failure", remediation="Inspect manually")])

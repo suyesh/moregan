@@ -17,6 +17,8 @@ The project is alpha. Completed foundations are not a claim of production readin
 - Post-generation catch-up reviews and attempt-correct replay.
 - Worker snapshot cleanup, checkout content/index verification and manual-review
   stops for workspace integrity failures.
+- Bounded provider JSON and prompt delivery, strict UTF-8 handling, and nested
+  Codex/Claude POSIX process supervision before workspace cleanup.
 - Compact context packs, local learning observations, traces, and read-only replay.
 - CLI initialization, skill setup, and package/publishing configuration.
 - Benchmark foundation: six isolated Python fixtures, independent acceptance checks,
@@ -24,8 +26,8 @@ The project is alpha. Completed foundations are not a claim of production readin
 
 ## Next
 
-1. Provider output bounds and process cleanup; Windows child-tree supervision.
-2. Supported-version CI, package checks, and release gates.
+1. Supported-version CI, package checks, and release gates.
+2. Windows child-tree supervision and platform validation.
 3. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
    and independent human evaluation.
 
@@ -33,6 +35,7 @@ Details and code pointers: [September review](docs/review-2026-09-27.md).
 Benchmark usage and limitations: [Benchmark guide](docs/benchmarks.md).
 Check limits and platform scope: [Tool execution](docs/tool-execution.md).
 No-write coverage and exclusions: [Worker workspaces](docs/worker-workspaces.md).
+Provider limits and process scope: [Provider execution](docs/provider-execution.md).
 
 ## Later
 
@@ -46,8 +49,8 @@ No-write coverage and exclusions: [Worker workspaces](docs/worker-workspaces.md)
 
 | # | Item | Current Progress |
 |---|---|---|
-| 1 | Real runtime | Truthful completion in 1.11.0; workspace lifecycle and integrity hardened in 1.14.0 |
-| 2 | Structured persona output | Shared strict provider validation implemented in 1.11.0 |
+| 1 | Real runtime | Truthful completion, workspace integrity and bounded provider execution through 1.15.0 |
+| 2 | Structured persona output | Shared strict validation; oversized/invalid-UTF-8 output rejected in 1.15.0 |
 | 3 | Deterministic evidence | Stack presets, deadlines and bounded output in 1.13.0; Windows child-tree cleanup pending |
 | 4 | Execution trace | Implemented; replay attempt fidelity repaired in 1.12.0 |
 | 5 | Empirical learning | Foundation implemented; calibration pending |

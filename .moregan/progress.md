@@ -1043,3 +1043,31 @@ execution_note: "Simulated providers only. No sandbox, Windows coverage, or live
 next: "Bound provider output and prompt delivery, supervise nested processes, then validate Windows and release CI."
 publishing: "PyPI remains paused; no release tag or workflow dispatch."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-bounded-provider-execution
+summary: "Bounded provider I/O and supervised nested POSIX processes in 1.15.0."
+branch: "main"
+updates:
+  - file: "moregan/processes.py, moregan/workers.py, moregan/agent_worker.py"
+    action: "Share bounded capture and stdin delivery; reject oversized/invalid-UTF-8 JSON; keep generated wrappers in the outer POSIX process group."
+  - file: "moregan/runtime.py, moregan/workers.py"
+    action: "Stop process-cleanup failures before diff inspection or retries; retain snapshots and mark checkout verification unverified, including interrupted cleanup failures."
+  - file: "moregan/adapters.py, tests/test_provider_execution.py"
+    action: "Scaffold strict execution limits and add 28 tests for I/O limits, stdin blocking, nested children, interruptions, cleanup ordering and configuration."
+  - file: "tests/test_provider_contract.py, tests/test_moregan_runtime.py, tests/test_workspaces.py"
+    action: "Preserve contract validation coverage and update evidence/cleanup failure expectations."
+  - file: "README.md, INSTALL.md, docs/provider-execution.md, docs/tool-execution.md, docs/worker-workspaces.md, docs/review-2026-09-27.md, ROADMAP.md, SESSION_HANDOFF.md, .moregan/roadmap.yaml"
+    action: "Document provider guarantees and platform limits; set supported-version/release CI as next."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md, uv.lock"
+    action: "Bumped package version to 1.15.0 and aligned the lock."
+verification_evidence:
+  - "200 tests passed on Python 3.12.11 and 3.14.0 on macOS."
+  - "Built wheel and sdist; all 28 provider execution tests also passed against the installed wheel outside checkout."
+  - "Installed Codex/Claude adapter smoke covered pass, oversized/invalid-UTF-8 output, timeout, snapshot cleanup, user-file preservation, inspect and replay."
+execution_note: "Simulated providers only. Windows descendants, escaped POSIX groups and custom wrapper layers remain outside containment. No sandbox or live-agent effectiveness claim."
+next: "Gate publishing with supported-version CI and installed-package smoke checks; then Windows child-tree supervision and benchmark studies."
+publishing: "PyPI remains paused; no release tag or workflow dispatch."
+---

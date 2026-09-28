@@ -7,13 +7,16 @@ import ast
 import json
 import os
 import shlex
-import subprocess
+import stat
 import time
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Sequence
 
+from moregan.processes import (
+    MAX_INPUT_BYTES, MAX_OUTPUT_BYTES, MAX_TIMEOUT_SECONDS, SUPERVISOR_ENV, run_bounded, supervised_adapter,
+)
 from moregan.schemas import (
     EvidenceReference, Finding, StageResult, StageResultValidationError, WORKER_STAGES,
     output_tail, parse_stage_json, validate_stage_result,
@@ -32,7 +35,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stage", choices=sorted(WORKER_STAGES), required=True)
     parser.add_argument("--prompt", required=True, help="prompt template path")
     parser.add_argument("--root", default=".", help="repository root")
-    parser.add_argument("--timeout", type=int, default=300)
+    parser.add_argument("--timeout", type=int, default=os.environ.get("MOREGAN_WORKER_TIMEOUT_SECONDS", "300"))
+    parser.add_argument("--max-output-bytes", type=int, default=os.environ.get("MOREGAN_MAX_OUTPUT_BYTES", str(MAX_OUTPUT_BYTES)))
+    parser.add_argument("--max-prompt-bytes", type=int, default=os.environ.get("MOREGAN_MAX_PROMPT_BYTES", str(MAX_INPUT_BYTES)))
     return parser
 
 
@@ -44,6 +49,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         prompt_path=Path(args.prompt),
         root=Path(args.root).resolve(),
         timeout_seconds=args.timeout,
+        max_output_bytes=args.max_output_bytes,
+        max_prompt_bytes=args.max_prompt_bytes,
     )
     result = runner.run()
     print(json.dumps(asdict(result), sort_keys=True))
@@ -53,12 +60,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 class AgentWorkerRunner:
     """Runs a configured provider CLI and returns StageResult JSON."""
 
-    def __init__(self, provider: str, stage: str, prompt_path: Path, root: Path, timeout_seconds: int):
+    def __init__(self, provider: str, stage: str, prompt_path: Path, root: Path, timeout_seconds: int,
+                 max_output_bytes: int = MAX_OUTPUT_BYTES, max_prompt_bytes: int = MAX_INPUT_BYTES):
         self.provider = provider
         self.stage = stage
         self.prompt_path = prompt_path
         self.root = root
         self.timeout_seconds = timeout_seconds
+        self.max_output_bytes = max_output_bytes
+        self.max_prompt_bytes = max_prompt_bytes
         self.attempt = 1
 
     def run(self) -> StageResult:
@@ -69,11 +79,14 @@ class AgentWorkerRunner:
             if attempt < 1:
                 raise ValueError("attempt must be positive")
             self.attempt = attempt
-            if type(self.timeout_seconds) is not int or self.timeout_seconds < 1:
-                raise ValueError("timeout must be a positive integer")
+            for name, value, maximum in (("timeout", self.timeout_seconds, MAX_TIMEOUT_SECONDS),
+                                         ("max_output_bytes", self.max_output_bytes, MAX_OUTPUT_BYTES),
+                                         ("max_prompt_bytes", self.max_prompt_bytes, MAX_INPUT_BYTES)):
+                if type(value) is not int or not 1 <= value <= maximum:
+                    raise ValueError(f"{name} must be an integer between 1 and {maximum}")
         except ValueError as exc:
             return self._failure(started, f"Invalid worker execution context: {exc}",
-                                 "Use a positive MOREGAN_ATTEMPT and timeout.")
+                                 "Use a positive MOREGAN_ATTEMPT and supported execution limits.")
         env_name = PROVIDER_COMMAND_ENV[self.provider]
         raw_command = os.environ.get(env_name, "").strip()
         if not raw_command:
@@ -92,27 +105,17 @@ class AgentWorkerRunner:
             )
 
         try:
-            prompt = self._build_prompt()
-        except (OSError, UnicodeError) as exc:
+            prompt = self._build_prompt().encode("utf-8")
+        except (OSError, ValueError) as exc:
             return self._failure(started, f"Could not read provider prompt: {exc}",
-                                 "Check the prompt path, permissions, and text encoding.")
+                                 "Check the prompt path, permissions, UTF-8 encoding, and max_prompt_bytes.")
+        env = os.environ.copy()
+        env.pop(SUPERVISOR_ENV, None)
         try:
-            completed = subprocess.run(
-                command,
-                cwd=self.root,
-                check=False,
-                capture_output=True,
-                text=True,
-                input=prompt,
-                timeout=self.timeout_seconds,
-            )
-        except subprocess.TimeoutExpired as exc:
-            return self._failure(
-                started,
-                description=f"{self.provider} {self.stage} command timed out after {self.timeout_seconds}s.",
-                remediation="Increase timeout_seconds or fix the provider command.",
-                stdout_tail=exc.stdout or "",
-                stderr_tail=exc.stderr or "",
+            completed = run_bounded(
+                command, self.root, env=env, input_bytes=prompt, max_input_bytes=self.max_prompt_bytes,
+                timeout_seconds=self.timeout_seconds, max_output_bytes=self.max_output_bytes,
+                strict_stdout=True, inherit_process_group=supervised_adapter(),
             )
         except (OSError, ValueError) as exc:
             return self._failure(
@@ -120,30 +123,47 @@ class AgentWorkerRunner:
                 "Check the provider executable, arguments, permissions, and output encoding.",
             )
 
-        if completed.returncode != 0:
-            return self._failure(
+        if completed.error_kind or completed.exit_code != 0:
+            result = self._failure(
                 started,
-                description=f"{self.provider} {self.stage} command exited with {completed.returncode}.",
-                remediation="Fix the provider command or the adapter prompt.",
-                stdout_tail=completed.stdout,
-                stderr_tail=completed.stderr,
+                description=f"{self.provider} {self.stage}: {completed.reason or f'command exited with {completed.exit_code}.'}",
+                remediation="Check the provider command, execution limits, and process cleanup.",
+                stdout_tail=completed.stdout_tail,
+                stderr_tail=completed.stderr_tail,
             )
-
-        try:
-            payload = parse_stage_json(completed.stdout)
-        except StageResultValidationError as exc:
-            return self._failure(
-                started,
-                description=f"{self.provider} {self.stage} command did not return StageResult JSON: {exc}",
-                remediation="Adjust the adapter prompt or provider command so stdout contains one JSON object.",
-                stdout_tail=completed.stdout,
-                stderr_tail=completed.stderr,
-            )
-
-        return self._stage_result_from_payload(payload, started, started_at)
+            if completed.error_kind == "cleanup_error":
+                result.findings[0].category = "worker_cleanup_failed"
+        else:
+            try:
+                payload = parse_stage_json(completed.stdout_tail)
+            except StageResultValidationError as exc:
+                result = self._failure(
+                    started,
+                    description=f"{self.provider} {self.stage} command did not return StageResult JSON: {exc}",
+                    remediation="Adjust the adapter prompt or provider command so stdout contains one JSON object.",
+                    stdout_tail=completed.stdout_tail, stderr_tail=completed.stderr_tail,
+                )
+            else:
+                result = self._stage_result_from_payload(payload, started, started_at)
+        result.evidence.append(EvidenceReference(
+            kind="provider_io", name=f"{self.provider}_process",
+            summary=f"prompt_bytes={len(prompt)}; stdout_bytes={completed.stdout_bytes}; "
+                    f"stderr_bytes={completed.stderr_bytes}; stderr_truncated={completed.stderr_truncated}; "
+                    f"error_kind={completed.error_kind or 'none'}; stdout_limit={self.max_output_bytes}; "
+                    f"timeout_seconds={self.timeout_seconds}.",
+        ))
+        return result
 
     def _build_prompt(self) -> str:
-        template = self.prompt_path.read_text(encoding="utf-8")
+        # Nonblocking open plus fstat rejects FIFOs/devices without waiting for a writer.
+        fd = os.open(str(self.prompt_path), os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
+        with os.fdopen(fd, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError("prompt must be a regular file")
+            raw = stream.read(self.max_prompt_bytes + 1)
+        if len(raw) > self.max_prompt_bytes:
+            raise ValueError(f"prompt template exceeds {self.max_prompt_bytes} bytes")
+        template = raw.decode("utf-8")
         context = {
             "run_id": os.environ.get("MOREGAN_RUN_ID", ""),
             "stage": self.stage,
@@ -155,13 +175,16 @@ class AgentWorkerRunner:
             "remediation_context": os.environ.get("MOREGAN_REMEDIATION_CONTEXT", "{}"),
             "context_pack": os.environ.get("MOREGAN_CONTEXT_PACK", ""),
             "context_tokens": os.environ.get("MOREGAN_CONTEXT_TOKENS", "0"),
+            "phase": os.environ.get("MOREGAN_STAGE_PHASE", "standard"),
         }
-        return (
+        if len(raw) + sum(len(value.encode("utf-8")) for value in context.values()) > self.max_prompt_bytes:
+            raise ValueError(f"prompt with runtime context exceeds {self.max_prompt_bytes} bytes")
+        prompt = (
             f"{template}\n\n"
             "## Runtime Context\n\n"
             f"- run_id: {context['run_id']}\n"
             f"- stage: {context['stage']}\n"
-            f"- phase: {os.environ.get('MOREGAN_STAGE_PHASE', 'standard')}\n"
+            f"- phase: {context['phase']}\n"
             f"- request: {context['request']}\n"
             f"- risk_level: {context['risk_level']}\n"
             f"- route: {context['route']}\n"
@@ -173,6 +196,9 @@ class AgentWorkerRunner:
             "Read the context pack path when present instead of requesting oversized inline history.\n\n"
             "Return exactly one JSON object on stdout and no markdown fences.\n"
         )
+        if len(prompt.encode("utf-8")) > self.max_prompt_bytes:
+            raise ValueError(f"prompt with runtime context exceeds {self.max_prompt_bytes} bytes")
+        return prompt
 
     def _stage_result_from_payload(self, payload: object, started: float, started_at: str) -> StageResult:
         try:

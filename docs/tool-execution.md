@@ -1,7 +1,9 @@
 # Deterministic Check Execution
 
 MoreGAN 1.13.0 bounds deterministic command execution. This covers explicit
-commands, builtins, and detected stack presets, not model-provider commands.
+commands, builtins, and detected stack presets. Provider commands share the
+executor starting in 1.15.0, with stricter JSON rules described in
+[provider execution](provider-execution.md).
 
 ## Configuration
 
@@ -81,6 +83,6 @@ This is resource supervision, not a sandbox. A process that starts a separate
 session can escape POSIX group cleanup. Windows currently terminates only the
 direct child and uses bounded daemon readers; descendants can survive or hold
 pipes open. Windows process-tree containment and the full platform matrix remain
-unverified. Provider workers still use their existing timeout/capture path and
-do not yet share these output bounds. No claim of global CPU, disk, memory, or
+unverified. Provider workers now share the bounded executor, but unlike check
+logs, provider stdout cannot be truncated and accepted. No claim of global CPU, disk, memory, or
 network containment is made.

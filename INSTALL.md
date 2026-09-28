@@ -182,6 +182,11 @@ moregan adapters claude --activate
 
 `adapters` writes `.moregan/adapters/<provider>/` prompts and `.moregan/workers.<provider>.yaml`. With `--activate`, it also writes `.moregan/workers.yaml` unless that file already exists; use `--force` for intentional replacement. Set `MOREGAN_CODEX_COMMAND` or `MOREGAN_CLAUDE_COMMAND` to a provider command that reads the prompt from stdin and prints one `StageResult` JSON object.
 
+Workers default to a 1 MiB JSON stdout limit and a 1 MiB generated prompt limit.
+Provider timeouts cover blocked stdin and inherited output pipes. Configure
+`max_output_bytes`, `max_prompt_bytes`, and `timeout_seconds` per worker; see
+[provider execution limits](docs/provider-execution.md) for cleanup and platform scope.
+
 PyPI trusted publishing:
 
 - PyPI project name: `moregan`

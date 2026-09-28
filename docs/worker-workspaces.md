@@ -22,6 +22,9 @@ inside a temporary copy are disposable and do not themselves cause a violation.
 Every isolated worker invocation owns a fresh temporary parent directory. MoreGAN
 removes only that directory in a `finally` path, including success, provider
 failure, malformed output, reported timeout, preparation failure and interruption.
+In 1.15.0, provider supervision completes before snapshot removal. Unconfirmed
+process cleanup retains the snapshot instead of deleting files a process may
+still be using, and skips post-execution checkout verification.
 Partial copies are removed too. Read-only copied files/directories are made
 removable on permission failure; source permissions are never changed by cleanup.
 
@@ -85,6 +88,8 @@ findings and deterministic-check failures retain their existing retry policy.
 Concurrent user/editor writes can trigger a violation; the check cannot attribute
 the writer. Changes made and restored between scans can evade detection. Provider
 commands can still access absolute paths, external files, credentials and network
-resources. Surviving child processes may write after verification. Provider process
-supervision/output bounds and Windows validation remain separate milestones.
+resources. Ordinary POSIX provider children are now supervised before verification,
+but escaped process groups and Windows descendants may still survive. See
+[provider execution limits](provider-execution.md); Windows child-tree cleanup
+and stronger containment remain separate milestones.
 Do not use these controls as a security boundary for untrusted providers.
