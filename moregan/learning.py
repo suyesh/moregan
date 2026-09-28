@@ -175,6 +175,7 @@ class EmpiricalLearningStore:
                         "observations": observations_count,
                         "successful_applications": len(successful),
                         "failures": len(failed),
+                        "unverified_observations": sum(item.outcome == "unverified" for item in items),
                         "confidence": round(confidence, 3),
                     },
                     "observations": [
@@ -208,6 +209,8 @@ class EmpiricalLearningStore:
         return observations
 
     def _outcome(self, status: str, stage: str, remediated_stages: Iterable[str]) -> str:
+        if status == "incomplete":
+            return "unverified"
         if status == "pass" and stage in remediated_stages:
             return "remediated"
         if status == "pass":

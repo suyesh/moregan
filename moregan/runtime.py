@@ -330,6 +330,9 @@ class TraceWriter:
             "",
         ]
         lines.extend(f"- {stage}" for stage in result.risk.route)
+        if result.incomplete_stages:
+            lines.extend(["", "## Incomplete Stages", ""])
+            lines.extend(f"- {stage}" for stage in result.incomplete_stages)
         lines.extend(["", "## Stage Results", ""])
         for stage in result.stages:
             detail = f"{stage.verdict.upper()} ({stage.confidence:.2f} confidence)"
@@ -341,7 +344,7 @@ class TraceWriter:
 
         lines.extend(["", "## Deterministic Evidence", ""])
         if not result.evidence:
-            lines.append("- No deterministic checks were requested.")
+            lines.append("- No deterministic command evidence was collected.")
         for item in result.evidence:
             status = "SKIP" if item.skipped else "PASS" if item.passed else "FAIL"
             detail = item.reason or " ".join(item.command)
@@ -705,10 +708,17 @@ class MoreGANRuntime:
                 continue
             current_index += 1
 
+        latest_stages = {stage.stage: stage for stage in stages}
+        incomplete_stages = [name for name in risk.route if name not in latest_stages
+                             or latest_stages[name].verdict == "skip"]
+        if status == "pass" and incomplete_stages:
+            status = "incomplete"
+            terminal_reason = "required stages were not executed: " + ", ".join(incomplete_stages)
+        terminal_state = {"pass": TaskState.COMPLETED, "fail": TaskState.FAILED, "incomplete": TaskState.INCOMPLETE}
         self._transition(
             run_dir,
             state_machine,
-            TaskState.COMPLETED if status == "pass" else TaskState.FAILED,
+            terminal_state[status],
             reason=terminal_reason,
             stage="run",
         )
@@ -721,6 +731,7 @@ class MoreGANRuntime:
             stages=stages,
             state=state_machine.to_dict(),
             evidence=evidence,
+            incomplete_stages=incomplete_stages,
         )
         learning = self.learning_store.record_run(
             run_dir=run_dir,
@@ -1029,9 +1040,10 @@ class MoreGANRuntime:
     ) -> StageResult:
         failed = [item for item in evidence if not item.passed]
         blocking_failed = [item for item in failed if item.required]
+        verdict = "fail" if blocking_failed else "pass" if any(not item.skipped for item in evidence) else "skip"
         return StageResult(
             stage="deterministic_evidence",
-            verdict="fail" if blocking_failed else "pass",
+            verdict=verdict,
             confidence=1.0,
             findings=[self._finding_from_command(item) for item in failed],
             evidence=[self._evidence_reference_from_command(item) for item in evidence],

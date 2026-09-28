@@ -12,9 +12,12 @@ import time
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import List, Optional, Sequence
 
-from moregan.schemas import EvidenceReference, Finding, StageResult
+from moregan.schemas import (
+    EvidenceReference, Finding, StageResult, StageResultValidationError, WORKER_STAGES,
+    output_tail, parse_stage_json, validate_stage_result,
+)
 
 
 PROVIDER_COMMAND_ENV = {
@@ -26,7 +29,7 @@ PROVIDER_COMMAND_ENV = {
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run a MoreGAN agent provider command.")
     parser.add_argument("--provider", choices=sorted(PROVIDER_COMMAND_ENV), required=True)
-    parser.add_argument("--stage", required=True)
+    parser.add_argument("--stage", choices=sorted(WORKER_STAGES), required=True)
     parser.add_argument("--prompt", required=True, help="prompt template path")
     parser.add_argument("--root", default=".", help="repository root")
     parser.add_argument("--timeout", type=int, default=300)
@@ -56,9 +59,21 @@ class AgentWorkerRunner:
         self.prompt_path = prompt_path
         self.root = root
         self.timeout_seconds = timeout_seconds
+        self.attempt = 1
 
     def run(self) -> StageResult:
         started = time.perf_counter()
+        started_at = self._timestamp()
+        try:
+            attempt = int(os.environ.get("MOREGAN_ATTEMPT", "1"))
+            if attempt < 1:
+                raise ValueError("attempt must be positive")
+            self.attempt = attempt
+            if type(self.timeout_seconds) is not int or self.timeout_seconds < 1:
+                raise ValueError("timeout must be a positive integer")
+        except ValueError as exc:
+            return self._failure(started, f"Invalid worker execution context: {exc}",
+                                 "Use a positive MOREGAN_ATTEMPT and timeout.")
         env_name = PROVIDER_COMMAND_ENV[self.provider]
         raw_command = os.environ.get(env_name, "").strip()
         if not raw_command:
@@ -76,7 +91,11 @@ class AgentWorkerRunner:
                 remediation=f"Set {env_name} to a shell command string or JSON list.",
             )
 
-        prompt = self._build_prompt()
+        try:
+            prompt = self._build_prompt()
+        except (OSError, UnicodeError) as exc:
+            return self._failure(started, f"Could not read provider prompt: {exc}",
+                                 "Check the prompt path, permissions, and text encoding.")
         try:
             completed = subprocess.run(
                 command,
@@ -95,6 +114,11 @@ class AgentWorkerRunner:
                 stdout_tail=exc.stdout or "",
                 stderr_tail=exc.stderr or "",
             )
+        except (OSError, ValueError) as exc:
+            return self._failure(
+                started, f"{self.provider} {self.stage} command could not run: {exc}",
+                "Check the provider executable, arguments, permissions, and output encoding.",
+            )
 
         if completed.returncode != 0:
             return self._failure(
@@ -106,8 +130,8 @@ class AgentWorkerRunner:
             )
 
         try:
-            payload = self._extract_json_object(completed.stdout)
-        except ValueError as exc:
+            payload = parse_stage_json(completed.stdout)
+        except StageResultValidationError as exc:
             return self._failure(
                 started,
                 description=f"{self.provider} {self.stage} command did not return StageResult JSON: {exc}",
@@ -116,7 +140,7 @@ class AgentWorkerRunner:
                 stderr_tail=completed.stderr,
             )
 
-        return self._stage_result_from_payload(payload, started)
+        return self._stage_result_from_payload(payload, started, started_at)
 
     def _build_prompt(self) -> str:
         template = self.prompt_path.read_text(encoding="utf-8")
@@ -149,25 +173,18 @@ class AgentWorkerRunner:
             "Return exactly one JSON object on stdout and no markdown fences.\n"
         )
 
-    def _stage_result_from_payload(self, payload: Dict[str, object], started: float) -> StageResult:
-        stage = str(payload.get("stage", self.stage))
-        if stage != self.stage:
-            return self._failure(
-                started,
-                description=f"{self.provider} returned stage {stage!r}, expected {self.stage!r}.",
-                remediation="Fix the adapter prompt so the provider preserves the routed stage.",
+    def _stage_result_from_payload(self, payload: object, started: float, started_at: str) -> StageResult:
+        try:
+            result = validate_stage_result(
+                payload, self.stage, attempt=self.attempt, started_at=started_at,
+                completed_at=self._timestamp(), duration_ms=self._duration_ms(started),
             )
-
-        verdict = str(payload.get("verdict", "")).lower()
-        if verdict not in {"pass", "fail", "skip"}:
+        except StageResultValidationError as exc:
             return self._failure(
-                started,
-                description=f"{self.provider} returned invalid verdict {verdict!r}.",
-                remediation="Use one of: pass, fail, skip.",
+                started, f"{self.provider} returned invalid StageResult: {exc}",
+                "Return a valid StageResult object with correctly typed fields and concrete findings.",
             )
-
-        evidence = [self._evidence_from_payload(item) for item in self._list_payload(payload.get("evidence"))]
-        evidence.append(
+        result.evidence.append(
             EvidenceReference(
                 kind="agent_provider",
                 name=f"{self.provider}_{self.stage}",
@@ -175,17 +192,7 @@ class AgentWorkerRunner:
                 path=str(self.prompt_path),
             )
         )
-        return StageResult(
-            stage=self.stage,
-            verdict=verdict,  # type: ignore[arg-type]
-            confidence=self._confidence(payload.get("confidence", 1.0)),
-            findings=[self._finding_from_payload(item) for item in self._list_payload(payload.get("findings"))],
-            evidence=evidence,
-            attempt=int(payload.get("attempt") or os.environ.get("MOREGAN_ATTEMPT", "1")),
-            started_at=str(payload.get("started_at") or self._timestamp()),
-            completed_at=str(payload.get("completed_at") or self._timestamp()),
-            duration_ms=int(payload.get("duration_ms") or self._duration_ms(started)),
-        )
+        return result
 
     def _skip(self, started: float, summary: str) -> StageResult:
         return StageResult(
@@ -200,7 +207,7 @@ class AgentWorkerRunner:
                     path=str(self.prompt_path),
                 )
             ],
-            attempt=int(os.environ.get("MOREGAN_ATTEMPT", "1")),
+            attempt=self.attempt,
             started_at=self._timestamp(),
             completed_at=self._timestamp(),
             duration_ms=self._duration_ms(started),
@@ -222,7 +229,8 @@ class AgentWorkerRunner:
                 path=str(self.prompt_path),
             )
         ]
-        if stdout_tail.strip():
+        stdout_tail, stderr_tail = output_tail(stdout_tail), output_tail(stderr_tail)
+        if stdout_tail:
             evidence.append(
                 EvidenceReference(
                     kind="stdout_tail",
@@ -230,7 +238,7 @@ class AgentWorkerRunner:
                     summary=stdout_tail.strip()[-1000:],
                 )
             )
-        if stderr_tail.strip():
+        if stderr_tail:
             evidence.append(
                 EvidenceReference(
                     kind="stderr_tail",
@@ -251,34 +259,11 @@ class AgentWorkerRunner:
                 )
             ],
             evidence=evidence,
-            attempt=int(os.environ.get("MOREGAN_ATTEMPT", "1")),
+            attempt=self.attempt,
             started_at=self._timestamp(),
             completed_at=self._timestamp(),
             duration_ms=self._duration_ms(started),
         )
-
-    def _extract_json_object(self, text: str) -> Dict[str, object]:
-        stripped = text.strip()
-        if not stripped:
-            raise ValueError("stdout was empty")
-        try:
-            payload = json.loads(stripped)
-        except json.JSONDecodeError:
-            payload = self._decode_embedded_json(stripped)
-        if not isinstance(payload, dict):
-            raise ValueError("expected a JSON object")
-        return payload
-
-    def _decode_embedded_json(self, text: str) -> object:
-        start = text.find("{")
-        if start < 0:
-            raise ValueError("no JSON object found")
-        decoder = json.JSONDecoder()
-        try:
-            payload, _ = decoder.raw_decode(text[start:])
-        except json.JSONDecodeError as exc:
-            raise ValueError(str(exc)) from exc
-        return payload
 
     def _parse_command(self, raw_command: str) -> List[str]:
         if raw_command.startswith("["):
@@ -288,43 +273,13 @@ class AgentWorkerRunner:
                 raise ValueError("JSON/list command could not be parsed") from exc
             if not isinstance(parsed, list):
                 raise ValueError("JSON/list command must be a list")
-            return [str(item) for item in parsed]
-        command = shlex.split(raw_command)
-        if not command:
-            raise ValueError("command is empty")
+            command = parsed
+        else:
+            command = shlex.split(raw_command)
+        if (not command or any(not isinstance(item, str) or "\x00" in item for item in command)
+                or not command[0].strip()):
+            raise ValueError("command needs a nonempty executable and string arguments")
         return command
-
-    def _finding_from_payload(self, payload: Dict[str, object]) -> Finding:
-        return Finding(
-            severity=str(payload.get("severity", "medium")),  # type: ignore[arg-type]
-            category=str(payload.get("category", "worker_finding")),
-            description=str(payload.get("description", "")),
-            remediation=str(payload.get("remediation", "")),
-            file=str(payload["file"]) if payload.get("file") else None,
-            line=int(payload["line"]) if payload.get("line") else None,
-        )
-
-    def _evidence_from_payload(self, payload: Dict[str, object]) -> EvidenceReference:
-        command = payload.get("command")
-        return EvidenceReference(
-            kind=str(payload.get("kind", "agent")),
-            name=str(payload.get("name", f"{self.stage}_evidence")),
-            summary=str(payload.get("summary", "")),
-            path=str(payload["path"]) if payload.get("path") else None,
-            command=[str(item) for item in command] if isinstance(command, list) else None,
-        )
-
-    def _list_payload(self, value: object) -> List[Dict[str, object]]:
-        if not isinstance(value, list):
-            return []
-        return [item for item in value if isinstance(item, dict)]
-
-    def _confidence(self, value: object) -> float:
-        try:
-            confidence = float(value)
-        except (TypeError, ValueError):
-            return 1.0
-        return max(0.0, min(1.0, confidence))
 
     def _timestamp(self) -> str:
         return datetime.now().isoformat(timespec="seconds")

@@ -28,7 +28,7 @@ GAN means **Generative Adversarial Network**. MoreGAN borrows the useful enginee
 - a generator proposes the implementation
 - evaluators attack the change from functional, security, review, and production angles
 - deterministic tools provide hard evidence from tests, syntax checks, git diff checks, and repo-local commands
-- the runtime decides pass/fail from structured results instead of trusting prose
+- the runtime decides pass, fail, or incomplete from structured results instead of trusting prose
 
 ## Architecture
 
@@ -55,7 +55,8 @@ flowchart TD
   Route --> Tools[Deterministic tools]
   Tools --> Evidence[Command evidence]
 
-  StageResult --> State[State machine]
+  StageResult --> Validation[Strict shared validation]
+  Validation --> State[State machine]
   Evidence --> State
   State --> Trace[.moregan/runs/run-id]
   Trace --> Inspect[inspect]
@@ -307,6 +308,14 @@ Valid verdicts:
 - `skip`
 
 Blocking issues should use `fail` with concrete findings and remediation.
+Critical or high findings cannot accompany `pass` or `skip`.
+
+Both direct workers and Codex/Claude adapters use the same strict validator:
+`stage` must match the requested worker, and `confidence` must be a finite number
+from 0 to 1, not a string or boolean. Findings and evidence can be omitted as empty
+lists; when supplied, every entry must be valid. Unknown fields, duplicate JSON
+keys, malformed entries, markdown fences, and surrounding prose are rejected.
+MoreGAN owns attempt numbers and timing; providers cannot override them.
 
 A finding has this shape:
 
@@ -320,6 +329,30 @@ A finding has this shape:
   "line": 42
 }
 ```
+
+Finding severity is `critical`, `high`, `medium`, `low`, or `info`. Category,
+description, and remediation must be nonempty strings. File is a nonempty string
+or null; line is a positive integer or null. Evidence requires nonempty `kind`,
+`name`, and `summary`, with optional `path` and a string-argument `command` list.
+
+## Run Outcomes
+
+| Outcome | Meaning | `moregan run` Exit Code |
+|---|---|---|
+| `pass` | Every routed worker passed; at least one deterministic check ran; no required check failed | 0 |
+| `fail` | A blocking check, worker, provider, or worker configuration failed | 1 |
+| `incomplete` | No blocking failure, but a routed worker or the entire evidence gate was skipped | 1 |
+
+`--no-checks`, missing providers, and empty or entirely skipped check lists cannot
+produce a pass. Individual not-applicable checks may skip when another check ran;
+optional check failures remain nonblocking. Configure checks as `required: true`
+when they must gate completion. A pass reflects the configured gates, not proof
+of production readiness.
+
+The CLI lists incomplete stages; `result.json`, state history, and reports retain
+the outcome. Incomplete runs do not earn successful-remediation learning credit.
+`status`, `inspect`, and `replay` are read-only commands: successful inspection
+returns 0 even when the stored run failed or is incomplete.
 
 ## Deterministic Tools
 
@@ -504,11 +537,12 @@ imports, artifacts, and comparison rules.
 
 ## Current Limitations
 
-MoreGAN is alpha. Ordinary `moregan run` can still report PASS when stages were
-skipped; inspect the stage evidence. Benchmark scoring guards against this.
-Risk includes the diff present at intake, but is not yet reassessed after a
-generator writes changes. Provider validation, tool timeouts, and stronger process
-isolation also need work. See [the review and next fixes](docs/review-2026-09-27.md).
+MoreGAN is alpha. Risk includes the diff present at intake, but is not yet
+reassessed after a generator writes changes. Deterministic command timeouts,
+bounded subprocess output, replay attempt fidelity, snapshot cleanup, and stronger
+process isolation still need work. Provider results are validated structurally;
+validation cannot establish whether a model's claims are true. See
+[the review and next fixes](docs/review-2026-09-27.md).
 
 ## Roadmap
 
@@ -531,12 +565,13 @@ Implemented in this repository:
 - PyPI-ready package metadata
 - `moregan setup` installer bridge
 - isolated benchmark runner, baseline execution, and paired comparisons
+- truthful incomplete outcomes and strict shared provider validation
 
 Next production-readiness work:
 
-- ordinary-runtime completion semantics and post-generation risk reassessment
+- post-generation risk reassessment
 - larger benchmark suites and repeated live-agent measurements
-- provider/schema hardening
+- bounded tool execution and replay attempt fidelity
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
 - competitive generator mode

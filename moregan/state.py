@@ -24,9 +24,10 @@ class TaskState:
     REMEDIATION = "remediation"
     COMPLETED = "completed"
     FAILED = "failed"
+    INCOMPLETE = "incomplete"
 
 
-TERMINAL_STATES = {TaskState.COMPLETED, TaskState.FAILED}
+TERMINAL_STATES = {TaskState.COMPLETED, TaskState.FAILED, TaskState.INCOMPLETE}
 
 ALLOWED_TRANSITIONS: Dict[str, Set[str]] = {
     TaskState.INTAKE: {TaskState.RISK_CLASSIFICATION},
@@ -43,6 +44,7 @@ ALLOWED_TRANSITIONS: Dict[str, Set[str]] = {
         TaskState.EVALUATION,
         TaskState.REMEDIATION,
         TaskState.COMPLETED,
+        TaskState.INCOMPLETE,
         TaskState.FAILED,
     },
     TaskState.EVALUATION: {
@@ -50,16 +52,21 @@ ALLOWED_TRANSITIONS: Dict[str, Set[str]] = {
         TaskState.CODE_REVIEW,
         TaskState.REMEDIATION,
         TaskState.COMPLETED,
+        TaskState.INCOMPLETE,
         TaskState.FAILED,
     },
     TaskState.SECURITY_EVALUATION: {TaskState.CODE_REVIEW, TaskState.REMEDIATION, TaskState.FAILED},
-    TaskState.CODE_REVIEW: {TaskState.PRODUCTION_REVIEW, TaskState.REMEDIATION, TaskState.COMPLETED, TaskState.FAILED},
+    TaskState.CODE_REVIEW: {
+        TaskState.PRODUCTION_REVIEW, TaskState.REMEDIATION, TaskState.COMPLETED,
+        TaskState.FAILED, TaskState.INCOMPLETE,
+    },
     TaskState.PRODUCTION_REVIEW: {TaskState.MR_READINESS, TaskState.REMEDIATION, TaskState.FAILED},
     TaskState.MR_READINESS: {TaskState.LEARNING, TaskState.REMEDIATION, TaskState.FAILED},
-    TaskState.LEARNING: {TaskState.COMPLETED, TaskState.FAILED},
+    TaskState.LEARNING: {TaskState.COMPLETED, TaskState.FAILED, TaskState.INCOMPLETE, TaskState.REMEDIATION},
     TaskState.REMEDIATION: {TaskState.GENERATION, TaskState.FAILED},
     TaskState.COMPLETED: set(),
     TaskState.FAILED: set(),
+    TaskState.INCOMPLETE: set(),
 }
 
 

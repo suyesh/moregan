@@ -7,6 +7,7 @@ The project is alpha. Completed foundations are not a claim of production readin
 ## Now
 
 - Executable runtime, state machine, bounded remediation, and structured stage results.
+- Truthful pass/fail/incomplete outcomes and strict shared provider validation.
 - Local command workers and Codex/Claude adapter templates.
 - Deterministic checks and stack detection for Python, Node, Java/Spring Boot,
   Rails/Ruby, Go, and Rust.
@@ -18,12 +19,10 @@ The project is alpha. Completed foundations are not a claim of production readin
 
 ## Next
 
-1. Honest ordinary-runtime completion: skipped required work must be incomplete.
-2. Strict shared provider schemas and reliable error handling.
-3. Risk reassessment after every generated patch, including remediation.
-4. Deterministic tool timeouts, replay attempt fidelity, and snapshot cleanup.
-5. Supported-version CI, package checks, and release gates.
-6. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
+1. Risk reassessment after every generated patch, including remediation.
+2. Deterministic tool timeouts, replay attempt fidelity, and snapshot cleanup.
+3. Supported-version CI, package checks, and release gates.
+4. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
    and independent human evaluation.
 
 Details and code pointers: [September review](docs/review-2026-09-27.md).
@@ -41,8 +40,8 @@ Benchmark usage and limitations: [Benchmark guide](docs/benchmarks.md).
 
 | # | Item | Current Progress |
 |---|---|---|
-| 1 | Real runtime | Foundation implemented; completion semantics need hardening |
-| 2 | Structured persona output | Contract implemented; boundary validation next |
+| 1 | Real runtime | Implemented; truthful completion added in 1.11.0 |
+| 2 | Structured persona output | Shared strict provider validation implemented in 1.11.0 |
 | 3 | Deterministic evidence | Implemented with stack presets; timeouts pending |
 | 4 | Execution trace | Implemented; replay attempt fidelity needs repair |
 | 5 | Empirical learning | Foundation implemented; calibration pending |

@@ -13,7 +13,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Protocol
 
-from moregan.schemas import EvidenceReference, Finding, RiskClassification, StageResult
+from moregan.schemas import (
+    EvidenceReference, Finding, RiskClassification, StageResult, StageResultValidationError,
+    output_tail, parse_stage_json, validate_stage_result,
+)
 from moregan.state import TaskState
 from moregan.tools import ToolConfigError, ToolConfigLoader
 
@@ -134,9 +137,16 @@ class CommandWorker:
 
     def run(self, context: WorkerContext) -> StageResult:
         started = time.perf_counter()
-        execution_root = self._execution_root(context)
-        context_pack_path = self._context_pack_for_execution(context, execution_root)
-        no_write_before = self._git_status(context.root) if self.command.no_write and execution_root == context.root else None
+        started_at = _timestamp()
+        try:
+            execution_root = self._execution_root(context)
+            context_pack_path = self._context_pack_for_execution(context, execution_root)
+            no_write_before = self._git_status(context.root) if self.command.no_write and execution_root == context.root else None
+        except OSError as exc:
+            return self._failure_result(
+                started, context.attempt, description=f"Could not prepare {self.stage} worker: {exc}",
+                remediation="Check workspace access, snapshot storage, and Git availability.",
+            )
         env = os.environ.copy()
         env.update(
             {
@@ -179,6 +189,14 @@ class CommandWorker:
                 execution_root,
                 no_write_before,
             )
+        except (OSError, ValueError) as exc:
+            return self._finalize_result(
+                self._failure_result(
+                    started, context.attempt,
+                    description=f"{self.stage} worker command could not run: {exc}",
+                    remediation="Check the worker executable, arguments, permissions, and output encoding.",
+                ), context, execution_root, no_write_before,
+            )
 
         if result.returncode != 0:
             return self._finalize_result(
@@ -196,13 +214,13 @@ class CommandWorker:
             )
 
         try:
-            payload = json.loads(result.stdout)
-        except json.JSONDecodeError:
+            payload = parse_stage_json(result.stdout)
+        except StageResultValidationError as exc:
             return self._finalize_result(
                 self._failure_result(
                     started,
                     context.attempt,
-                    description=f"{self.stage} worker did not emit valid JSON on stdout.",
+                    description=f"{self.stage} worker did not emit valid JSON on stdout: {exc}",
                     remediation="Make the worker command print one StageResult-compatible JSON object.",
                     stdout_tail=result.stdout,
                     stderr_tail=result.stderr,
@@ -212,7 +230,7 @@ class CommandWorker:
                 no_write_before,
             )
 
-        stage_result = self._stage_result_from_payload(payload, started, context.attempt)
+        stage_result = self._stage_result_from_payload(payload, started, context.attempt, started_at)
         return self._finalize_result(stage_result, context, execution_root, no_write_before)
 
     def _finalize_result(
@@ -230,45 +248,23 @@ class CommandWorker:
             stage_result.findings.append(no_write_violation)
         return stage_result
 
-    def _stage_result_from_payload(self, payload: Dict[str, object], started: float, attempt: int) -> StageResult:
-        stage = str(payload.get("stage", self.stage))
-        if stage != self.stage:
-            return self._failure_result(
-                started,
-                attempt,
-                description=f"worker emitted stage {stage!r}, expected {self.stage!r}.",
-                remediation="Fix the worker output so stage matches the routed MoreGAN stage.",
+    def _stage_result_from_payload(self, payload: object, started: float, attempt: int, started_at: str) -> StageResult:
+        try:
+            result = validate_stage_result(
+                payload, self.stage, attempt=attempt, started_at=started_at,
+                completed_at=_timestamp(), duration_ms=_duration_ms(started),
             )
-
-        verdict = str(payload.get("verdict", "")).lower()
-        if verdict not in {"pass", "fail", "skip"}:
+        except StageResultValidationError as exc:
             return self._failure_result(
-                started,
-                attempt,
-                description=f"{self.stage} worker emitted invalid verdict {verdict!r}.",
-                remediation="Use one of: pass, fail, skip.",
+                started, attempt,
+                description=f"{self.stage} worker returned invalid StageResult: {exc}",
+                remediation="Return a valid StageResult object with correctly typed fields and concrete findings.",
             )
-
-        confidence = float(payload.get("confidence", 1.0))
-        return StageResult(
-            stage=self.stage,
-            verdict=verdict,  # type: ignore[arg-type]
-            confidence=confidence,
-            findings=[self._finding_from_payload(item) for item in self._list_payload(payload.get("findings"))],
-            evidence=[
-                *[self._evidence_from_payload(item) for item in self._list_payload(payload.get("evidence"))],
-                EvidenceReference(
-                    kind="worker_command",
-                    name=f"{self.stage}_provider",
-                    summary=f"Executed provider command from {self.command.source}.",
-                    command=self.command.command,
-                ),
-            ],
-            attempt=int(payload.get("attempt") or attempt),
-            started_at=str(payload.get("started_at") or _timestamp()),
-            completed_at=str(payload.get("completed_at") or _timestamp()),
-            duration_ms=int(payload.get("duration_ms") or _duration_ms(started)),
-        )
+        result.evidence.append(EvidenceReference(
+            kind="worker_command", name=f"{self.stage}_provider",
+            summary=f"Executed provider command from {self.command.source}.", command=self.command.command,
+        ))
+        return result
 
     def _failure_result(
         self,
@@ -287,7 +283,8 @@ class CommandWorker:
                 command=self.command.command,
             )
         ]
-        if stdout_tail.strip():
+        stdout_tail, stderr_tail = output_tail(stdout_tail), output_tail(stderr_tail)
+        if stdout_tail:
             evidence.append(
                 EvidenceReference(
                     kind="stdout_tail",
@@ -295,7 +292,7 @@ class CommandWorker:
                     summary=stdout_tail.strip()[-1000:],
                 )
             )
-        if stderr_tail.strip():
+        if stderr_tail:
             evidence.append(
                 EvidenceReference(
                     kind="stderr_tail",
@@ -433,31 +430,6 @@ class CommandWorker:
             remediation="Run no-write workers with execution: isolated or fix the worker command so it does not write.",
         )
 
-    def _finding_from_payload(self, payload: Dict[str, object]) -> Finding:
-        return Finding(
-            severity=str(payload.get("severity", "medium")),  # type: ignore[arg-type]
-            category=str(payload.get("category", "worker_finding")),
-            description=str(payload.get("description", "")),
-            remediation=str(payload.get("remediation", "")),
-            file=str(payload["file"]) if payload.get("file") else None,
-            line=int(payload["line"]) if payload.get("line") else None,
-        )
-
-    def _evidence_from_payload(self, payload: Dict[str, object]) -> EvidenceReference:
-        command = payload.get("command")
-        return EvidenceReference(
-            kind=str(payload.get("kind", "worker")),
-            name=str(payload.get("name", f"{self.stage}_evidence")),
-            summary=str(payload.get("summary", "")),
-            path=str(payload["path"]) if payload.get("path") else None,
-            command=[str(item) for item in command] if isinstance(command, list) else None,
-        )
-
-    def _list_payload(self, value: object) -> List[Dict[str, object]]:
-        if not isinstance(value, list):
-            return []
-        return [item for item in value if isinstance(item, dict)]
-
 
 class ConfigErrorWorker:
     """Fails a stage when worker configuration cannot be loaded."""
@@ -534,16 +506,19 @@ class WorkerConfigLoader:
         try:
             text = self._normalize_workers_section(path.read_text(encoding="utf-8"))
             payload = ToolConfigLoader(self.root)._parse_minimal_yaml(text)
-        except ToolConfigError as exc:
+        except (ToolConfigError, OSError, UnicodeError) as exc:
             raise WorkerConfigError(str(exc)) from exc
 
         raw_workers = payload.get("commands")
-        if raw_workers is None:
-            return []
         if not isinstance(raw_workers, list):
             raise WorkerConfigError(f"{self.CONFIG_PATH} must define a workers list")
 
-        return [self._coerce_worker(item) for item in raw_workers if isinstance(item, dict)]
+        if any(not isinstance(item, dict) for item in raw_workers):
+            raise WorkerConfigError("each worker must be an object")
+        commands = [self._coerce_worker(item) for item in raw_workers]
+        if len({command.stage for command in commands}) != len(commands):
+            raise WorkerConfigError("duplicate worker stages are not allowed")
+        return commands
 
     def _normalize_workers_section(self, text: str) -> str:
         lines = []
@@ -564,21 +539,28 @@ class WorkerConfigLoader:
         if command is None:
             raise WorkerConfigError(f"{stage} worker needs a command")
 
+        timeout = payload.get("timeout_seconds", 120)
+        if type(timeout) is not int or timeout < 1:
+            raise WorkerConfigError("worker timeout_seconds must be a positive integer")
         return WorkerCommand(
             stage=stage,
             command=self._coerce_command(command),
-            timeout_seconds=int(payload.get("timeout_seconds", 120)),
+            timeout_seconds=timeout,
             no_write=self._coerce_bool(payload.get("no_write", True)),
             source=str(self.CONFIG_PATH),
             execution=self._coerce_execution(payload.get("execution", "auto")),
         )
 
     def _coerce_command(self, value: object) -> List[str]:
-        if isinstance(value, list):
-            return [str(item) for item in value]
         if isinstance(value, str):
-            return shlex.split(value)
-        raise WorkerConfigError("worker command must be a string or list")
+            try:
+                value = shlex.split(value)
+            except ValueError as exc:
+                raise WorkerConfigError(f"invalid worker command: {exc}") from exc
+        if (not isinstance(value, list) or not value
+                or any(not isinstance(item, str) or "\x00" in item for item in value) or not value[0].strip()):
+            raise WorkerConfigError("worker command must contain a nonempty executable and string arguments")
+        return value
 
     def _coerce_bool(self, value: object) -> bool:
         if isinstance(value, bool):
@@ -589,7 +571,7 @@ class WorkerConfigLoader:
                 return True
             if lowered in {"false", "no", "off", "0"}:
                 return False
-        return bool(value)
+        raise WorkerConfigError("worker no_write must be a boolean")
 
     def _coerce_execution(self, value: object) -> str:
         execution = str(value or "auto").strip().lower()

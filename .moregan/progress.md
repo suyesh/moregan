@@ -934,3 +934,30 @@ execution_note: "Verification used local tests, reference fixture solutions and 
 next: "Ordinary-runtime incomplete outcomes and strict provider boundary validation, followed by post-generation risk reassessment."
 publishing: "PyPI remains paused."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-runtime-provider-hardening
+summary: "Hardened original items 1, 2 and 10 in version 1.11.0."
+branch: "main"
+updates:
+  - file: "moregan/runtime.py, moregan/state.py, moregan/cli.py, moregan/learning.py"
+    action: "Added truthful incomplete outcomes, nonzero run exit, incomplete-stage reporting, unverified learning observations and final-worker remediation transitions."
+  - file: "moregan/schemas.py, moregan/workers.py, moregan/agent_worker.py"
+    action: "Added shared strict provider validation, runtime-owned metadata, structured launch/prompt/encoding/timeout failures and stricter worker configuration."
+  - file: "tests/test_provider_contract.py, tests/test_moregan_runtime.py"
+    action: "Added 20 tests with table-driven malformed payload cases, actual subprocesses/timeouts, nested adapters, every risk route and outcome consistency. Updated old skip-to-pass expectations."
+  - file: "README.md, SKILL.md, moregan/adapters.py, docs, ROADMAP.md, SESSION_HANDOFF.md, .moregan/roadmap.yaml"
+    action: "Documented completion rules and strict output requirements; marked the first two review findings resolved; set post-generation risk reassessment next."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md, uv.lock"
+    action: "Bumped version to 1.11.0 and aligned the lock."
+verification_evidence:
+  - "Full unittest suite passed 93 tests under Python 3.12.11 and 3.14.0 on macOS."
+  - "Python compilation, git diff hygiene and public-PyPI uv lock validation passed."
+  - "Built wheel and sdist; installed-wheel smoke passed outside the checkout."
+  - "Installed CLI verified incomplete/pass/fail exit codes, both provider adapters, inspect/replay and runtime-owned attempts."
+execution_note: "Tests used simulated provider commands, not live Codex/Claude model calls or independent personas. Strong process isolation and the full supported OS/Python matrix remain unverified."
+next: "Original item 6: reassess generated and remediated diffs, escalate routes monotonically and record routing evidence."
+publishing: "PyPI remains paused; no release tag or workflow dispatch."
+---

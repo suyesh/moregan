@@ -84,9 +84,10 @@ PASS while leaving the original broken fixture fails acceptance verification.
 Downstream reviews not reached because a blocking code check failed do not erase
 that failure from the measurements.
 
-This benchmark gate is stricter than the current ordinary `moregan run` verdict:
-the ordinary runtime can still report PASS with skipped stages. That runtime
-limitation is tracked in the [review](review-2026-09-27.md).
+Since 1.11.0, ordinary `moregan run` also reports incomplete when routed workers
+or the entire deterministic evidence gate are skipped. Benchmark scoring adds
+independent fixture acceptance tests and distinguishes provider/verification
+errors from measured code failures.
 
 Reports expose measured task coverage beside success rate. Comparisons require
 the same task ids and definition hashes, and calculate deltas only over pairs

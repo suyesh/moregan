@@ -32,6 +32,22 @@ class MoreGANRuntimeTests(unittest.TestCase):
         subprocess.run(["git", "config", "user.email", "moregan@example.com"], cwd=self.root, check=True)
         subprocess.run(["git", "config", "user.name", "MoreGAN"], cwd=self.root, check=True)
 
+    def _add_passing_workers(self, stages):
+        path = self.root / ".moregan" / "workers.yaml"
+        path.parent.mkdir(exist_ok=True)
+        config = path.read_text(encoding="utf-8") if path.exists() else "version: 1\nworkers:\n"
+        code = (
+            "import json, os; print(json.dumps({'stage': os.environ['MOREGAN_STAGE'], "
+            "'verdict': 'pass', 'confidence': 1.0}))"
+        )
+        for stage in stages:
+            config += (
+                f"  - stage: {stage}\n"
+                f"    command: {json.dumps([sys.executable, '-c', code])}\n"
+                "    no_write: false\n"
+            )
+        path.write_text(config, encoding="utf-8")
+
     def test_risk_classifier_routes_security_sensitive_work_to_critical_path(self):
         risk = RiskClassifier().classify("Replace authentication token handling")
 
@@ -77,7 +93,8 @@ class MoreGANRuntimeTests(unittest.TestCase):
         result = MoreGANRuntime(self.root).run("Change button copy", run_checks=False)
         run_dir = Path(result.trace_path)
 
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
+        self.assertEqual(result.incomplete_stages, result.risk.route)
         self.assertTrue((run_dir / "request.json").exists())
         self.assertTrue((run_dir / "plan.json").exists())
         self.assertTrue((run_dir / "risk.json").exists())
@@ -113,10 +130,10 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertIn("No files were modified", generator_stage["evidence"][0]["summary"])
 
         state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
-        self.assertEqual(state["current_state"], "completed")
+        self.assertEqual(state["current_state"], "incomplete")
         self.assertEqual(
             [snapshot["state"] for snapshot in state["history"]],
-            ["intake", "risk_classification", "generation", "deterministic_evidence", "evaluation", "completed"],
+            ["intake", "risk_classification", "generation", "deterministic_evidence", "evaluation", "incomplete"],
         )
         states_jsonl = (run_dir / "states.jsonl").read_text(encoding="utf-8").splitlines()
         self.assertEqual(len(states_jsonl), 6)
@@ -261,6 +278,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+        self._add_passing_workers(["planner", "evaluator", "code_reviewer"])
         result = MoreGANRuntime(self.root, max_remediation_attempts=2).run("Update service tests")
         run_dir = Path(result.trace_path)
 
@@ -327,7 +345,11 @@ class MoreGANRuntimeTests(unittest.TestCase):
         result = MoreGANRuntime(self.root, max_remediation_attempts=2).run("Add API endpoint", run_checks=False)
         run_dir = Path(result.trace_path)
 
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
+        learning = json.loads((run_dir / "learning.json").read_text(encoding="utf-8"))
+        self.assertEqual({item["outcome"] for item in learning["observations"]}, {"unverified"})
+        self.assertTrue(all(pattern["statistics"]["successful_applications"] == 0 for pattern in learning["patterns"]))
+        self.assertTrue(all(pattern["statistics"]["unverified_observations"] > 0 for pattern in learning["patterns"]))
         context = json.loads((self.root / "remediation-context.json").read_text(encoding="utf-8"))
         self.assertEqual(context["failed_stage"], "evaluator")
         self.assertEqual(context["findings"][0]["category"], "acceptance_criteria_gap")
@@ -349,7 +371,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         result = MoreGANRuntime(self.root).run("Add API endpoint", run_checks=False)
         run_dir = Path(result.trace_path)
 
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
         for stage_name in ["planner", "generator", "deterministic_evidence", "evaluator", "code_reviewer"]:
             self.assertTrue((run_dir / "stages" / f"{stage_name}.json").exists())
 
@@ -368,7 +390,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
                 "deterministic_evidence",
                 "evaluation",
                 "code_review",
-                "completed",
+                "incomplete",
             ],
         )
 
@@ -376,7 +398,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         result = MoreGANRuntime(self.root).run("Update database security", run_checks=False)
         run_dir = Path(result.trace_path)
 
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
         for stage_name in [
             "architect",
             "security_evaluator",
@@ -389,7 +411,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
 
         state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
         self.assertEqual(state["history"][-2]["state"], "learning")
-        self.assertEqual(state["current_state"], "completed")
+        self.assertEqual(state["current_state"], "incomplete")
 
     def test_worker_command_provider_emits_stage_result_json(self):
         moregan_dir = self.root / ".moregan"
@@ -418,7 +440,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         result = MoreGANRuntime(self.root).run("Change button copy", run_checks=False)
         run_dir = Path(result.trace_path)
 
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
         generator_stage = json.loads((run_dir / "stages" / "generator.json").read_text(encoding="utf-8"))
         self.assertEqual(generator_stage["verdict"], "pass")
         self.assertEqual(generator_stage["confidence"], 0.91)
@@ -455,7 +477,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         result = MoreGANRuntime(self.root).run("Change button copy", run_checks=False)
         run_dir = Path(result.trace_path)
 
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
         self.assertFalse(marker.exists())
         evaluator_stage = json.loads((run_dir / "stages" / "evaluator.json").read_text(encoding="utf-8"))
         execution = [item for item in evaluator_stage["evidence"] if item["kind"] == "execution_context"][0]
@@ -557,7 +579,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         result = MoreGANRuntime(self.root).run("Run custom deterministic checks")
         run_dir = Path(result.trace_path)
 
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
         self.assertEqual([item.name for item in result.evidence], ["custom_python_check"])
         stage = json.loads((run_dir / "stages" / "deterministic_evidence.json").read_text(encoding="utf-8"))
         self.assertEqual(stage["verdict"], "pass")
@@ -579,6 +601,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+        self._add_passing_workers(["generator", "evaluator"])
         result = MoreGANRuntime(self.root).run("Run optional lint")
         run_dir = Path(result.trace_path)
 
@@ -720,7 +743,8 @@ class MoreGANRuntimeTests(unittest.TestCase):
         )
 
         result = MoreGANRuntime(self.root).run("Run optional preset")
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
+        self.assertIn("deterministic_evidence", result.incomplete_stages)
         self.assertEqual(result.evidence[0].name, "missing_optional_tool")
         self.assertTrue(result.evidence[0].skipped)
         self.assertIn("command not found", result.evidence[0].reason)
@@ -893,7 +917,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertEqual(payload["evidence"][-1]["kind"], "agent_provider")
 
     def test_cli_run_status_and_inspect_use_trace_artifacts(self):
-        self.assertEqual(moregan_main(["--root", str(self.root), "run", "Add API endpoint", "--no-checks"]), 0)
+        self.assertEqual(moregan_main(["--root", str(self.root), "run", "Add API endpoint", "--no-checks"]), 1)
         self.assertEqual(moregan_main(["--root", str(self.root), "status"]), 0)
         self.assertEqual(moregan_main(["--root", str(self.root), "inspect", "latest"]), 0)
         self.assertEqual(moregan_main(["--root", str(self.root), "replay", "latest"]), 0)
@@ -921,7 +945,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
         )
 
         result = MoreGANRuntime(self.root).run("Change button copy", run_checks=False)
-        self.assertEqual(result.status, "pass")
+        self.assertEqual(result.status, "incomplete")
         self.assertEqual(marker.read_text(encoding="utf-8"), "1")
 
         output = io.StringIO()

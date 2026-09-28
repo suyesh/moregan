@@ -12,10 +12,10 @@ principles:
 ten_item_tracker:
   - number: 1
     improvement: Real harness runtime
-    status: implemented_foundation
+    status: implemented_and_hardened
   - number: 2
     improvement: Structured persona output
-    status: implemented_foundation
+    status: implemented_and_hardened
   - number: 3
     improvement: Deterministic evidence layer
     status: implemented_and_improving
@@ -427,18 +427,31 @@ completed_work:
       - "uv.lock resolves from public PyPI and matches 1.10.0."
     limitations:
       - "No live-agent effectiveness study has been run."
-      - "Ordinary runtime completion and provider boundaries still need hardening."
+  - id: runtime-verdict-and-provider-hardening
+    package_version: "1.11.0"
+    original_list_numbers: [1, 2, 10]
+    status: done
+    acceptance_criteria:
+      - "Skipped routed stages and empty/disabled evidence gates report incomplete, never pass."
+      - "Both provider adapters use shared strict JSON decoding and StageResult validation."
+      - "Runtime owns attempt numbers and timing; malformed fields cannot silently disappear."
+      - "Provider launch, encoding, prompt and timeout errors return structured failures."
+      - "CLI exit status, state, traces and learning reflect actual completion."
+    verification:
+      - "93 tests passed on macOS with Python 3.12.11 and 3.14.0."
+      - "Actual subprocess timeout tests and end-to-end scaffolded Codex/Claude adapter tests passed."
+      - "Wheel and sdist built; installed CLI verified incomplete/pass/fail outside the checkout."
+      - "Compilation, diff hygiene and public-PyPI lock validation passed."
 current_work:
-  id: runtime-verdict-and-provider-hardening
-  original_list_numbers: [1, 2, 10]
+  id: post-generation-risk-reassessment
+  original_list_numbers: [6]
   status: next
   acceptance_criteria:
-    - "Ordinary runtime reports incomplete when required worker stages were skipped."
-    - "Both provider adapters use strict shared StageResult validation."
-    - "Invalid payloads, missing executables and timeouts become structured failures."
-    - "CLI exit status and learning reflect actual completion."
+    - "Reassess the actual diff after generation and every remediation attempt."
+    - "Only escalate risk within a run and execute newly required verification stages."
+    - "Record reassessment evidence and route changes in the trace."
+    - "Define and test how newly required planning/architecture reviews run after escalation."
   follow_up:
-    - post_generation_risk_reassessment
     - deterministic_tool_timeouts
     - replay_attempt_fidelity
     - snapshot_cleanup

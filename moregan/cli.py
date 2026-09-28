@@ -175,6 +175,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         print(f"MoreGAN run {result.status.upper()}: {result.run_id}")
         print(f"Risk: {result.risk.level}")
+        if result.incomplete_stages:
+            print(f"Incomplete stages: {', '.join(result.incomplete_stages)}")
         print(f"Trace: {result.trace_path}")
         return 0 if result.status == "pass" else 1
 

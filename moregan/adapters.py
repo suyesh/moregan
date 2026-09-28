@@ -156,7 +156,7 @@ Example shape:
 export {env_name}='<your provider command that reads stdin and emits StageResult JSON>'
 ```
 
-If `{env_name}` is unset, the worker returns an honest `SKIP` result.
+If `{env_name}` is unset, the worker returns `SKIP` and the run is incomplete, not passed.
 
 To activate this provider template:
 
@@ -213,6 +213,11 @@ Return exactly one JSON object and no markdown fences:
 ```
 
 Use `verdict: "fail"` for blocking findings. Use `verdict: "skip"` only when the stage cannot run honestly.
+Critical or high findings require `fail`. Confidence must be a finite number from 0 to 1.
+Use only the documented fields and exact verdict/severity strings. Findings and evidence must be
+arrays of objects, not prose or null. A finding requires nonempty category, description and remediation;
+line is a positive integer or null. Evidence requires nonempty kind, name and summary.
+Do not include attempt numbers or timestamps; MoreGAN records execution metadata itself.
 """
 
     def _relative(self, path: Path) -> str:
