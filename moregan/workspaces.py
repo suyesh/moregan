@@ -217,18 +217,31 @@ class _FingerprintReader:
         if not stat.S_ISREG(mode):
             raise WorkspaceCheckError(f"Unsupported file type in integrity scan: {relative}")
         digest = hashlib.sha256()
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0) |
+                             getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
         with os.fdopen(descriptor, "rb") as source:
-            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+            opened = os.fstat(source.fileno())
+            if not stat.S_ISREG(opened.st_mode):
                 raise WorkspaceCheckError(f"File type changed during integrity scan: {relative}")
             for chunk in iter(lambda: source.read(65536), b""):
                 self.bytes_read += len(chunk)
                 self._check_budget()
                 digest.update(chunk)
             after = os.fstat(source.fileno())
-        def identity(value):
-            return (value.st_dev, value.st_ino, value.st_size, value.st_mode, value.st_mtime_ns, value.st_ctime_ns)
-
-        if identity(metadata) != identity(after) or identity(after) != identity(path.lstat()):
+        if not _stable_file_observations(metadata, opened, after, path.lstat()):
             raise WorkspaceCheckError(f"File changed during integrity scan: {relative}")
         return f"file:{stat.S_IMODE(mode)}:{digest.hexdigest()}"
+
+
+def _stable_file_observations(path_before, handle_before, handle_after, path_after) -> bool:
+    def identity(value):
+        return (value.st_dev, value.st_ino, value.st_size, value.st_mode, value.st_mtime_ns, value.st_ctime_ns)
+
+    # Windows stat can report creation time while fstat reports change time.
+    # Compare ctime only within each API; keep file identity checks across both.
+    path_identity, handle_identity = identity(path_before), identity(handle_before)
+    if os.name == "nt":
+        path_identity, handle_identity = path_identity[:-1], handle_identity[:-1]
+    return (identity(path_before) == identity(path_after)
+            and identity(handle_before) == identity(handle_after)
+            and path_identity == handle_identity)

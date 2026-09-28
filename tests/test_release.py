@@ -8,10 +8,14 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import zipfile
 
 import yaml
+
+from moregan.workspaces import CheckoutFingerprint, _stable_file_observations
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -60,6 +64,32 @@ class ReleaseTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     release.validate_source(self.root)
                 path.write_text(original, encoding="utf-8")
+
+    def test_integrity_compares_timestamps_within_each_stat_api(self):
+        fields = dict(st_dev=1, st_ino=2, st_size=3, st_mode=0o100644, st_mtime_ns=10, st_ctime_ns=20)
+        path = SimpleNamespace(**fields)
+        handle = SimpleNamespace(**dict(fields, st_ctime_ns=30))
+        with patch("moregan.workspaces.os.name", "nt"):
+            self.assertTrue(_stable_file_observations(path, handle, handle, path))
+        with patch("moregan.workspaces.os.name", "posix"):
+            self.assertFalse(_stable_file_observations(path, handle, handle, path))
+            self.assertTrue(_stable_file_observations(path, path, path, path))
+        for field in fields:
+            with self.subTest(field=field), patch("moregan.workspaces.os.name", "nt"):
+                changed_path = SimpleNamespace(**dict(fields, **{field: fields[field] + 1}))
+                changed_handle = SimpleNamespace(**dict(vars(handle), **{field: getattr(handle, field) + 1}))
+                self.assertFalse(_stable_file_observations(path, handle, handle, changed_path))
+                self.assertFalse(_stable_file_observations(path, handle, changed_handle, path))
+                if field != "st_ctime_ns":
+                    self.assertFalse(_stable_file_observations(path, changed_handle, changed_handle, path))
+
+    def test_integrity_hashes_raw_bytes_not_translated_newlines(self):
+        path = self.root / "newlines.txt"
+        path.write_bytes(b"hello\r\n")
+        before = CheckoutFingerprint.capture(self.root)
+        path.write_bytes(b"hello\n")
+        after = CheckoutFingerprint.capture(self.root)
+        self.assertEqual(after.changes_from(before), ["newlines.txt"])
 
     def test_release_events_accept_only_matching_tags(self):
         env = self.repository()
