@@ -60,6 +60,7 @@ class WorkerContext:
     remediation_context: Optional[Dict[str, object]] = None
     context_pack_path: Optional[str] = None
     context_estimated_tokens: int = 0
+    phase: str = "standard"
 
 
 @dataclass
@@ -152,6 +153,7 @@ class CommandWorker:
             {
                 "MOREGAN_RUN_ID": context.run_id,
                 "MOREGAN_STAGE": self.stage,
+                "MOREGAN_STAGE_PHASE": context.phase,
                 "MOREGAN_REQUEST": context.request,
                 "MOREGAN_RISK_LEVEL": context.risk.level,
                 "MOREGAN_ROUTE": json.dumps(context.route),

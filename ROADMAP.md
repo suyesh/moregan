@@ -11,7 +11,8 @@ The project is alpha. Completed foundations are not a claim of production readin
 - Local command workers and Codex/Claude adapter templates.
 - Deterministic checks and stack detection for Python, Node, Java/Spring Boot,
   Rails/Ruby, Go, and Rust.
-- Request and existing-diff risk classification.
+- Intake and post-generation diff risk classification with monotonic escalation.
+- Post-generation catch-up reviews and attempt-correct replay.
 - Compact context packs, local learning observations, traces, and read-only replay.
 - CLI initialization, skill setup, and package/publishing configuration.
 - Benchmark foundation: six isolated Python fixtures, independent acceptance checks,
@@ -19,8 +20,8 @@ The project is alpha. Completed foundations are not a claim of production readin
 
 ## Next
 
-1. Risk reassessment after every generated patch, including remediation.
-2. Deterministic tool timeouts, replay attempt fidelity, and snapshot cleanup.
+1. Deterministic tool timeouts, bounded output, and process cleanup.
+2. Snapshot cleanup and stronger no-write checks.
 3. Supported-version CI, package checks, and release gates.
 4. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
    and independent human evaluation.
@@ -43,9 +44,9 @@ Benchmark usage and limitations: [Benchmark guide](docs/benchmarks.md).
 | 1 | Real runtime | Implemented; truthful completion added in 1.11.0 |
 | 2 | Structured persona output | Shared strict provider validation implemented in 1.11.0 |
 | 3 | Deterministic evidence | Implemented with stack presets; timeouts pending |
-| 4 | Execution trace | Implemented; replay attempt fidelity needs repair |
+| 4 | Execution trace | Implemented; replay attempt fidelity repaired in 1.12.0 |
 | 5 | Empirical learning | Foundation implemented; calibration pending |
-| 6 | Adaptive routing | Intake diff signals implemented; post-generation routing pending |
+| 6 | Adaptive routing | Intake and post-generation escalation implemented in 1.12.0; heuristic tuning remains |
 | 7 | Competitive generators | Deferred until benchmarks and reliability improve |
 | 8 | Benchmarks | Foundation implemented in 1.10.0; live effectiveness study pending |
 | 9 | Measurable positioning | Limitations documented; no effectiveness claims yet |

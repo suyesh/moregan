@@ -175,6 +175,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         print(f"MoreGAN run {result.status.upper()}: {result.run_id}")
         print(f"Risk: {result.risk.level}")
+        if result.risk_history and result.risk_history[0]["previous_level"] != result.risk.level:
+            print(f"Risk escalated from {result.risk_history[0]['previous_level']} after generation.")
         if result.incomplete_stages:
             print(f"Incomplete stages: {', '.join(result.incomplete_stages)}")
         print(f"Trace: {result.trace_path}")

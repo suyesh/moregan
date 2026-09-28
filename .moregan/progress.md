@@ -961,3 +961,31 @@ execution_note: "Tests used simulated provider commands, not live Codex/Claude m
 next: "Original item 6: reassess generated and remediated diffs, escalate routes monotonically and record routing evidence."
 publishing: "PyPI remains paused; no release tag or workflow dispatch."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-post-generation-risk
+summary: "Completed original item 6 post-generation escalation and repaired item 4 replay fidelity in 1.12.0."
+branch: "main"
+updates:
+  - file: "moregan/runtime.py, moregan/state.py, moregan/schemas.py"
+    action: "Added monotonic per-attempt risk reassessment, fixed-baseline Git evidence, catch-up reviews, bounded remediation routing and risk history."
+  - file: "moregan/context.py, moregan/workers.py, moregan/agent_worker.py, moregan/adapters.py"
+    action: "Pass updated risk, route and explicit review phase to workers; explain post-generation reviews in new prompts."
+  - file: "moregan/replay.py, moregan/cli.py"
+    action: "Preserve attempt-specific stage results and expose risk escalation in CLI/replay."
+  - file: "tests/test_risk_reassessment.py, tests/test_moregan_runtime.py, tests/test_provider_contract.py"
+    action: "Added 22 routing/replay tests and updated assertions for the new reassessment stage."
+  - file: "README.md, docs/risk-routing.md, docs/review-2026-09-27.md, ROADMAP.md, SESSION_HANDOFF.md, .moregan/roadmap.yaml"
+    action: "Documented risk policy, evidence, limitations and completed findings; set bounded tool execution next."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md, uv.lock"
+    action: "Bumped package version to 1.12.0 and aligned the lock."
+verification_evidence:
+  - "115 tests passed on Python 3.12.11 and 3.14.0 on macOS."
+  - "Built wheel and sdist; installed-wheel smoke passed outside the checkout for Codex and Claude adapters."
+  - "Smoke covered low-to-critical escalation, architecture failure, remediation, retained risk, phase context and replay."
+execution_note: "Validation used real local Git changes and simulated provider commands. No live model or independent persona execution and no effectiveness claim."
+next: "Original item 3: deterministic command timeouts, bounded output and process cleanup."
+publishing: "PyPI remains paused; no release tag or workflow dispatch."
+---

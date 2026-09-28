@@ -88,6 +88,7 @@ class HarnessRunResult:
     state: Dict[str, object]
     evidence: List[CommandEvidence] = field(default_factory=list)
     incomplete_stages: List[str] = field(default_factory=list)
+    risk_history: List[Dict[str, object]] = field(default_factory=list)
 
 
 class StageResultValidationError(ValueError):

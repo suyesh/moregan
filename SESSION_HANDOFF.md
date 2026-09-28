@@ -1,15 +1,15 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 after the runtime/provider hardening milestone. The unfinished
-August benchmark draft and the two highest-priority completion/provider findings
-have now been implemented and tested.
+Updated: 2026-09-27 after post-generation risk reassessment and replay repair.
+Benchmark, completion/provider hardening, and adaptive routing milestones are
+implemented and tested; production hardening continues.
 
 ## Repository And Decisions
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed milestone: `751c03d Add isolated benchmark harness and document runtime review`, version 1.10.0.
-- Current feature version: 1.11.0, truthful outcomes and shared provider validation.
+- Previous pushed milestone: `927094e Harden runtime outcomes and shared provider validation`, version 1.11.0.
+- Current feature version: 1.12.0, post-generation routing and attempt-correct replay.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
 - PyPI publishing is paused. A push to main does not trigger the existing release workflow.
@@ -66,26 +66,51 @@ configured Checkstyle, SpotBugs, PMD, and OWASP Dependency-Check integrations.
   timeouts, all risk routes, and nested Codex/Claude adapter execution.
 - Updated README, skill outcome guidance, adapter prompts, review, roadmap and versions.
 
+## Completed In 1.12.0
+
+- Reassess risk after every returned generator attempt, including remediation,
+  skips, and failures. A failed generator still fails; its partial patch is traced.
+- Preserve the highest risk within a run. Newly required planner/architect/design
+  reviews inspect the existing patch before verification. Their failures use the
+  same remediation budget; rerun added reviews and verification after repair.
+- Fixed run-start Git baseline covers staged/working-tree changes, untracked
+  files, generated commits, and repositories with no first commit. Reset per run.
+- NUL-delimited diff parsing preserves unusual filenames and sensitive rename
+  origins. New-file size estimates are bounded; MoreGAN output dirs are excluded.
+- Added Java manifests/lockfiles and other dependency lockfiles to high-risk paths.
+- Git inspection failures become structured run failures, not clean-diff evidence.
+- Persist risk.initial.json, per-attempt assessments, risk_history.json and final
+  risk.json. plan.json and base context remain intake snapshots; stage context is current.
+- Workers receive MOREGAN_STAGE_PHASE; new adapter prompts explain catch-up reviews.
+- Fixed replay to use per-attempt artifacts with embedded-result fallback; reports
+  and replay show risk changes and CLI announces escalation.
+- Added 22 routing/replay tests. No new personas or paid provider calls.
+
 ## Review Findings And Next Work
 
 Read `docs/review-2026-09-27.md` first for concrete code references and impact.
 
-The next milestone is post-generation risk reassessment (original item 6).
-RiskClassifier currently runs only at intake. Reassess after every generator
-attempt, including remediation; only escalate the route during a run. Record the
-diff evidence and route change, execute all newly required verification stages,
-and define how newly required planning/architecture reviews should run. Add tests
-where a low-risk request causes auth, dependency, migration, or large-diff changes.
+The next milestone is bounded deterministic tool execution (original item 3).
+DeterministicEvidenceRunner._run still uses unbounded subprocess.run
+with no timeout. Add validated timeout settings, bounded captured output and
+structured timeout/launch failure evidence, with cleanup of child processes.
+Test hung/noisy processes, missing executables, required/optional policies and
+remediation. Provider commands also still buffer output without a bound; consider
+sharing a small execution helper where it genuinely removes duplication.
 
 After that:
 
-1. Add deterministic command timeouts and bounded output.
-2. Fix replay to load the correct stage attempt instead of repeating the last one.
-3. Clean up worker snapshots and improve no-write enforcement.
-4. Add release CI and verify or adjust the advertised Python 3.8+ support.
-5. Expand fixtures to representative real repositories and collect actual
+1. Clean up worker snapshots and improve no-write enforcement.
+2. Add release CI and verify or adjust the advertised Python 3.8+ support.
+3. Expand fixtures to representative real repositories and collect actual
    provider token/cost measurements before running effectiveness studies.
-6. Introduce competitive generators only after this evidence and hardening.
+4. Introduce competitive generators only after this evidence and hardening.
+
+Risk policy and remaining limits are documented in docs/risk-routing.md. Routing
+is heuristic and request-only outside Git. Fixed-baseline evidence includes
+preexisting user changes but never reverts them. Canonical route order and actual
+stage execution order differ when reviews are added after generation; use state
+history, phase and risk history to distinguish them.
 
 Completion policy: a routed worker must pass. At least one deterministic command
 must execute, with no required failures; individual not-applicable commands may
@@ -101,9 +126,9 @@ validation cannot establish that the provider's claims are true.
 | 1 | Runtime | Implemented; truthful outcomes in 1.11.0 |
 | 2 | Structured persona output | Shared strict provider validation in 1.11.0 |
 | 3 | Deterministic evidence | Stack presets implemented; timeouts pending |
-| 4 | Execution trace | Implemented; replay history needs repair |
+| 4 | Execution trace | Implemented; replay attempt fidelity fixed in 1.12.0 |
 | 5 | Empirical learning | Foundation implemented |
-| 6 | Adaptive routing | Intake diff implemented; post-generation reassessment pending |
+| 6 | Adaptive routing | Post-generation escalation implemented in 1.12.0; heuristics need calibration |
 | 7 | Competitive generators | Deferred |
 | 8 | Benchmarks | Foundation implemented in 1.10.0 |
 | 9 | Measurable positioning | Limitations documented; effectiveness study pending |
@@ -111,14 +136,15 @@ validation cannot establish that the provider's claims are true.
 
 ## Verification And Limits
 
-- Full unittest suite passed 93 tests on macOS under Python 3.12.11 and 3.14.0.
+- Full unittest suite passed 115 tests on macOS under Python 3.12.11 and 3.14.0.
 - Build: `uv build --clear --default-index https://pypi.org/simple`.
 - Lock validation: `uv lock --check --default-index https://pypi.org/simple`.
-- Wheel smoke environment: `/private/tmp/moregan-1.11.0-smoke.xkopOQ/venv`.
-- Smoke script: `/private/tmp/moregan-1.11.0-smoke.xkopOQ/smoke.py`.
-- Installed CLI exercised outside checkout: init, incomplete exit 1, configured
-  Codex/Claude pass exit 0, malformed provider fail exit 1, inspect/replay, and
-  rejection of provider attempt overrides. These used simulated provider commands.
+- Wheel smoke environment: `/private/tmp/moregan-1.12.0-smoke.FqxNGc/venv`.
+- Smoke script: `/private/tmp/moregan-1.12.0-smoke.FqxNGc/smoke.py`.
+- Installed CLI exercised outside checkout: init, incomplete exit 1, both provider
+  adapters, low-to-critical escalation, architecture rejection, remediation that
+  removes the risky change, retained critical route, inspect and attempt-correct
+  replay. These used simulated provider commands, not live models.
 - Fixture verifiers tested against both broken source and known repaired source.
 - No paid Codex/Claude benchmark run or PyPI publication was performed.
 - The full supported Python/OS matrix is not yet certified. Source review found

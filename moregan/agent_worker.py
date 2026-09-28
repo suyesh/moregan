@@ -161,6 +161,7 @@ class AgentWorkerRunner:
             "## Runtime Context\n\n"
             f"- run_id: {context['run_id']}\n"
             f"- stage: {context['stage']}\n"
+            f"- phase: {os.environ.get('MOREGAN_STAGE_PHASE', 'standard')}\n"
             f"- request: {context['request']}\n"
             f"- risk_level: {context['risk_level']}\n"
             f"- route: {context['route']}\n"

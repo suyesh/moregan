@@ -133,10 +133,11 @@ class MoreGANRuntimeTests(unittest.TestCase):
         self.assertEqual(state["current_state"], "incomplete")
         self.assertEqual(
             [snapshot["state"] for snapshot in state["history"]],
-            ["intake", "risk_classification", "generation", "deterministic_evidence", "evaluation", "incomplete"],
+            ["intake", "risk_classification", "generation", "risk_reassessment",
+             "deterministic_evidence", "evaluation", "incomplete"],
         )
         states_jsonl = (run_dir / "states.jsonl").read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(states_jsonl), 6)
+        self.assertEqual(len(states_jsonl), 7)
         self.assertEqual(latest_run(self.root), run_dir)
 
     def test_runtime_writes_compact_context_packs(self):
@@ -387,6 +388,7 @@ class MoreGANRuntimeTests(unittest.TestCase):
                 "risk_classification",
                 "planning",
                 "generation",
+                "risk_reassessment",
                 "deterministic_evidence",
                 "evaluation",
                 "code_review",

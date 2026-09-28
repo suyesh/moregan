@@ -27,6 +27,7 @@ class RunReplay:
             "status": result.get("status"),
             "request": result.get("request"),
             "risk": result.get("risk"),
+            "risk_history": result.get("risk_history", []),
             "state": state,
             "stages": stages,
             "evidence": result.get("evidence", []),
@@ -61,6 +62,12 @@ class RunReplay:
                 f"{index}. `{previous}` -> `{snapshot.get('state')}` "
                 f"({snapshot.get('stage')}) - {snapshot.get('reason')}"
             )
+
+        if replay.get("risk_history"):
+            lines.extend(["", "## Risk Reassessment", ""])
+            for assessment in replay["risk_history"]:
+                lines.append(f"- Attempt {assessment['attempt']}: {assessment['previous_level']} -> "
+                             f"{assessment['effective']['level']} (observed {assessment['observed']['level']})")
 
         lines.extend(["", "## Stage Results", ""])
         for stage in stages:
@@ -133,7 +140,7 @@ class RunReplay:
             stage_name = stage.get("stage")
             if not stage_name:
                 continue
-            stage_path = self.run_dir / "stages" / f"{stage_name}.json"
+            stage_path = self.run_dir / "stages" / f"{stage_name}.attempt{stage.get('attempt', 1)}.json"
             if stage_path.exists():
                 payload = json.loads(stage_path.read_text(encoding="utf-8"))
                 if isinstance(payload, dict):

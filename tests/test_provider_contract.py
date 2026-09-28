@@ -221,7 +221,8 @@ class ProviderContractTests(unittest.TestCase):
                 loader.load()
             result = MoreGANRuntime(self.root).run("Change copy")
             self.assertEqual(result.status, "fail")
-            self.assertEqual(result.stages[-1].findings[0].category, "worker_config_invalid")
+            self.assertTrue(any(finding.category == "worker_config_invalid"
+                                for stage in result.stages for finding in stage.findings))
 
 
 class RuntimeOutcomeTests(unittest.TestCase):

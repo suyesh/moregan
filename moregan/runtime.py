@@ -102,6 +102,14 @@ HIGH_PATH_PATTERNS = [
     "gemfile",
     "cargo.toml",
     "go.mod",
+    "go.sum",
+    "cargo.lock",
+    "uv.lock",
+    "poetry.lock",
+    "pom.xml",
+    "build.gradle",
+    "gradle.lockfile",
+    "libs.versions.toml",
 ]
 
 MEDIUM_PATH_PATTERNS = ["api", "controller", "route", "service", "config", "test", "spec"]
@@ -138,10 +146,16 @@ ROUTES_BY_RISK: Dict[str, List[str]] = {
 
 
 class RiskClassifier:
-    """Routes work by risk before persona selection."""
+    """Classifies the current patch against a Git baseline fixed for the run."""
 
     def __init__(self, root: Optional[Path] = None):
         self.root = root.resolve() if root else None
+        self.reset_baseline()
+
+    def reset_baseline(self) -> None:
+        self._baseline_captured = False
+        self._baseline_ref: Optional[str] = None
+        self._baseline_kind: Optional[str] = None
 
     def classify(self, request: str) -> RiskClassification:
         normalized = request.lower()
@@ -167,7 +181,7 @@ class RiskClassifier:
         return RiskClassification(
             level=selected_level,  # type: ignore[arg-type]
             reasons=reasons,
-            route=ROUTES_BY_RISK[selected_level],
+            route=list(ROUTES_BY_RISK[selected_level]),
             confidence=confidence,
             evidence=repository_evidence,
         )
@@ -176,18 +190,84 @@ class RiskClassifier:
         if self.root is None:
             return {"source": "not_configured", "changed_files": [], "changed_file_count": 0}
         if not (self.root / ".git").exists():
+            if self._baseline_captured:
+                return {"source": "git_error", "changed_files": [], "changed_file_count": 0,
+                        "error": "Git metadata disappeared after the run baseline was captured."}
             return {"source": "no_git_repository", "changed_files": [], "changed_file_count": 0}
 
-        status = self._git_lines(["git", "status", "--short", "--untracked-files=all"])
-        changed_files = self._changed_files_from_status(status)
-        diff = self._diff_stats()
+        try:
+            if not self._baseline_captured:
+                refs = self._git(["rev-parse", "--verify", "--quiet", "HEAD"], allow_unborn=True)
+                self._baseline_ref = refs.strip() or self._git(["hash-object", "-t", "tree", "--stdin"]).strip()
+                self._baseline_kind = "head" if refs.strip() else "empty_tree"
+                self._baseline_captured = True
+            stats: Dict[str, Tuple[int, int]] = {}
+            binary_files = set()
+            for cached in ([], ["--cached"]):
+                raw = self._git(["diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--numstat", "-z",
+                                 *cached, self._baseline_ref, "--"])
+                for record in raw.split("\0"):
+                    if not record:
+                        continue
+                    added, removed, path = record.split("\t", 2)
+                    if self._runtime_artifact(path):
+                        continue
+                    old = stats.get(path, (0, 0))
+                    stats[path] = (max(old[0], int(added) if added.isdigit() else 0),
+                                   max(old[1], int(removed) if removed.isdigit() else 0))
+                    if added == "-" or removed == "-":
+                        binary_files.add(path)
+            untracked = []
+            for path in self._git(["ls-files", "--others", "--exclude-standard", "-z"]).split("\0"):
+                if path and not self._runtime_artifact(path):
+                    untracked.append(path)
+                    old = stats.get(path, (0, 0))
+                    stats[path] = (max(old[0], self._file_line_count(path)), old[1])
+        except (OSError, ValueError, subprocess.SubprocessError) as exc:
+            return {"source": "git_error", "baseline_ref": self._baseline_ref,
+                    "changed_files": [], "changed_file_count": 0, "error": str(exc)}
+
+        changed_files = sorted(stats)
         return {
             "source": "git",
+            "baseline_ref": self._baseline_ref,
+            "baseline_kind": self._baseline_kind,
             "changed_files": changed_files,
             "changed_file_count": len(changed_files),
-            "status": status[:120],
-            "diff": diff,
+            "untracked_files": sorted(untracked),
+            "binary_files": sorted(binary_files),
+            "line_count_policy": "tracked diff union; new text files capped at 400 lines or 1 MiB per file",
+            "diff": {"files": len(stats), "insertions": sum(item[0] for item in stats.values()),
+                     "deletions": sum(item[1] for item in stats.values())},
         }
+
+    def _git(self, args: Sequence[str], allow_unborn: bool = False) -> str:
+        result = subprocess.run(["git", *args], cwd=self.root, check=False, capture_output=True, text=True,
+                                input="", timeout=30)
+        if allow_unborn and result.returncode == 1:
+            return ""
+        if result.returncode != 0:
+            raise ValueError(f"Git risk inspection failed: {result.stderr.strip() or result.returncode}")
+        return result.stdout
+
+    def _runtime_artifact(self, path: str) -> bool:
+        return any(path == prefix or path.startswith(prefix + "/") for prefix in (
+            ".moregan/runs", ".moregan/learning", ".moregan/backups",
+            ".moregan/benchmarks/runs", ".moregan/benchmarks/comparisons",
+        ))
+
+    def _file_line_count(self, relative: str) -> int:
+        path = self.root / relative
+        if path.is_symlink() or not path.is_file():
+            return 0
+        # Size routing stops at 400 lines; do not load arbitrarily large new files.
+        with path.open("rb") as handle:
+            data = handle.read(1024 * 1024)
+        if b"\0" in data:
+            return 0
+        if len(data) == 1024 * 1024:
+            return 400
+        return min(400, data.count(b"\n") + int(bool(data) and not data.endswith(b"\n")))
 
     def _repository_risk(self, evidence: Dict[str, object]) -> Tuple[str, List[str]]:
         changed_files = [str(item) for item in evidence.get("changed_files", []) if item]
@@ -197,6 +277,8 @@ class RiskClassifier:
         total_changed_lines = insertions + deletions
         reasons = []
         level = "low"
+        if evidence.get("source") == "git_error":
+            return "high", ["repository risk inspection failed; changes could not be verified"]
 
         critical_paths = [path for path in changed_files if self._matches_any(path, CRITICAL_PATH_PATTERNS)]
         high_paths = [path for path in changed_files if self._matches_any(path, HIGH_PATH_PATTERNS)]
@@ -224,45 +306,6 @@ class RiskClassifier:
             level = self._max_level(level, "medium")
             reasons.append(f"repository diff changes {total_changed_lines} lines")
         return level, reasons
-
-    def _git_lines(self, command: Sequence[str]) -> List[str]:
-        if self.root is None:
-            return []
-        result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
-        if result.returncode != 0:
-            return []
-        return [line for line in result.stdout.splitlines() if line]
-
-    def _changed_files_from_status(self, lines: Sequence[str]) -> List[str]:
-        changed = []
-        for line in lines:
-            if len(line) < 4:
-                continue
-            path = line[3:].strip()
-            if " -> " in path:
-                path = path.split(" -> ", 1)[1]
-            changed.append(path)
-        return sorted(set(changed))
-
-    def _diff_stats(self) -> Dict[str, int]:
-        if self.root is None:
-            return {"files": 0, "insertions": 0, "deletions": 0}
-        files = set()
-        insertions = 0
-        deletions = 0
-        for command in (["git", "diff", "--numstat"], ["git", "diff", "--cached", "--numstat"]):
-            result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
-            if result.returncode != 0:
-                continue
-            for line in result.stdout.splitlines():
-                parts = line.split("\t")
-                if len(parts) < 3:
-                    continue
-                added, removed, path = parts[0], parts[1], parts[2]
-                files.add(path)
-                insertions += int(added) if added.isdigit() else 0
-                deletions += int(removed) if removed.isdigit() else 0
-        return {"files": len(files), "insertions": insertions, "deletions": deletions}
 
     def _matches_any(self, path: str, patterns: Sequence[str]) -> bool:
         normalized = path.lower()
@@ -330,6 +373,14 @@ class TraceWriter:
             "",
         ]
         lines.extend(f"- {stage}" for stage in result.risk.route)
+        if result.risk_history:
+            lines.extend(["", "## Risk Reassessment", ""])
+            for assessment in result.risk_history:
+                lines.append(
+                    f"- Attempt {assessment['attempt']}: {assessment['previous_level']} -> "
+                    f"{assessment['effective']['level']} (observed {assessment['observed']['level']}); "
+                    f"added stages: {', '.join(assessment['added_stages']) or 'none'}"
+                )
         if result.incomplete_stages:
             lines.extend(["", "## Incomplete Stages", ""])
             lines.extend(f"- {stage}" for stage in result.incomplete_stages)
@@ -552,6 +603,7 @@ class MoreGANRuntime:
         self.worker_registry = WorkerRegistry.from_root(self.root)
 
     def run(self, request: str, run_checks: bool = True) -> HarnessRunResult:
+        self.classifier.reset_baseline()
         run_dir = self.trace_writer.create_run_dir(request)
         run_id = run_dir.name
         state_machine = StateMachine(
@@ -596,6 +648,10 @@ class MoreGANRuntime:
         self.trace_writer.write_json(run_dir, "request.json", {"request": request})
         self.trace_writer.write_json(run_dir, "plan.json", {"risk": asdict(risk), "route": risk.route})
         self.trace_writer.write_json(run_dir, "risk.json", asdict(risk))
+        self.trace_writer.write_json(run_dir, "risk.initial.json", asdict(risk))
+        if risk.evidence.get("source") == "git_error":
+            risk_stage.verdict = "fail"
+            risk_stage.findings = [self._risk_inspection_finding(risk)]
         self.trace_writer.write_stage(run_dir, risk_stage)
         self.trace_writer.event(run_dir, "risk.classified", level=risk.level, reasons=risk.reasons)
         tool_suggestions = self.evidence_runner.suggest_tools()
@@ -614,99 +670,89 @@ class MoreGANRuntime:
         evidence: List[CommandEvidence] = []
         stages = [risk_stage]
         remediation_contexts: List[Dict[str, object]] = []
-        status = "pass"
+        risk_history: List[Dict[str, object]] = []
+        self.trace_writer.write_json(run_dir, "risk_history.json", {"assessments": risk_history})
+        status = "fail" if risk_stage.verdict == "fail" else "pass"
         terminal_reason = "all routed stages completed without blocking failures"
-        current_index = 0
+        if status == "fail":
+            terminal_reason = "initial risk inspection failed"
+        pending = list(risk.route) if status == "pass" else []
+        deferred_reviews: List[str] = []
         remediation_context: Optional[Dict[str, object]] = None
 
-        while current_index < len(risk.route):
-            route_stage = risk.route[current_index]
+        while pending:
+            route_stage = pending.pop(0)
             attempt = max(1, state_machine.run_state.remediation_attempts + 1)
+            post_generation_review = route_stage in deferred_reviews
+            phase = "post_generation_review" if post_generation_review else "standard"
+            current_evidence: List[CommandEvidence] = []
 
             if route_stage == "deterministic_evidence":
-                evidence_stage, current_evidence = self._run_deterministic_evidence(
+                stage_result, current_evidence = self._run_deterministic_evidence(
                     run_dir=run_dir,
                     state_machine=state_machine,
                     run_checks=run_checks,
                     attempt=attempt,
                 )
                 evidence.extend(current_evidence)
-                stages.append(evidence_stage)
-                if evidence_stage.verdict == "fail":
-                    remediated = self._attempt_remediation(
-                        run_dir=run_dir,
-                        state_machine=state_machine,
-                        stages=stages,
-                        failed_stage=evidence_stage,
-                        failed_route_index=current_index,
-                        risk=risk,
-                        request=request,
-                        evidence=current_evidence,
-                        remediation_contexts=remediation_contexts,
-                    )
-                    if remediated is None:
-                        status = "fail"
-                        terminal_reason = "blocking deterministic checks failed"
-                        if state_machine.run_state.remediation_attempts:
-                            terminal_reason += " after remediation attempts"
-                        break
-                    current_index = remediated["retry_index"]  # type: ignore[assignment]
-                    remediation_context = remediated["context"]  # type: ignore[assignment]
-                    continue
-                current_index += 1
-                continue
+            else:
+                context_pack = self.context_writer.write_stage_context(
+                    run_dir=run_dir, request=request, risk=risk, stage=route_stage, attempt=attempt,
+                    stages=stages, evidence=evidence, remediation_context=remediation_context, phase=phase,
+                )
+                worker_context = WorkerContext(
+                    root=self.root, run_id=run_id, request=request, risk=risk, route=risk.route, attempt=attempt,
+                    remediation_context=remediation_context, context_pack_path=context_pack.path,
+                    context_estimated_tokens=context_pack.estimated_tokens, phase=phase,
+                )
+                stage_result = self._run_worker_stage(
+                    run_dir=run_dir, state_machine=state_machine, route_stage=route_stage,
+                    context=worker_context, attempt=attempt,
+                )
+            stages.append(stage_result)
 
-            context_pack = self.context_writer.write_stage_context(
-                run_dir=run_dir,
-                request=request,
-                risk=risk,
-                stage=route_stage,
-                attempt=attempt,
-                stages=stages,
-                evidence=evidence,
-                remediation_context=remediation_context,
-            )
-            worker_context = WorkerContext(
-                root=self.root,
-                run_id=run_id,
-                request=request,
-                risk=risk,
-                route=risk.route,
-                attempt=attempt,
-                remediation_context=remediation_context,
-                context_pack_path=context_pack.path,
-                context_estimated_tokens=context_pack.estimated_tokens,
-            )
-            worker_stage = self._run_worker_stage(
-                run_dir=run_dir,
-                state_machine=state_machine,
-                route_stage=route_stage,
-                context=worker_context,
-                attempt=attempt,
-            )
-            stages.append(worker_stage)
-            if worker_stage.verdict == "fail":
+            if route_stage == "generator":
+                if remediation_context is not None:
+                    self.trace_writer.event(
+                        run_dir, "remediation.completed", failed_stage=remediation_context["failed_stage"],
+                        remediation_attempt=state_machine.run_state.remediation_attempts,
+                        generator_verdict=stage_result.verdict,
+                    )
+                previous_route = risk.route
+                risk, reassessment = self._reassess_risk(
+                    run_dir, state_machine, request, risk, attempt, risk_history,
+                )
+                stages.append(reassessment)
+                generator_index = risk.route.index("generator")
+                deferred_reviews.extend(stage for stage in risk.route[:generator_index] if stage not in previous_route)
+                # Catch-up reviews gate this patch; rerun them and all verification after every repair.
+                pending = deferred_reviews + risk.route[generator_index + 1:]
+                if reassessment.verdict == "fail":
+                    status = "fail"
+                    terminal_reason = "post-generation risk inspection failed"
+                    break
+
+            if stage_result.verdict == "fail":
                 remediated = self._attempt_remediation(
                     run_dir=run_dir,
                     state_machine=state_machine,
                     stages=stages,
-                    failed_stage=worker_stage,
-                    failed_route_index=current_index,
+                    failed_stage=stage_result,
+                    failed_route_index=risk.route.index(route_stage),
                     risk=risk,
-                    request=request,
-                    evidence=[],
+                    evidence=current_evidence,
                     remediation_contexts=remediation_contexts,
+                    post_generation_review=post_generation_review,
                 )
                 if remediated is None:
                     status = "fail"
-                    terminal_reason = f"{route_stage} worker failed"
+                    terminal_reason = ("blocking deterministic checks failed" if route_stage == "deterministic_evidence"
+                                       else f"{route_stage} worker failed")
                     if route_stage != "generator" and state_machine.run_state.remediation_attempts:
                         terminal_reason += " after remediation attempts"
                     break
-                current_index = remediated["retry_index"]  # type: ignore[assignment]
-                remediation_context = remediated["context"]  # type: ignore[assignment]
-                continue
-            current_index += 1
+                pending = ["generator"]
+                remediation_context = remediated
 
         latest_stages = {stage.stage: stage for stage in stages}
         incomplete_stages = [name for name in risk.route if name not in latest_stages
@@ -732,6 +778,7 @@ class MoreGANRuntime:
             state=state_machine.to_dict(),
             evidence=evidence,
             incomplete_stages=incomplete_stages,
+            risk_history=risk_history,
         )
         learning = self.learning_store.record_run(
             run_dir=run_dir,
@@ -751,6 +798,55 @@ class MoreGANRuntime:
         self.trace_writer.event(run_dir, "run.completed", status=status)
         return result
 
+    def _reassess_risk(
+        self, run_dir: Path, state_machine: StateMachine, request: str, previous: RiskClassification,
+        attempt: int, history: List[Dict[str, object]],
+    ) -> Tuple[RiskClassification, StageResult]:
+        self._transition(run_dir, state_machine, TaskState.RISK_REASSESSMENT,
+                         reason="inspecting the patch after generator execution", stage="risk_reassessment")
+        started = self._timestamp()
+        timer = time.perf_counter()
+        observed = self.classifier.classify(request)
+        retained = RISK_LEVEL_ORDER[observed.level] < RISK_LEVEL_ORDER[previous.level]
+        effective = observed
+        if retained:
+            effective = RiskClassification(
+                level=previous.level, route=list(previous.route), confidence=max(previous.confidence, observed.confidence),
+                reasons=list(dict.fromkeys(previous.reasons + observed.reasons + [
+                    f"retained earlier {previous.level} risk; routes cannot downgrade within a run",
+                ])), evidence=observed.evidence,
+            )
+        record = {
+            "attempt": attempt, "previous_level": previous.level, "observed": asdict(observed),
+            "effective": asdict(effective), "retained_prior_risk": retained,
+            "added_stages": [stage for stage in effective.route if stage not in previous.route],
+        }
+        history.append(record)
+        self.trace_writer.write_json(run_dir, "risk.json", asdict(effective))
+        self.trace_writer.write_json(run_dir, f"risk.attempt{attempt}.json", record)
+        self.trace_writer.write_json(run_dir, "risk_history.json", {"assessments": history})
+        summary = f"{previous.level} -> {effective.level} (observed {observed.level}) after generator attempt {attempt}"
+        if observed.evidence.get("source") == "no_git_repository":
+            summary += "; no Git repository, request-only classification"
+        failed = observed.evidence.get("source") == "git_error"
+        result = StageResult(
+            stage="risk_reassessment", verdict="fail" if failed else "pass", confidence=effective.confidence,
+            findings=[self._risk_inspection_finding(observed)] if failed else [],
+            evidence=[EvidenceReference(kind="routing", name="post_generation_risk", summary=summary,
+                                        path=str(run_dir / f"risk.attempt{attempt}.json"))],
+            attempt=attempt, started_at=started, completed_at=self._timestamp(), duration_ms=self._duration_ms(timer),
+        )
+        self.trace_writer.write_stage(run_dir, result)
+        self.trace_writer.event(run_dir, "risk.reassessed", attempt=attempt, previous_level=previous.level,
+                                observed_level=observed.level, level=effective.level, added_stages=record["added_stages"],
+                                verdict=result.verdict, reasons=effective.reasons)
+        return effective, result
+
+    def _risk_inspection_finding(self, risk: RiskClassification) -> Finding:
+        return Finding(severity="high", category="risk_inspection_failed",
+                       description=str(risk.evidence.get("error", "Could not inspect the repository patch.")),
+                       remediation="Restore Git repository access and rerun MoreGAN to verify the patch risk.")
+
     def _run_worker_stage(
         self,
         run_dir: Path,
@@ -764,10 +860,10 @@ class MoreGANRuntime:
             run_dir,
             state_machine,
             next_state,
-            reason=f"routing {route_stage} worker",
+            reason=f"routing {route_stage} worker ({context.phase})",
             stage=route_stage,
         )
-        self.trace_writer.event(run_dir, "worker.started", stage=route_stage, attempt=attempt)
+        self.trace_writer.event(run_dir, "worker.started", stage=route_stage, attempt=attempt, phase=context.phase)
         result = self.worker_registry.get(route_stage).run(context)
         result.attempt = attempt
         self.trace_writer.write_stage(run_dir, result)
@@ -833,11 +929,11 @@ class MoreGANRuntime:
         failed_stage: StageResult,
         failed_route_index: int,
         risk: RiskClassification,
-        request: str,
         evidence: List[CommandEvidence],
         remediation_contexts: List[Dict[str, object]],
+        post_generation_review: bool = False,
     ) -> Optional[Dict[str, object]]:
-        if not self._can_remediate(state_machine, failed_stage.stage, failed_route_index, risk.route):
+        if not self._can_remediate(state_machine, failed_stage.stage, failed_route_index, risk.route, post_generation_review):
             exhausted = (
                 state_machine.run_state.remediation_attempts
                 >= state_machine.run_state.max_remediation_attempts
@@ -859,6 +955,7 @@ class MoreGANRuntime:
             next_attempt=next_attempt,
             evidence=evidence,
         )
+        context["post_generation_review"] = post_generation_review
         remediation_contexts.append(context)
         self._transition(
             run_dir,
@@ -900,45 +997,7 @@ class MoreGANRuntime:
             next_attempt=next_attempt,
         )
 
-        context_pack = self.context_writer.write_stage_context(
-            run_dir=run_dir,
-            request=request,
-            risk=risk,
-            stage="generator",
-            attempt=next_attempt,
-            stages=stages,
-            evidence=evidence,
-            remediation_context=context,
-        )
-        generator_context = WorkerContext(
-            root=self.root,
-            run_id=run_dir.name,
-            request=request,
-            risk=risk,
-            route=risk.route,
-            attempt=next_attempt,
-            remediation_context=context,
-            context_pack_path=context_pack.path,
-            context_estimated_tokens=context_pack.estimated_tokens,
-        )
-        generator_stage = self._run_worker_stage(
-            run_dir=run_dir,
-            state_machine=state_machine,
-            route_stage="generator",
-            context=generator_context,
-            attempt=next_attempt,
-        )
-        stages.append(generator_stage)
-        self.trace_writer.event(
-            run_dir,
-            "remediation.completed",
-            failed_stage=failed_stage.stage,
-            remediation_attempt=remediation_attempt,
-            generator_verdict=generator_stage.verdict,
-        )
-        if generator_stage.verdict == "fail":
-            return None
-        return {"retry_index": context["retry_index"], "context": context}
+        return context
 
     def _can_remediate(
         self,
@@ -946,6 +1005,7 @@ class MoreGANRuntime:
         failed_stage: str,
         failed_route_index: int,
         route: List[str],
+        post_generation_review: bool = False,
     ) -> bool:
         if state_machine.run_state.remediation_attempts >= state_machine.run_state.max_remediation_attempts:
             return False
@@ -955,7 +1015,7 @@ class MoreGANRuntime:
             generator_index = route.index("generator")
         except ValueError:
             return False
-        return failed_route_index > generator_index
+        return post_generation_review or failed_route_index > generator_index
 
     def _remediation_context(
         self,
@@ -970,21 +1030,11 @@ class MoreGANRuntime:
             "failed_stage": failed_stage.stage,
             "failed_verdict": failed_stage.verdict,
             "failed_route_index": failed_route_index,
-            "retry_index": self._retry_index(route, failed_route_index),
+            "retry_index": route.index("generator"),
             "findings": [asdict(finding) for finding in failed_stage.findings],
             "stage_evidence": [asdict(item) for item in failed_stage.evidence],
             "deterministic_evidence": [self._command_evidence_context(item) for item in evidence if not item.passed],
         }
-
-    def _retry_index(self, route: List[str], failed_route_index: int) -> int:
-        try:
-            deterministic_index = route.index("deterministic_evidence")
-            generator_index = route.index("generator")
-        except ValueError:
-            return failed_route_index
-        if generator_index < deterministic_index <= failed_route_index:
-            return deterministic_index
-        return failed_route_index
 
     def _command_evidence_context(self, item: CommandEvidence) -> Dict[str, object]:
         return {

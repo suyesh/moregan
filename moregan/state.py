@@ -10,6 +10,7 @@ from typing import Callable, Dict, List, Optional, Set
 class TaskState:
     INTAKE = "intake"
     RISK_CLASSIFICATION = "risk_classification"
+    RISK_REASSESSMENT = "risk_reassessment"
     PLANNING = "planning"
     ARCHITECTURE_REVIEW = "architecture_review"
     DESIGN_DECISION = "design_decision"
@@ -35,11 +36,26 @@ ALLOWED_TRANSITIONS: Dict[str, Set[str]] = {
         TaskState.PLANNING,
         TaskState.GENERATION,
         TaskState.DETERMINISTIC_EVIDENCE,
+        TaskState.FAILED,
     },
-    TaskState.PLANNING: {TaskState.ARCHITECTURE_REVIEW, TaskState.GENERATION, TaskState.FAILED},
-    TaskState.ARCHITECTURE_REVIEW: {TaskState.DESIGN_DECISION, TaskState.GENERATION, TaskState.FAILED},
-    TaskState.DESIGN_DECISION: {TaskState.GENERATION, TaskState.FAILED},
-    TaskState.GENERATION: {TaskState.DETERMINISTIC_EVIDENCE, TaskState.EVALUATION, TaskState.FAILED},
+    TaskState.PLANNING: {
+        TaskState.ARCHITECTURE_REVIEW, TaskState.GENERATION, TaskState.FAILED,
+        TaskState.DETERMINISTIC_EVIDENCE, TaskState.REMEDIATION,
+    },
+    TaskState.ARCHITECTURE_REVIEW: {
+        TaskState.DESIGN_DECISION, TaskState.GENERATION, TaskState.FAILED,
+        TaskState.DETERMINISTIC_EVIDENCE, TaskState.REMEDIATION,
+    },
+    TaskState.DESIGN_DECISION: {
+        TaskState.GENERATION, TaskState.FAILED, TaskState.DETERMINISTIC_EVIDENCE, TaskState.REMEDIATION,
+    },
+    TaskState.GENERATION: {
+        TaskState.RISK_REASSESSMENT, TaskState.DETERMINISTIC_EVIDENCE, TaskState.EVALUATION, TaskState.FAILED,
+    },
+    TaskState.RISK_REASSESSMENT: {
+        TaskState.PLANNING, TaskState.ARCHITECTURE_REVIEW, TaskState.DESIGN_DECISION,
+        TaskState.DETERMINISTIC_EVIDENCE, TaskState.FAILED,
+    },
     TaskState.DETERMINISTIC_EVIDENCE: {
         TaskState.EVALUATION,
         TaskState.REMEDIATION,

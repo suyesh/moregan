@@ -183,6 +183,11 @@ Objective: {objective}
 
 {no_write_instruction}
 
+If the runtime phase is `post_generation_review`, risk increased after generation.
+Review the existing patch and updated risk evidence before verification. Do not
+pretend this was a pre-generation review. Return blocking concerns as findings
+for the runtime's bounded remediation loop.
+
 Return exactly one JSON object and no markdown fences:
 
 ```json

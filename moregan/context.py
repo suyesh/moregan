@@ -81,12 +81,14 @@ class ContextPackWriter:
         stages: Sequence[StageResult],
         evidence: Sequence[CommandEvidence],
         remediation_context: Optional[Dict[str, object]],
+        phase: str = "standard",
     ) -> ContextPack:
         payload: Dict[str, object] = {
             "kind": "stage_context",
             "generated_at": self._timestamp(),
             "run_id": run_dir.name,
             "stage": stage,
+            "phase": phase,
             "attempt": attempt,
             "request": request,
             "risk": asdict(risk),
@@ -318,7 +320,10 @@ class ContextPackWriter:
         }
 
     def _git_lines(self, command: Sequence[str]) -> Optional[List[str]]:
-        result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
+        try:
+            result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True, timeout=30)
+        except (OSError, UnicodeError, subprocess.SubprocessError):
+            return None
         if result.returncode != 0:
             return None
         return [line for line in result.stdout.splitlines() if line]

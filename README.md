@@ -16,7 +16,7 @@ MoreGAN is a local, evidence-first harness for Claude Code, Codex, and other cod
 The loop is simple:
 
 ```text
-request -> route by risk -> worker stages -> deterministic checks -> trace -> replay
+request -> initial route -> generate -> reassess patch risk -> verify -> trace -> replay
 ```
 
 MoreGAN is not a magic prompt. It is an executable runtime where Python enforces the protocol and agents are replaceable workers behind a structured `StageResult` contract.
@@ -57,6 +57,8 @@ flowchart TD
 
   StageResult --> Validation[Strict shared validation]
   Validation --> State[State machine]
+  Validation -->|Generator result| Reassess[Reassess actual patch]
+  Reassess -->|Escalate only| Route
   Evidence --> State
   State --> Trace[.moregan/runs/run-id]
   Trace --> Inspect[inspect]
@@ -173,6 +175,12 @@ moregan run "Add OAuth login"
 ```
 
 Risk routing uses both the request and local repository evidence. Auth, payments, migrations, dependency files, infrastructure files, public API paths, broad diffs, and large line changes can raise the route even when the request sounds small.
+
+After every generator attempt, including remediation, MoreGAN inspects the patch
+again. Risk can increase but cannot decrease within that run. Newly required
+planning, architecture, and design-decision reviews inspect the existing patch
+before verification. Their failures enter the same bounded remediation loop.
+See [risk routing](docs/risk-routing.md) for ordering, evidence, and limitations.
 
 Inspect the latest run:
 
@@ -412,6 +420,9 @@ Each run writes a directory like this. The exact `stages/*.json` files depend on
   request.json
   plan.json
   risk.json
+  risk.initial.json
+  risk.attempt1.json
+  risk_history.json
   state.json
   states.jsonl
   tool_suggestions.json
@@ -423,6 +434,7 @@ Each run writes a directory like this. The exact `stages/*.json` files depend on
       evaluator.attempt1.json
   stages/
     risk_classifier.json
+    risk_reassessment.attempt1.json
     generator.json
     generator.attempt1.json
     generator.attempt2.json
@@ -537,10 +549,10 @@ imports, artifacts, and comparison rules.
 
 ## Current Limitations
 
-MoreGAN is alpha. Risk includes the diff present at intake, but is not yet
-reassessed after a generator writes changes. Deterministic command timeouts,
-bounded subprocess output, replay attempt fidelity, snapshot cleanup, and stronger
-process isolation still need work. Provider results are validated structurally;
+MoreGAN is alpha. Risk routing uses path, size, and keyword heuristics, not semantic
+proof; projects without Git fall back to request-only classification.
+Deterministic command timeouts, bounded subprocess output, snapshot cleanup, and
+stronger process isolation still need work. Provider results are validated structurally;
 validation cannot establish whether a model's claims are true. See
 [the review and next fixes](docs/review-2026-09-27.md).
 
@@ -566,12 +578,12 @@ Implemented in this repository:
 - `moregan setup` installer bridge
 - isolated benchmark runner, baseline execution, and paired comparisons
 - truthful incomplete outcomes and strict shared provider validation
+- post-generation risk escalation and attempt-correct replay
 
 Next production-readiness work:
 
-- post-generation risk reassessment
 - larger benchmark suites and repeated live-agent measurements
-- bounded tool execution and replay attempt fidelity
+- bounded tool execution and snapshot cleanup
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks
 - competitive generator mode

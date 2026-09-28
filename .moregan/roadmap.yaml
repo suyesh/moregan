@@ -27,7 +27,7 @@ ten_item_tracker:
     status: implemented_foundation
   - number: 6
     improvement: Adaptive routing
-    status: implemented_foundation
+    status: implemented_and_improving
   - number: 7
     improvement: Competitive generators
     status: planned_later
@@ -442,17 +442,33 @@ completed_work:
       - "Actual subprocess timeout tests and end-to-end scaffolded Codex/Claude adapter tests passed."
       - "Wheel and sdist built; installed CLI verified incomplete/pass/fail outside the checkout."
       - "Compilation, diff hygiene and public-PyPI lock validation passed."
+  - id: post-generation-risk-reassessment
+    package_version: "1.12.0"
+    original_list_numbers: [6, 4]
+    status: done
+    acceptance_criteria:
+      - "Reassess after every returned generator attempt, including remediation."
+      - "Risk cannot downgrade within a run; newly required reviews inspect the patch before verification."
+      - "Catch-up review failures use bounded remediation and required skips remain incomplete."
+      - "Fixed Git baseline covers staged, unstaged, untracked and generated committed changes."
+      - "Risk history, context, events and reports expose observed and effective risk."
+      - "Replay preserves attempt-specific stages and uses embedded results when attempt files are missing."
+    verification:
+      - "115 tests passed on macOS with Python 3.12.11 and 3.14.0, including 22 routing/replay regressions."
+      - "Built wheel and sdist; installed Codex/Claude adapter smoke passed outside the checkout."
+      - "Installed CLI exercised low-to-critical escalation, architecture failure, remediation, retained risk and replay."
+    limitations:
+      - "Risk remains heuristic; non-Git workspaces use request-only classification."
+      - "No live provider effectiveness measurement or full OS/Python support-matrix validation."
 current_work:
-  id: post-generation-risk-reassessment
-  original_list_numbers: [6]
+  id: bounded-deterministic-tool-execution
+  original_list_numbers: [3]
   status: next
   acceptance_criteria:
-    - "Reassess the actual diff after generation and every remediation attempt."
-    - "Only escalate risk within a run and execute newly required verification stages."
-    - "Record reassessment evidence and route changes in the trace."
-    - "Define and test how newly required planning/architecture reviews run after escalation."
+    - "Configured deterministic commands have validated timeouts and bounded output."
+    - "Timeouts and launch errors become structured command evidence with truthful verdicts."
+    - "Timed-out processes and their children are cleaned up on supported platforms."
+    - "Tests cover hung/noisy commands, required versus optional failures and remediation."
   follow_up:
-    - deterministic_tool_timeouts
-    - replay_attempt_fidelity
     - snapshot_cleanup
     - release_ci_and_supported_python_matrix
