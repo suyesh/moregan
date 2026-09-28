@@ -10,6 +10,10 @@ from typing import Optional, Sequence
 
 from moregan.adapters import AdapterError, AgentAdapterScaffolder
 from moregan.agent_worker import PROVIDER_COMMAND_ENV
+from moregan.benchmarks import (
+    BenchmarkComparator, BenchmarkError, BenchmarkInitializer, BenchmarkRunner,
+    load_benchmark_run, render_benchmark_report, render_comparison_report,
+)
 from moregan.init import MoreGANInitializer
 from moregan.replay import ReplayError, RunReplay
 from moregan.runtime import MoreGANRuntime, latest_run
@@ -23,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser("init", help="initialize MoreGAN config in a repository")
     init_parser.add_argument("--force", action="store_true", help="replace existing MoreGAN config files")
     init_parser.add_argument("--dry-run", action="store_true", help="show what would be written without changing files")
-    init_parser.add_argument("--no-gitignore", action="store_true", help="do not add .moregan/runs/ to .gitignore")
+    init_parser.add_argument("--no-gitignore", action="store_true", help="do not ignore local MoreGAN artifacts")
 
     adapters_parser = subparsers.add_parser("adapters", help="scaffold Codex or Claude worker adapter templates")
     adapters_parser.add_argument("provider", choices=sorted(PROVIDER_COMMAND_ENV), help="agent provider to scaffold")
@@ -64,12 +68,60 @@ def build_parser() -> argparse.ArgumentParser:
     replay_parser.add_argument("run_id", nargs="?", default="latest", help="run id or 'latest'")
     replay_parser.add_argument("--json", action="store_true", help="print replay data as JSON")
 
+    benchmark = subparsers.add_parser("benchmark", help="measure baseline and MoreGAN on isolated fixtures")
+    commands = benchmark.add_subparsers(dest="benchmark_command", required=True)
+    benchmark_init = commands.add_parser("init", help="write editable starter fixtures and a baseline import template")
+    benchmark_init.add_argument("--force", action="store_true")
+    benchmark_init.add_argument("--dry-run", action="store_true")
+    benchmark_run = commands.add_parser("run", help="execute fixture tasks using configured workers")
+    benchmark_run.add_argument("--suite", type=Path, help="suite JSON, relative to --root")
+    benchmark_run.add_argument("--mode", choices=["baseline", "moregan"], default="moregan")
+    benchmark_run.add_argument("--baseline-results", type=Path, help="import external baseline measurements")
+    benchmark_run.add_argument("--limit", type=int, help="execute the first N tasks")
+    benchmark_run.add_argument("--verification-timeout", type=int, default=30, help="acceptance test timeout in seconds")
+    benchmark_run.add_argument("--json", action="store_true")
+    benchmark_inspect = commands.add_parser("inspect", help="read an existing benchmark without executing it")
+    benchmark_inspect.add_argument("run_id", nargs="?", default="latest")
+    benchmark_inspect.add_argument("--json", action="store_true")
+    benchmark_compare = commands.add_parser("compare", help="compare matching measured task pairs")
+    benchmark_compare.add_argument("baseline_run")
+    benchmark_compare.add_argument("moregan_run")
+    benchmark_compare.add_argument("--json", action="store_true")
+
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     root = Path(args.root).resolve()
+
+    if args.command == "benchmark":
+        try:
+            if args.benchmark_command == "init":
+                for action in BenchmarkInitializer(root).init(force=args.force, dry_run=args.dry_run):
+                    print(f"{action['action']}: {action['path']}")
+                return 0
+            if args.benchmark_command == "run":
+                result = BenchmarkRunner(root).run(
+                    suite_path=args.suite, mode=args.mode, baseline_results_path=args.baseline_results,
+                    limit=args.limit, verification_timeout=args.verification_timeout,
+                )
+                print(json.dumps(result, indent=2) if args.json else render_benchmark_report(result))
+                if not args.json:
+                    print(f"Artifacts: {result['result_path']}")
+                return 0 if result["status"] == "pass" else 1
+            if args.benchmark_command == "inspect":
+                result = load_benchmark_run(root, args.run_id)
+                print(json.dumps(result, indent=2) if args.json else render_benchmark_report(result))
+                return 0
+            result = BenchmarkComparator(root).compare(args.baseline_run, args.moregan_run)
+            print(json.dumps(result, indent=2) if args.json else render_comparison_report(result))
+            if not args.json:
+                print(f"Artifacts: {result['result_path']}")
+            return 0
+        except (BenchmarkError, OSError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
 
     if args.command == "init":
         result = MoreGANInitializer(root).init(

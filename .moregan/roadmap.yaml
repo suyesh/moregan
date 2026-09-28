@@ -33,7 +33,7 @@ ten_item_tracker:
     status: planned_later
   - number: 8
     improvement: Benchmark tasks
-    status: next_priority
+    status: implemented_foundation
   - number: 9
     improvement: Measurable positioning
     status: partially_implemented
@@ -157,7 +157,7 @@ phases:
       - choose_or_synthesize_modes
   - id: v3.5
     name: Benchmarks
-    status: planned
+    status: implemented_foundation
     outcomes:
       - task_fixture_suites
       - baseline_vs_moregan_metrics
@@ -408,13 +408,38 @@ completed_work:
       - ".moregan/roadmap.yaml parsed with Ruby YAML."
       - "env UV_CACHE_DIR=/private/tmp/moregan-uv-cache uv build --clear built dist/moregan-1.9.0.tar.gz and dist/moregan-1.9.0-py3-none-any.whl."
       - "Local wheel smoke installed moregan-1.9.0 and confirmed `moregan --help` plus StackToolDetector import."
+  - id: benchmark-harness
+    phase: v3.5
+    package_version: "1.10.0"
+    original_list_number: 8
+    status: implemented_foundation
+    acceptance_criteria:
+      - "Six executable Python fixtures in separate temporary workspaces."
+      - "Generator-only baseline and MoreGAN routes share acceptance tests."
+      - "Skipped workers and provider errors cannot count as successes."
+      - "Paired comparisons require matching task sets and definition hashes."
+      - "Trace, candidate, verification, JSON and Markdown artifacts are preserved."
+      - "Missing token, cost and human-review metrics remain null."
+    verification:
+      - "Full unittest suite passed 73 tests; fixture tests verify broken and reference solutions."
+      - "Built 1.10.0 wheel and source distribution."
+      - "Installed wheel CLI smoke passed outside the source checkout."
+      - "uv.lock resolves from public PyPI and matches 1.10.0."
+    limitations:
+      - "No live-agent effectiveness study has been run."
+      - "Ordinary runtime completion and provider boundaries still need hardening."
 current_work:
-  id: benchmark-harness
-  phase: v3.5
-  original_list_number: 8
+  id: runtime-verdict-and-provider-hardening
+  original_list_numbers: [1, 2, 10]
   status: next
   acceptance_criteria:
-    - "Add small benchmark task fixtures for bug fixes, features, refactors, security fixes, migrations, and regressions."
-    - "Measure baseline agent runs against agent plus MoreGAN runs."
-    - "Record success, tests, regressions, security findings, iterations, time, token usage, and cost when available."
-    - "Generate evidence-backed benchmark reports suitable for README claims."
+    - "Ordinary runtime reports incomplete when required worker stages were skipped."
+    - "Both provider adapters use strict shared StageResult validation."
+    - "Invalid payloads, missing executables and timeouts become structured failures."
+    - "CLI exit status and learning reflect actual completion."
+  follow_up:
+    - post_generation_risk_reassessment
+    - deterministic_tool_timeouts
+    - replay_attempt_fidelity
+    - snapshot_cleanup
+    - release_ci_and_supported_python_matrix

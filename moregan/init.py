@@ -113,7 +113,8 @@ class MoreGANInitializer:
 
     def _ensure_gitignore(self, dry_run: bool, result: InitResult) -> None:
         path = self.root / ".gitignore"
-        entries = [".moregan/runs/", ".moregan/learning/"]
+        entries = [".moregan/runs/", ".moregan/learning/", ".moregan/benchmarks/runs/",
+                   ".moregan/benchmarks/comparisons/"]
         if path.exists():
             lines = path.read_text(encoding="utf-8").splitlines()
             missing = [entry for entry in entries if entry not in lines]

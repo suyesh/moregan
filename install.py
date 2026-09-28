@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 from urllib.request import urlopen
 
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 BRAND_NAME = "MoreGAN"
 SKILL_NAME = "moregan"
 DEFAULT_REPOSITORY_URL = "https://github.com/suyesh/moregan"
@@ -642,6 +642,7 @@ class MoreGANInstaller:
                 ("LICENSE", skills_dir / "LICENSE"),
                 ("install.py", skills_dir / "install.py"),
                 ("assets", skills_dir / "assets"),
+                ("docs", skills_dir / "docs"),
                 (".moregan", skills_dir / ".moregan"),
                 ("personas", skills_dir / "personas"),
                 ("moregan", skills_dir / "moregan"),
@@ -678,6 +679,7 @@ class MoreGANInstaller:
                 ("LICENSE", skills_dir / "LICENSE"),
                 ("install.py", skills_dir / "install.py"),
                 ("assets", skills_dir / "assets"),
+                ("docs", skills_dir / "docs"),
                 (".moregan", skills_dir / ".moregan"),
                 ("personas", skills_dir / "personas"),
                 ("moregan", skills_dir / "moregan"),

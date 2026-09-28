@@ -907,3 +907,30 @@ persona_execution:
   learning_curator: "PASS - recorded stack-aware preset completion and benchmark harness as next"
 notes: "This continues original item 3 after item 6 because the review moved stack-aware deterministic presets ahead of competitive generators. The next priority after commit is item 8: benchmark harness."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-benchmark-foundation
+summary: "Reviewed the repository and completed original item 8 foundation in version 1.10.0."
+branch: "main"
+updates:
+  - file: "moregan/benchmarks.py, moregan/benchmark_fixtures.py"
+    action: "Added six executable fixtures, isolated Git workspaces, independent verification, generator-only baseline execution, validated baseline imports and paired comparisons."
+  - file: "moregan/cli.py, moregan/init.py, .gitignore"
+    action: "Added benchmark init/run/inspect/compare and artifact exclusions."
+  - file: "tests/test_benchmarks.py, tests/test_install.py"
+    action: "Added 21 benchmark regression tests and installer payload coverage."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md, uv.lock"
+    action: "Bumped version to 1.10.0, packaged docs and benchmark code, and regenerated the stale lock using public PyPI."
+  - file: "docs/review-2026-09-27.md, docs/benchmarks.md, README.md, ROADMAP.md, SESSION_HANDOFF.md"
+    action: "Saved concrete review findings, documented benchmark limits, simplified the roadmap and refreshed the handoff."
+verification_evidence:
+  - "Original 52 tests passed before changes; full suite passed 73 tests after implementation."
+  - "Targeted benchmark suite passed after fixture Git initialization."
+  - "Python compilation, git diff hygiene, roadmap YAML and uv lock validation passed."
+  - "Built wheel and sdist; installed-wheel CLI smoke passed outside the source checkout."
+execution_note: "Verification used local tests, reference fixture solutions and simulated provider commands. No live agent effectiveness study or independent persona run was performed."
+next: "Ordinary-runtime incomplete outcomes and strict provider boundary validation, followed by post-generation risk reassessment."
+publishing: "PyPI remains paused."
+---

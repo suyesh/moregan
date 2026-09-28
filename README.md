@@ -74,6 +74,7 @@ flowchart TD
 - Compact context packs that keep worker prompts smaller while preserving useful run context.
 - Empirical learning artifacts that tie observations to run ids, failures, remediations, and outcomes.
 - Read-only replay of past runs without rerunning providers or tests.
+- Isolated benchmark fixtures with independent acceptance checks and baseline comparisons.
 - Codex and Claude adapter templates that normalize provider output into JSON.
 - Local trace artifacts under `.moregan/runs/` for debugging and review.
 - Honest dry-run stage results when no agent provider command is configured.
@@ -162,7 +163,7 @@ This creates:
   learning/
 ```
 
-It also adds `.moregan/runs/` and `.moregan/learning/` to `.gitignore`. Existing config is preserved unless `--force` is passed.
+It also ignores local run, learning, and benchmark output directories in `.gitignore`. Existing config is preserved unless `--force` is passed.
 
 Run MoreGAN:
 
@@ -479,6 +480,36 @@ PyPI project name: moregan
 
 The package name in `pyproject.toml` is `moregan`. The workflow uses GitHub OIDC with `id-token: write` and `pypa/gh-action-pypi-publish`.
 
+## Benchmarks
+
+After configuring a provider, compare its generator alone with the MoreGAN route:
+
+```bash
+moregan benchmark init
+moregan benchmark run --mode baseline
+moregan benchmark run --mode moregan
+moregan benchmark compare <baseline-run-id> <moregan-run-id>
+moregan benchmark inspect latest
+```
+
+Six small Python fixtures cover bugs, features, refactors, security, migrations,
+and regressions. Each task uses a fresh temporary workspace and independent
+acceptance tests. Git is required to initialize fixture repositories. Missing
+workers and provider errors remain unmeasured. Reports
+show coverage and leave unavailable token/cost metrics null. These starter tasks
+do not establish production effectiveness.
+
+See [the benchmark guide](docs/benchmarks.md) for custom suites, external baseline
+imports, artifacts, and comparison rules.
+
+## Current Limitations
+
+MoreGAN is alpha. Ordinary `moregan run` can still report PASS when stages were
+skipped; inspect the stage evidence. Benchmark scoring guards against this.
+Risk includes the diff present at intake, but is not yet reassessed after a
+generator writes changes. Provider validation, tool timeouts, and stronger process
+isolation also need work. See [the review and next fixes](docs/review-2026-09-27.md).
+
 ## Roadmap
 
 Implemented in this repository:
@@ -499,10 +530,12 @@ Implemented in this repository:
 - PyPI trusted-publishing workflow
 - PyPI-ready package metadata
 - `moregan setup` installer bridge
+- isolated benchmark runner, baseline execution, and paired comparisons
 
 Next production-readiness work:
 
-- benchmark harness
+- ordinary-runtime completion semantics and post-generation risk reassessment
+- larger benchmark suites and repeated live-agent measurements
 - provider/schema hardening
 - stronger sandboxing for provider-backed workers
 - stricter config validation and doctor checks

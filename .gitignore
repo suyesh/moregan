@@ -31,6 +31,9 @@ Desktop.ini
 *.log
 logs/
 .moregan/runs/
+.moregan/learning/
+.moregan/benchmarks/runs/
+.moregan/benchmarks/comparisons/
 
 # Testing
 .coverage

@@ -25,6 +25,8 @@ class MoreGANInstallerTests(unittest.TestCase):
             (self.source_dir / file_name).write_text(file_name, encoding="utf-8")
         (self.source_dir / "assets").mkdir()
         (self.source_dir / "assets" / "moregan.png").write_bytes(b"png")
+        (self.source_dir / "docs").mkdir()
+        (self.source_dir / "docs" / "benchmarks.md").write_text("benchmarks", encoding="utf-8")
         (self.source_dir / "moregan" / "__init__.py").write_text("", encoding="utf-8")
         (self.source_dir / "moregan" / "adapters.py").write_text("adapters", encoding="utf-8")
         (self.source_dir / "moregan" / "agent_worker.py").write_text("agent_worker", encoding="utf-8")
@@ -38,6 +40,8 @@ class MoreGANInstallerTests(unittest.TestCase):
         (self.source_dir / "moregan" / "tools.py").write_text("tools", encoding="utf-8")
         (self.source_dir / "moregan" / "workers.py").write_text("workers", encoding="utf-8")
         (self.source_dir / "moregan" / "replay.py").write_text("replay", encoding="utf-8")
+        (self.source_dir / "moregan" / "benchmarks.py").write_text("benchmarks", encoding="utf-8")
+        (self.source_dir / "moregan" / "benchmark_fixtures.py").write_text("fixtures", encoding="utf-8")
         for persona_name in install.CLAUDE_PERSONAS:
             (self.source_dir / "personas" / persona_name).write_text(persona_name, encoding="utf-8")
 
@@ -96,6 +100,7 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "ROADMAP.md").exists())
         self.assertTrue((skill_dir / "LICENSE").exists())
         self.assertTrue((skill_dir / "assets" / "moregan.png").exists())
+        self.assertTrue((skill_dir / "docs" / "benchmarks.md").exists())
         self.assertTrue((skill_dir / "moregan" / "adapters.py").exists())
         self.assertTrue((skill_dir / "moregan" / "agent_worker.py").exists())
         self.assertTrue((skill_dir / "moregan" / "cli.py").exists())
@@ -107,6 +112,8 @@ class MoreGANInstallerTests(unittest.TestCase):
         self.assertTrue((skill_dir / "moregan" / "tools.py").exists())
         self.assertTrue((skill_dir / "moregan" / "workers.py").exists())
         self.assertTrue((skill_dir / "moregan" / "replay.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "benchmarks.py").exists())
+        self.assertTrue((skill_dir / "moregan" / "benchmark_fixtures.py").exists())
         self.assertTrue((skill_dir / ".moregan" / "tools.yaml").exists())
         self.assertTrue((skill_dir / ".moregan" / "workers.yaml").exists())
         self.assertTrue((skill_dir / "personas" / "Planner.md").exists())
@@ -249,6 +256,7 @@ class MoreGANInstallerTests(unittest.TestCase):
 
         download_dir = self.root / "downloaded"
         download_dir.mkdir()
+        (download_dir / "docs").mkdir()
         for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "LICENSE", "install.py"]:
             (download_dir / file_name).write_text(file_name, encoding="utf-8")
         (download_dir / "assets").mkdir()
@@ -296,6 +304,7 @@ class MoreGANInstallerTests(unittest.TestCase):
 
         download_dir = self.root / "downloaded-update"
         download_dir.mkdir()
+        (download_dir / "docs").mkdir()
         for file_name in ["SKILL.md", "README.md", "INSTALL.md", "ROADMAP.md", "LICENSE", "install.py"]:
             (download_dir / file_name).write_text(file_name, encoding="utf-8")
         (download_dir / "assets").mkdir()
