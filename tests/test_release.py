@@ -113,6 +113,9 @@ class ReleaseTests(unittest.TestCase):
             info = tarfile.TarInfo(f"moregan-{self.version}/PKG-INFO")
             info.size = len(metadata)
             sdist.addfile(info, io.BytesIO(metadata))
+            for name in ("pyproject.toml", "uv.lock", "scripts/ci/release.py", "scripts/ci/installed_smoke.py",
+                         ".github/workflows/ci.yml", ".github/workflows/workflow.yml", "tests/test_release.py"):
+                sdist.addfile(tarfile.TarInfo(f"moregan-{self.version}/{name}"), io.BytesIO(b""))
         return folder
 
     def test_distributions_must_match_source_and_exclude_local_runs(self):

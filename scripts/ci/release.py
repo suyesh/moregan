@@ -65,6 +65,11 @@ def validate_distributions(folder, project):
         if any(name.startswith(forbidden) for name in wheel.namelist()):
             raise ValueError("Wheel contains local run data")
     with tarfile.open(folder / f"moregan-{version}.tar.gz") as sdist:
+        required_source = {f"moregan-{version}/{name}" for name in (
+            "pyproject.toml", "uv.lock", "scripts/ci/release.py", "scripts/ci/installed_smoke.py",
+            ".github/workflows/ci.yml", ".github/workflows/workflow.yml", "tests/test_release.py")}
+        if not required_source.issubset(sdist.getnames()):
+            raise ValueError("sdist is missing release-test inputs")
         member = sdist.getmember(f"moregan-{version}/PKG-INFO")
         if not member.isfile():
             raise ValueError("sdist metadata must be a regular file")

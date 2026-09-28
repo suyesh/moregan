@@ -106,6 +106,7 @@ packages = ["moregan"]
 
 [tool.hatch.build.targets.sdist]
 include = [
+    "/.github/workflows",
     "/moregan",
     "/personas",
     "/assets",
@@ -122,6 +123,7 @@ include = [
     "/setup.sh",
     "/setup.bat",
     "/pyproject.toml",
+    "/uv.lock",
 ]
 
 [tool.ruff]

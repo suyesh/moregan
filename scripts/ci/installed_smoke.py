@@ -38,7 +38,12 @@ def verify(checkout):
             root = folder / provider
             root.mkdir()
             def cli(*args, expected=0):
-                return run([str(binary), "--root", str(root), *args], root, env, expected)
+                try:
+                    return run([str(binary), "--root", str(root), *args], root, env, expected)
+                except RuntimeError as exc:
+                    reports = sorted((root / ".moregan/runs").glob("*/final_report.md"))
+                    detail = reports[-1].read_text(encoding="utf-8")[-16000:] if reports else "No report written"
+                    raise RuntimeError(f"{exc}\nSaved smoke report:\n{detail}") from exc
             cli("init")
             cli("run", "Change button label", "--no-checks", expected=1)
             if json.loads(cli("inspect", "latest", "--json"))["status"] != "incomplete":
