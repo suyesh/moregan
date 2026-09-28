@@ -27,11 +27,14 @@ The project is alpha. Completed foundations are not a claim of production readin
 ## Next
 
 1. Supported-version CI, package checks, and release gates.
-2. Windows child-tree supervision and platform validation.
-3. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
+2. Native provider bridges, clearer worker activation, and runtime-consistent skill/persona instructions.
+3. Windows child-tree supervision and platform validation.
+4. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
    and independent human evaluation.
 
 Details and code pointers: [September review](docs/review-2026-09-27.md).
+User-facing capabilities and remaining integration gaps: [Product assessment](docs/product-status.md).
+Published versus source versions: [Release status](docs/releases.md).
 Benchmark usage and limitations: [Benchmark guide](docs/benchmarks.md).
 Check limits and platform scope: [Tool execution](docs/tool-execution.md).
 No-write coverage and exclusions: [Worker workspaces](docs/worker-workspaces.md).

@@ -1,283 +1,137 @@
-# MoreGAN Installation Guide
+# MoreGAN Installation
 
-## Quick Start
+Installing the CLI, installing a skill, and configuring provider workers are
+three separate steps. Only the CLI is required to use the runtime.
 
-### PyPI
+## Choose A Version
+
+As checked on September 27, 2026:
+
+| Source | Version | Notes |
+|---|---|---|
+| GitHub `main` | 1.15.0 | Current runtime; this documentation describes it |
+| [PyPI](https://pypi.org/project/moregan/) | 1.5.0 | Older release; lacks the subsequent hardening and features |
+
+GitHub pushes do not publish packages. See [release status](docs/releases.md).
+
+## Current Runtime
+
+The following shell commands use a virtual environment on macOS/Linux:
+
 ```bash
-python3 -m pip install moregan
-moregan setup
+git clone https://github.com/suyesh/moregan.git
+cd moregan
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+moregan --help
+python -c "import moregan; print(moregan.__version__, moregan.__file__)"
 ```
 
-`moregan setup` runs the same installer flow as `./setup.sh`. It installs the MoreGAN skill into Claude Code, Codex, or both.
+Use Python 3.12 or 3.14 for the locally verified path. Keep the environment active
+when moving to your application repository so `moregan` and the generated
+`python3 -m moregan.agent_worker` command resolve to the same installation.
 
-Target a specific agent:
+For checkout development with uv:
+
+```bash
+uv sync
+uv run moregan --help
+uv run moregan --root /absolute/path/to/your-project init
+```
+
+`--root` is a global option and goes **before** the subcommand. Git enables patch
+risk inspection and is required for benchmark fixtures. Project build tools and
+provider CLIs/bridges are separate dependencies; MoreGAN does not install them.
+
+Metadata currently allows Python 3.8+, but that entire range is not certified;
+the installer uses `str.removesuffix`, unavailable in 3.8. Linux/Windows native
+validation and Windows child-tree containment remain pending. Windows users can
+create a venv with `python -m venv .venv` and activate it with
+`.\.venv\Scripts\Activate.ps1`, but should not treat that as a tested support claim.
+
+## Published Package
+
+To use the older published version:
+
+```bash
+python3 -m pip install --upgrade moregan
+```
+
+This currently installs 1.5.0. Updating the installed package requires a new
+published distribution; a newer GitHub README does not update it automatically.
+
+## Optional Skill Installation
+
+With the desired runtime installed:
+
 ```bash
 moregan setup --target codex
 moregan setup --target claude
+# Or select both:
 moregan setup --target both
 ```
 
-### macOS / Linux
-```bash
-./setup.sh
-```
+Choose the target(s) you use; these are alternatives, not required consecutive
+steps. Without `--target`, the installer detects environments and prompts.
 
-### Windows
-```batch
-setup.bat
-```
+`moregan setup` invokes the Python installer directly. It does **not** execute
+`./setup.sh`. The shell/batch setup scripts bootstrap uv and invoke that same
+installer; they are not necessary for a pip-installed CLI. Their historical
+1.5.0 banners should not be used to identify the current runtime version.
 
-### Manual Installation with uv
-```bash
-# Sync dependencies from pyproject.toml
-uv sync
+| Target | Installed files |
+|---|---|
+| Codex | `~/.codex/skills/moregan/` with skill, personas, runtime, docs and defaults |
+| Claude | `~/.claude/skills/moregan/`, plus `~/.claude/agents/moregan-*.md` |
 
-# Run installer
-uv run python install.py
-```
+The installer also copies configuration/reference material. Files describing
+rollback, multi-generator coordination, external integrations or living docs
+do not activate runtime features merely by being installed. See
+[what is implemented](docs/product-status.md).
 
-## What Gets Installed
+## Configure A Project
 
-The installer auto-detects Claude Code and Codex. If both are present, it asks whether to install to Claude, Codex, or both.
+Follow [Getting Started](docs/getting-started.md) to initialize `.moregan/`, choose
+one worker template, configure a provider bridge and review deterministic checks.
 
-### Claude Code Installation
-- `~/.claude/skills/moregan/`
-  - `SKILL.md` - Main skill definition
-  - `README.md` - Documentation
-  - `INSTALL.md` - Installation guide
-  - `ROADMAP.md` - Product/runtime roadmap
-  - `LICENSE` - License text
-  - `assets/` - Logo and documentation assets
-  - `install.py` - Maintenance commands
-  - `moregan/` - Executable runtime package
-  - `.moregan/` - Configuration and knowledge base
-    - `knowledge/` - Failure patterns, retrospectives, and confidence scoring
-    - `evolution/` - Cross-session learning patterns
-    - `rollback/` - Rollback strategies
-    - `collaboration/` - Multi-generator configuration
-    - `integrations/` - External tool integrations
-    - `documentation/` - Living documentation config
+Important: `init` writes an empty `workers.yaml`. `adapters --activate` preserves
+that file unless replacement is explicitly requested. The guide shows how to
+select a template without accidentally replacing customized prompts.
 
-### Agent Personas
-- `~/.claude/agents/`
-  - `moregan-planner.md` - Plans tasks and creates YAML roadmaps
-  - `moregan-architect.md` - Reviews plans for architectural impacts
-  - `moregan-designer.md` - Reviews UI/UX plans and accessibility
-  - `moregan-generator.md` - Implements code following best practices
-  - `moregan-evaluator.md` - Adversarial functional evaluation
-  - `moregan-security-evaluator.md` - Parallel security scanning
-  - `moregan-code-reviewer.md` - Reviews changed code for quality and correctness
-  - `moregan-production-readiness-reviewer.md` - Reviews deployability, rollback, observability, and operational safety
-  - `moregan-mr-readiness-analyzer.md` - Scores local branch readiness before MR creation
-  - `moregan-learning-curator.md` - Captures evidence-backed lessons for future MoreGAN work
+Skills are intended to launch the same runtime. They still need a working Python
+environment and provider configuration visible to the agent process. A graphical
+app may not inherit exports from a terminal opened later; confirm the provider
+variable inside the agent's terminal without printing credentials.
 
-### Codex Installation
-- `~/.codex/skills/moregan/`
-  - `SKILL.md` - Main skill definition
-  - `README.md` - Documentation
-  - `INSTALL.md` - Installation guide
-  - `ROADMAP.md` - Product/runtime roadmap
-  - `LICENSE` - License text
-  - `assets/` - Logo and documentation assets
-  - `install.py` - Maintenance commands
-  - `moregan/` - Executable runtime package
-  - `personas/` - Persona instructions used by the skill
-  - `.moregan/` - Configuration and knowledge base
+## Updates And Maintenance
 
-## Features
+| Goal | Command / behavior |
+|---|---|
+| Upgrade a PyPI-installed CLI | `python -m pip install --upgrade moregan`, limited to published versions |
+| Update an editable checkout | Review/pull the desired Git revision and resync its environment |
+| Refresh installed skill copies | `moregan setup update --ref main` downloads the GitHub archive and reinstalls targets |
+| Check installed skill files | `moregan setup doctor --check` reports missing files and duplicate installations |
 
-### 🧠 Intelligence Layer
-- **Failure Pattern Memory**: Learns from past failures to prevent recurrence
-- **Confidence Scoring**: Adapts validation rigor (0-100% confidence)
-- **Cross-Session Learning**: Discovers and refines patterns over time
-- **Learning Curator**: Records retrospectives and promotes recurring lessons into future guardrails
+Skill updates do not upgrade a separate pip environment. Check the runtime and
+skill versions together. `doctor` concerns installation files, not provider
+authentication, test coverage, or production readiness. Without `--check`, doctor
+can repair installations; review that behavior before using it.
 
-### 🛡️ Reliability Layer
-- **Architect Review**: Pre-implementation design validation
-- **Automatic Rollback**: Snapshots and recovery on critical failures
-- **Parallel Evaluation**: Security and functional checks run simultaneously
+Claude skill maintenance uses `/moregan update` or `/moregan doctor`; in Codex,
+ask `Use MoreGAN to update` or `Use MoreGAN to run doctor`.
 
-### 🚀 Scale Layer
-- **Multi-Generator Mode**: Specialized generators work in parallel
-- **Enterprise Integrations**: GitHub Actions, Jenkins, SonarQube, Datadog
-- **Living Documentation**: Auto-generated API specs and diagrams
-
-## System Requirements
-
-- **Python**: 3.8 or higher
-- **uv**: Optional, useful for source-checkout development
-- **Claude Code or Codex**: At least one supported environment must be installed (`~/.claude/` or `~/.codex/` must exist)
-- **Dependencies**: Installed by `pip` for PyPI installs, or synced from `pyproject.toml` by `uv` for source development
-  - `rich` - Beautiful terminal UI
-
-## Usage
-
-After installation, use MoreGAN in your coding agent session.
-
-Claude Code:
+## Removal
 
 ```bash
-/moregan "Add user authentication with JWT and rate limiting"
-/moregan update
-/moregan doctor
+moregan setup uninstall --target both
+python -m pip uninstall moregan
 ```
 
-Codex:
+The first command removes skill installations; the second removes the Python
+package from the active environment. Project `.moregan/` configurations and run
+artifacts are separate from package installation. Inspect them before removing
+any project data.
 
-```text
-Use MoreGAN to add user authentication with JWT and rate limiting
-Use MoreGAN to update
-Use MoreGAN to run doctor
-```
-
-The framework will:
-1. Create a structured YAML plan
-2. Run Architect before coding on every feature task
-3. Decide whether Designer is needed, and run Designer for UI/UX/accessibility/design work
-4. Generate implementation with tests
-5. Run functional, security, changed-code, and production readiness evaluation
-6. Score local branch readiness before MR creation and show the result in final output
-7. Run Learning Curator to capture evidence-backed lessons after MR readiness
-8. Learn from failures and successful patterns without over-promoting one-off observations
-9. Auto-generate documentation
-
-Executable runtime preview:
-
-```bash
-moregan init
-moregan adapters codex
-moregan adapters claude
-moregan run "Add OAuth login"
-moregan status
-moregan inspect latest
-moregan replay latest
-```
-
-`init` creates `.moregan/tools.yaml`, `.moregan/workers.yaml`, `.moregan/runs/`, and a `.gitignore` entry for local run traces. Existing config files are preserved unless `--force` is used.
-The runtime writes auditable artifacts under `.moregan/runs/`, including `state.json`, `states.jsonl`, `tool_suggestions.json`, and structured stage files in `stages/*.json`.
-It also writes compact context packs under `.moregan/runs/<run>/context/` so workers can read useful run context without receiving oversized inline prompts.
-Learning artifacts are written under `.moregan/learning/` and summarized in each run's `learning.json`; observations are tied to actual failures, remediations, and outcomes.
-Risk routing uses both request keywords and repository evidence such as changed paths, dependency files, auth/payment/migration files, file count, and changed-line count.
-When a required deterministic check or routed worker fails after generation, the runtime can run bounded remediation attempts and writes `remediation.json` plus attempt-specific stage artifacts.
-Repository-local deterministic checks are configured in `.moregan/tools.yaml`.
-`moregan init` detects common Python, Node, Java/Spring Boot, Rails/Ruby, Go, and Rust project files and writes optional enabled presets for tests, linting, type checks, security scans, and dependency audits. Optional presets skip cleanly when the executable is not installed.
-Worker stages are recorded as dry-run `SKIP` results until a provider command is configured in `.moregan/workers.yaml`.
-Codex and Claude can read the installed skill instructions directly, but these executable runtime and maintenance commands need local Python 3.8+.
-Provider-backed workers support `execution: auto`, `execution: isolated`, and `execution: repository`. In `auto`, no-write workers run in isolated snapshots by default, while write-enabled generator workers run in the repository checkout.
-Provider-backed workers receive `MOREGAN_CONTEXT_PACK` and `MOREGAN_CONTEXT_TOKENS`; isolated workers get a copied pack inside their temporary snapshot.
-
-Useful runtime flags:
-
-```bash
-moregan run "Fix checkout bug" --max-remediation-attempts 1
-moregan run "Inspect current branch" --no-checks
-```
-
-Adapter templates:
-
-```bash
-moregan adapters codex --activate
-moregan adapters claude --activate
-```
-
-`adapters` writes `.moregan/adapters/<provider>/` prompts and `.moregan/workers.<provider>.yaml`. With `--activate`, it also writes `.moregan/workers.yaml` unless that file already exists; use `--force` for intentional replacement. Set `MOREGAN_CODEX_COMMAND` or `MOREGAN_CLAUDE_COMMAND` to a provider command that reads the prompt from stdin and prints one `StageResult` JSON object.
-
-Workers default to a 1 MiB JSON stdout limit and a 1 MiB generated prompt limit.
-Provider timeouts cover blocked stdin and inherited output pipes. Configure
-`max_output_bytes`, `max_prompt_bytes`, and `timeout_seconds` per worker; see
-[provider execution limits](docs/provider-execution.md) for cleanup and platform scope.
-
-PyPI trusted publishing:
-
-- PyPI project name: `moregan`
-- Workflow file: `.github/workflows/workflow.yml`
-- PyPI workflow filename field: `workflow.yml`
-- Recommended PyPI environment: `pypi`
-
-## Advanced Configuration
-
-### Enable Multi-Generator Mode
-Edit `.moregan/collaboration/multi-generator.yaml`:
-```yaml
-multi_generator_configuration:
-  enabled: true  # Set to true
-  max_parallel_generators: 3
-```
-
-### Configure External Integrations
-Edit `.moregan/integrations/external-tools.yaml` to enable:
-- CI/CD pipelines (GitHub Actions, Jenkins, GitLab CI)
-- Monitoring (Datadog, Sentry, Prometheus)
-- Security scanning (Snyk, SonarQube, Veracode)
-- Documentation (Confluence, Notion, Docusaurus)
-
-### Adjust Confidence Thresholds
-Edit `.moregan/knowledge/confidence-scoring.yaml` to customize validation levels.
-
-## Maintenance
-
-Terminal:
-
-```bash
-moregan setup update
-moregan setup doctor --check
-```
-
-Run maintenance through the installed skill when you are inside Claude Code or Codex.
-
-Claude Code:
-
-```bash
-/moregan update
-/moregan doctor
-```
-
-Codex:
-
-```text
-Use MoreGAN to update
-Use MoreGAN to run doctor
-```
-
-`update` downloads the latest `moregan` archive from GitHub over HTTPS for the requested ref, then reinstalls the skill. `doctor` removes duplicate backup/copy installs, fixes Claude registry duplication, removes orphaned persona files, and repairs missing installed files.
-
-## Uninstallation
-
-To remove MoreGAN:
-
-```bash
-uv run python install.py uninstall
-```
-
-Or manually remove:
-- `~/.claude/skills/moregan/`
-- Agent files from `~/.claude/agents/moregan-*.md`
-- `~/.codex/skills/moregan/`
-
-## Troubleshooting
-
-### "No supported AI coding environment detected"
-- Ensure Claude Code or Codex is installed
-- Check that `~/.claude/` or `~/.codex/` exists
-
-### "Permission denied" errors
-- On macOS/Linux: `chmod +x setup.sh`
-- Run with appropriate permissions
-
-### "uv not found"
-- The setup scripts attempt to install uv automatically
-- Manual installation: https://github.com/astral-sh/uv
-
-### "Python version too old"
-- Upgrade to Python 3.8 or higher
-- Check version: `python --version` or `python3 --version`
-
-## Support
-
-- **Repository**: https://github.com/suyesh/moregan
-- **Issues**: https://github.com/suyesh/moregan/issues
-- **Documentation**: See README.md for framework details
-
-## License
-
-MIT License - See LICENSE file for details
+For setup problems, see [troubleshooting](docs/getting-started.md#troubleshooting)
+or open an [issue](https://github.com/suyesh/moregan/issues).

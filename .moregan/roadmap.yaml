@@ -521,5 +521,6 @@ current_work:
     - "Keep workflow.yml as the Trusted Publishing workflow and do not dispatch a release while PyPI is paused."
     - "Record native platform evidence and remaining limitations without claiming unverified Windows child-tree containment."
   follow_up:
+    - provider_bridges_activation_and_skill_contract_alignment
     - windows_child_tree_cleanup
     - representative_benchmarks_and_measured_provider_usage

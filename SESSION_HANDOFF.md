@@ -1,6 +1,6 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 after bounded provider execution and nested process supervision.
+Updated: 2026-09-27 after capability audit and user-documentation corrections.
 Benchmark, completion/provider hardening, adaptive routing, check execution and workspace milestones are
 implemented and tested; production hardening continues.
 
@@ -8,11 +8,12 @@ implemented and tested; production hardening continues.
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed milestone: `9c5dbdb Clean worker snapshots and verify no-write checkout integrity`, version 1.14.0.
+- Previous pushed milestone: `356f196 Bound provider I/O and supervise nested worker processes`, version 1.15.0.
 - Current feature version: 1.15.0, bounded provider I/O and nested process supervision.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
 - PyPI publishing is paused. A push to main does not trigger the existing release workflow.
+  Live PyPI JSON metadata checked during this audit: latest 1.5.0, uploaded 2026-08-12.
 - Runtime is the product; skills call the runtime. Provider commands are required
   for actual persona execution. No claim of production readiness or measured
   agent improvement has been established.
@@ -156,6 +157,27 @@ configured Checkstyle, SpotBugs, PMD, and OWASP Dependency-Check integrations.
 - Docs/provider-execution.md covers limits, custom-wrapper cooperation, and
   non-sandbox scope. Windows trees and escaped POSIX groups remain uncontained.
 
+## Capability And Documentation Audit
+
+- User requested an assessment of current functionality, usage and README accuracy,
+  and asked whether GitHub progress was also being published. No publish was requested
+  or dispatched; confirmed live PyPI still has only version 1.5.0.
+- Rebuilt README as a shorter user entry point, distinguishing source 1.15.0 from
+  the older published package, manual provider setup, optional checks and true outcomes.
+- Rewrote INSTALL.md to separate CLI, skill installation and provider configuration.
+  Removed unsupported rollback/parallel-generator/integration claims and corrected
+  setup/update semantics and unverified Python/platform support language.
+- Added docs/getting-started.md, worker-contract.md, releases.md and product-status.md.
+  A skip-only provider probe tests stdin/JSON plumbing without pretending work passed.
+- Added three documentation tests covering both adapters' actual CLI onboarding,
+  the init/activation preservation trap, probe output, example checks/schema and links.
+- Important open gaps: init creates empty workers.yaml which --activate preserves;
+  users still supply native-provider JSON bridges; generated runtime prompts do not
+  automatically load full persona files; older SKILL.md body conflicts with routing,
+  numeric readiness, rollback and parallelism. Documented, not silently declared fixed.
+- No runtime or skill behavior change and no feature version bump in this docs-only
+  audit. Release CI remains next, with provider onboarding/skill alignment next in line.
+
 ## Review Findings And Next Work
 
 Read `docs/review-2026-09-27.md` first for concrete code references and impact.
@@ -175,8 +197,9 @@ limitations. Native macOS validation is not certification of the whole matrix.
 
 After that:
 
-1. Add Windows child-tree cleanup with native platform tests.
-2. Strengthen process containment separately from copied workspaces.
+1. Implement native provider bridges, improve activation UX, and align the skill
+   contract/persona prompting with runtime routing. See docs/product-status.md.
+2. Add Windows child-tree cleanup with native platform tests and stronger isolation.
 3. Expand fixtures to representative real repositories and collect actual
    provider token/cost measurements before running effectiveness studies.
 4. Introduce competitive generators only after this evidence and hardening.
@@ -211,7 +234,14 @@ validation cannot establish that the provider's claims are true.
 
 ## Verification And Limits
 
-- Full unittest suite passed 200 tests on macOS under Python 3.12.11 and 3.14.0.
+- Full unittest suite passed 203 tests on macOS under Python 3.12.11 and 3.14.0
+  after this audit (200 runtime baseline tests plus three documentation tests).
+- Documentation CLI smoke exercised both provider templates, preserved empty
+  config on activation, deliberate template selection, skip-only probe and replay.
+  Python check example executed one test; Maven examples were config-validated,
+  not run against an actual Java application. No live model calls.
+- Rebuilt wheel/sdist and confirmed README, INSTALL and all four new guides are
+  packaged. Compilation, Markdown repository links, YAML and diff hygiene passed.
 - Build: `uv build --clear --default-index https://pypi.org/simple`.
 - Lock validation: `uv lock --check --default-index https://pypi.org/simple`.
 - Wheel smoke environment: `/private/tmp/moregan-1.15.0-smoke.Xzp0tj/venv`.

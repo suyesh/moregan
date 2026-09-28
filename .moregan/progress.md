@@ -1071,3 +1071,29 @@ execution_note: "Simulated providers only. Windows descendants, escaped POSIX gr
 next: "Gate publishing with supported-version CI and installed-package smoke checks; then Windows child-tree supervision and benchmark studies."
 publishing: "PyPI remains paused; no release tag or workflow dispatch."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-capability-documentation-audit
+summary: "Reviewed current capabilities and corrected user documentation without changing runtime behavior."
+branch: "main"
+package_version: "1.15.0"
+updates:
+  - file: "README.md, INSTALL.md"
+    action: "Distinguished GitHub from PyPI, separated CLI/skill/provider setup, corrected activation instructions and removed unsupported product claims."
+  - file: "docs/getting-started.md, docs/worker-contract.md, docs/product-status.md, docs/releases.md"
+    action: "Added setup/probe examples, exact worker contract, source-backed capability assessment, gaps and release status."
+  - file: "tests/test_documentation.py"
+    action: "Added three tests for both adapters' CLI onboarding/probe/replay, YAML and JSON examples, Python check execution and repository links."
+  - file: "ROADMAP.md, .moregan/roadmap.yaml, SESSION_HANDOFF.md"
+    action: "Recorded provider integration and skill-contract gaps alongside the pending release CI work."
+verification_evidence:
+  - "Live PyPI JSON metadata showed only 1.5.0, uploaded 2026-08-12; GitHub runtime is 1.15.0."
+  - "203 tests passed on Python 3.12.11 and 3.14.0 on macOS."
+  - "Wheel and sdist rebuilt; README, INSTALL and all four new guides included."
+  - "Compilation, repository links, roadmap YAML and git diff hygiene passed."
+execution_note: "No live model calls or Java build; Maven example configs were parsed only. No runtime/skill behavior change, so no feature version bump."
+next: "Release CI and support matrix; then provider bridges, activation UX and runtime-consistent skill/persona instructions."
+publishing: "PyPI remains paused; no release tag or workflow dispatch."
+---

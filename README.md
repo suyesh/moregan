@@ -1,660 +1,247 @@
 # MoreGAN
 
 [![Publish to PyPI](https://github.com/suyesh/moregan/actions/workflows/workflow.yml/badge.svg)](https://github.com/suyesh/moregan/actions/workflows/workflow.yml)
+[![PyPI version](https://img.shields.io/pypi/v/moregan)](https://pypi.org/project/moregan/)
 
 <p align="center">
-  <img src="./assets/moregan.png" alt="MoreGAN logo" width="760">
+  <img src="https://raw.githubusercontent.com/suyesh/moregan/main/assets/moregan.png" alt="MoreGAN logo" width="520">
 </p>
 
 <p align="center">
-  <strong>Adversarial orchestration for coding agents.</strong><br>
-  Generator builds. Evaluators attack. The runtime keeps the evidence.
+  <strong>Implementation and verification should be separate jobs.</strong><br>
+  Generator builds. Reviewers challenge. Tools check. Python controls the loop.
 </p>
 
-MoreGAN is a local, evidence-first harness for Claude Code, Codex, and other coding-agent workflows. It separates implementation from independent verification, records deterministic evidence, routes tasks by risk, and writes inspectable run traces that engineers can replay.
+MoreGAN is a local Python runtime for orchestrating coding-agent commands. It
+selects review stages from task and patch risk, runs your tests and checks, feeds
+blocking findings back to the generator, and preserves a trace for human review.
 
-The loop is simple:
+**Status: alpha.** The runtime is executable and tested; provider setup is still
+manual. Installing MoreGAN does not automatically connect Codex or Claude, and a
+passing run is not a guarantee that the code is correct.
 
-```text
-request -> initial route -> generate -> reassess patch risk -> verify -> trace -> replay
-```
+**Distribution status, checked September 27, 2026:** GitHub contains **1.15.0**;
+[PyPI](https://pypi.org/project/moregan/) contains **1.5.0**. The newer runtime
+features below require the GitHub version. Pushing to `main` does not publish to
+PyPI. See [release status](https://github.com/suyesh/moregan/blob/main/docs/releases.md).
 
-MoreGAN is not a magic prompt. It is an executable runtime where Python enforces the protocol and agents are replaceable workers behind a structured `StageResult` contract.
+## What You Can Do
 
-## Why GAN
+| Engineering task | What MoreGAN provides |
+|---|---|
+| Implement a fix or feature | A configured generator command, followed by separately invoked verification workers |
+| Enforce project checks | Required tests, lint, type checks and security commands with exit-code evidence |
+| Review sensitive changes | More review roles when auth, payments, migrations, dependencies or other risk signals appear |
+| Repair a failed verification | Bounded generator retries with structured findings and fresh checks |
+| Understand a run | Stage results, command output tails, risk changes, context packs and read-only replay |
+| Evaluate the extra overhead | Six starter benchmark fixtures and paired generator-only versus MoreGAN reports |
 
-GAN means **Generative Adversarial Network**. MoreGAN borrows the useful engineering idea from GANs, not the machine-learning training algorithm:
-
-- a generator proposes the implementation
-- evaluators attack the change from functional, security, review, and production angles
-- deterministic tools provide hard evidence from tests, syntax checks, git diff checks, and repo-local commands
-- the runtime decides pass, fail, or incomplete from structured results instead of trusting prose
-
-## Architecture
-
-```mermaid
-flowchart TD
-  Setup[moregan setup] --> Skill[Codex or Claude skill]
-  Repo[Repository] --> Init[moregan init]
-  Init --> Config[.moregan config]
-  Request[Engineer request] --> Runtime[moregan run]
-  Skill --> Runtime
-  Config --> Runtime
-
-  Runtime --> Risk[Risk classifier]
-  Risk --> Route[Route selection]
-
-  Route --> Workers[Worker stages]
-  Workers --> Adapter{Provider configured?}
-  Adapter -->|No| DryRun[Honest SKIP stage result]
-  Adapter -->|Yes| AgentWorker[moregan.agent_worker]
-  AgentWorker --> Provider[Codex or Claude command]
-  Provider --> StageResult[StageResult JSON]
-  DryRun --> StageResult
-
-  Route --> Tools[Deterministic tools]
-  Tools --> Evidence[Command evidence]
-
-  StageResult --> Validation[Strict shared validation]
-  Validation --> State[State machine]
-  Validation -->|Generator result| Reassess[Reassess actual patch]
-  Reassess -->|Escalate only| Route
-  Evidence --> State
-  State --> Trace[.moregan/runs/run-id]
-  Trace --> Inspect[inspect]
-  Trace --> Replay[read-only replay]
-```
-
-## Engineer Value
-
-- Enforced workflow instead of hoping an agent remembers every instruction.
-- Structured findings, evidence, confidence, and verdicts for each stage.
-- Deterministic checks for tests, syntax, git diff validation, and repo-local commands.
-- Adaptive routing that combines request keywords with repository diff evidence.
-- Stack-aware deterministic presets for Python, Node, Java/Spring Boot, Rails/Ruby, Go, and Rust projects.
-- Bounded remediation attempts that feed failed findings back to the generator.
-- Isolated execution for no-write worker stages by default.
-- Compact context packs that keep worker prompts smaller while preserving useful run context.
-- Empirical learning artifacts that tie observations to run ids, failures, remediations, and outcomes.
-- Read-only replay of past runs without rerunning providers or tests.
-- Isolated benchmark fixtures with independent acceptance checks and baseline comparisons.
-- Codex and Claude adapter templates that normalize provider output into JSON.
-- Local trace artifacts under `.moregan/runs/` for debugging and review.
-- Honest dry-run stage results when no agent provider command is configured.
-
-## Requirements
-
-- Python 3.8 or newer for the CLI runtime and installer
-- macOS, Linux, or Windows
-- Codex or Claude Code only when using the installed skill or provider-backed workers
-- Optional: `uv` for source-checkout development
-
-Codex and Claude can read the installed skill instructions directly. The executable runtime still runs locally through Python.
+Roles run **sequentially** today. Separate worker invocations do not guarantee
+independent reasoning or different models. MoreGAN does not train a model:
+**GAN means Generative Adversarial Network**, and the name borrows the adversarial
+idea, not GAN training.
 
 ## Install
 
-Public install after the first PyPI release is published:
-
-```bash
-python3 -m pip install moregan
-moregan setup
-```
-
-`moregan setup` runs the same installer flow as `./setup.sh`. It installs the MoreGAN skill into Claude Code, Codex, or both.
-
-To install a specific target:
-
-```bash
-moregan setup --target codex
-moregan setup --target claude
-moregan setup --target both
-```
-
-Source checkout install, useful before the first PyPI release or while developing MoreGAN itself:
+For the current GitHub implementation, use a virtual environment. These commands
+are for macOS/Linux shells; use Python 3.12 or 3.14 for the locally tested path.
 
 ```bash
 git clone https://github.com/suyesh/moregan.git
 cd moregan
-./setup.sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+moregan --help
 ```
 
-Windows:
+Keep that environment active when working in another repository. Git is needed
+for diff-aware routing and benchmarks. Install your project's build/test tools
+and your chosen provider command separately.
 
-```bat
-setup.bat
-```
-
-Source checkout development:
+To install the **older published release** instead:
 
 ```bash
-uv sync
-uv run moregan --help
+python3 -m pip install --upgrade moregan
 ```
 
-When running from a source checkout, prefix CLI examples with `uv run`, for example `uv run moregan init`.
-
-The installer copies:
-
-- `SKILL.md`
-- persona instructions
-- `assets/` and `LICENSE`
-- `.moregan/` defaults
-- `moregan/` executable runtime package
-- maintenance commands for update and doctor
+That currently installs 1.5.0, not this README's 1.15.0 functionality. Metadata
+advertises Python 3.8+, but the full support matrix is not certified and the
+installer has a known Python 3.8 incompatibility. Windows process-tree cleanup is
+unfinished. See [installation details](https://github.com/suyesh/moregan/blob/main/INSTALL.md).
 
 ## First Run
 
-Initialize a repository:
+### Inspect The Workflow Without A Provider
+
+In a disposable project or your target repository:
 
 ```bash
 moregan init
-```
-
-From a source checkout:
-
-```bash
-uv run moregan init
-```
-
-This creates:
-
-```text
-.moregan/
-  tools.yaml
-  workers.yaml
-  runs/
-  learning/
-```
-
-It also ignores local run, learning, and benchmark output directories in `.gitignore`. Existing config is preserved unless `--force` is passed.
-
-Run MoreGAN:
-
-```bash
-moregan run "Add OAuth login"
-```
-
-Risk routing uses both the request and local repository evidence. Auth, payments, migrations, dependency files, infrastructure files, public API paths, broad diffs, and large line changes can raise the route even when the request sounds small.
-
-After every generator attempt, including remediation, MoreGAN inspects the patch
-again. Risk can increase but cannot decrease within that run. Newly required
-planning, architecture, and design-decision reviews inspect the existing patch
-before verification. Their failures enter the same bounded remediation loop.
-See [risk routing](docs/risk-routing.md) for ordering, evidence, and limitations.
-
-Inspect the latest run:
-
-```bash
-moregan status
+moregan run "Change button label" --no-checks
 moregan inspect latest
 moregan replay latest
+```
+
+With the freshly created empty worker config, this produces **INCOMPLETE** and
+exit code **1**. It writes a trace but generates no code. `--no-checks` disables
+deterministic checks, not configured workers; it is **not a dry-run switch**.
+
+### Connect Real Workers
+
+For a freshly initialized repository, choose one provider:
+
+```bash
+moregan adapters codex
+cp .moregan/workers.codex.yaml .moregan/workers.yaml
+```
+
+The copy deliberately replaces the empty config created by `init`. If you already
+have customized workers, merge the template instead. `adapters --activate`
+preserves an existing `workers.yaml`; it will not silently switch providers.
+
+Set the command for **your own provider bridge**. This is a configuration example,
+not an included script:
+
+```bash
+export MOREGAN_CODEX_COMMAND='["python3", "/absolute/path/to/your_provider_bridge.py"]'
+```
+
+For Claude, scaffold/copy `workers.claude.yaml` and use
+`MOREGAN_CLAUDE_COMMAND`. The bridge must read the prompt from stdin, invoke your
+configured agent, and print exactly one MoreGAN `StageResult` JSON object.
+Setting the variable to bare `codex` or `claude` is not sufficient by itself.
+Authentication and model selection belong to that command, not to MoreGAN.
+
+Review `.moregan/tools.yaml`, mark your essential checks `required: true`, then:
+
+```bash
+moregan run "Fix checkout validation" --max-remediation-attempts 1
+moregan status
+moregan inspect latest
 moregan replay latest --json
 ```
 
-## Runtime Commands
+The [step-by-step guide](https://github.com/suyesh/moregan/blob/main/docs/getting-started.md)
+includes a runnable, no-model provider probe, Java examples and troubleshooting.
+The [worker contract](https://github.com/suyesh/moregan/blob/main/docs/worker-contract.md)
+defines the provider boundary.
 
-Installed CLI:
-
-```bash
-moregan init
-moregan setup
-moregan setup doctor --check
-moregan setup update
-moregan adapters codex
-moregan adapters claude
-moregan run "Refactor the payment service"
-moregan status
-moregan inspect latest
-moregan replay latest
-```
-
-Source checkout:
-
-```bash
-uv run moregan init
-uv run moregan run "Refactor the payment service"
-uv run moregan inspect latest
-```
-
-Useful flags:
-
-```bash
-moregan init --dry-run
-moregan init --force
-moregan adapters codex --activate
-moregan adapters claude --activate
-moregan run "Change button copy" --no-checks
-moregan run "Fix checkout bug" --max-remediation-attempts 1
-```
-
-## Agent Adapters
-
-Scaffold provider templates:
-
-```bash
-moregan adapters codex
-moregan adapters claude
-```
-
-This writes:
+## How It Works
 
 ```text
-.moregan/
-  adapters/
-    codex/
-      README.md
-      generator.md
-      evaluator.md
-      ...
-    claude/
-      README.md
-      generator.md
-      evaluator.md
-      ...
-  workers.codex.yaml
-  workers.claude.yaml
+Request + current diff
+        |
+   Initial risk route
+        |
+   Planning/review roles, when routed
+        |
+     Generator <----------------------+
+        |                             |
+   Inspect actual patch               |
+   Escalate risk / add reviews         |
+        |                             |
+   Deterministic checks + reviewers    |
+        |                             |
+   Blocking finding -> bounded repair-+
+        |
+   PASS / FAIL / INCOMPLETE
+        |
+   Report + trace + learning observations
 ```
 
-Activate one provider:
+Python owns the transitions and retry budget. Risk is reassessed after generation
+and cannot decrease during the same run. Newly required early reviews inspect
+the existing patch. Generator failures, early review failures, and integrity or
+cleanup failures are not automatically retried. See [routing policy](https://github.com/suyesh/moregan/blob/main/docs/risk-routing.md).
 
-```bash
-moregan adapters codex --activate
-```
-
-Then set a provider command that reads a prompt from stdin and prints one `StageResult` JSON object:
-
-```bash
-export MOREGAN_CODEX_COMMAND="<your codex command>"
-export MOREGAN_CLAUDE_COMMAND="<your claude command>"
-```
-
-Review and evaluation workers default to no-write mode. The generator stage is write-enabled when activated.
-
-Worker execution modes:
-
-```yaml
-execution: auto        # no-write workers run in isolated snapshots; write-enabled workers run in the repo
-execution: isolated    # always run in a temporary repository snapshot
-execution: repository  # run in the real checkout
-```
-
-MoreGAN passes `MOREGAN_EXECUTION_MODE` and `MOREGAN_EXECUTION_ROOT` to provider commands
-and records the execution context. Temporary snapshots are removed after each worker,
-including failure and interruption paths. Their recorded paths are historical.
-If process cleanup cannot be confirmed, the snapshot is retained for manual inspection.
-
-Provider JSON stdout and generated prompts default to a 1 MiB limit. Stderr is
-drained with a bounded tail, and timeouts cover blocked stdin and inherited pipes.
-Oversized or invalid-UTF-8 JSON fails instead of being truncated into a result.
-See [provider limits and process supervision](docs/provider-execution.md).
-
-For `no_write: true`, MoreGAN compares checkout contents, file modes, symlink targets,
-and Git index/HEAD state before and after execution, even when the worker runs in a
-snapshot. This detects edits to already-dirty files. Violations, verification errors,
-and cleanup failures stop the run for manual inspection, without automatic retries
-or reverts. Snapshots and checks are **not a sandbox**; see
-[worker workspace guarantees and exclusions](docs/worker-workspaces.md).
-
-MoreGAN also passes compact context instead of oversized inline history:
-
-```text
-MOREGAN_CONTEXT_PACK=/path/to/.moregan/runs/<run-id>/context/stages/generator.attempt1.json
-MOREGAN_CONTEXT_TOKENS=1234
-```
-
-Provider commands can read `MOREGAN_CONTEXT_PACK` when they need the current request, route, repository summary, prior stage findings, deterministic evidence, remediation context, and local lessons.
-
-## Worker Contract
-
-Workers must print one JSON object:
-
-```json
-{
-  "stage": "generator",
-  "verdict": "pass",
-  "confidence": 0.9,
-  "findings": [],
-  "evidence": [
-    {
-      "kind": "worker",
-      "name": "summary",
-      "summary": "Implemented the requested change and ran tests."
-    }
-  ]
-}
-```
-
-Valid verdicts:
-
-- `pass`
-- `fail`
-- `skip`
-
-Blocking issues should use `fail` with concrete findings and remediation.
-Critical or high findings cannot accompany `pass` or `skip`.
-
-Both direct workers and Codex/Claude adapters use the same strict validator:
-`stage` must match the requested worker, and `confidence` must be a finite number
-from 0 to 1, not a string or boolean. Findings and evidence can be omitted as empty
-lists; when supplied, every entry must be valid. Unknown fields, duplicate JSON
-keys, malformed entries, markdown fences, and surrounding prose are rejected.
-MoreGAN owns attempt numbers and timing; providers cannot override them.
-
-A finding has this shape:
-
-```json
-{
-  "severity": "high",
-  "category": "missing_test_coverage",
-  "description": "The changed payment branch has no regression test.",
-  "remediation": "Add a test that fails before the fix and passes after it.",
-  "file": "tests/test_payments.py",
-  "line": 42
-}
-```
-
-Finding severity is `critical`, `high`, `medium`, `low`, or `info`. Category,
-description, and remediation must be nonempty strings. File is a nonempty string
-or null; line is a positive integer or null. Evidence requires nonempty `kind`,
-`name`, and `summary`, with optional `path` and a string-argument `command` list.
-
-## Run Outcomes
-
-| Outcome | Meaning | `moregan run` Exit Code |
+| Result | Meaning | Run exit code |
 |---|---|---|
-| `pass` | Every routed worker passed; at least one deterministic check ran; no required check failed | 0 |
-| `fail` | A blocking check, worker, provider, or worker configuration failed | 1 |
-| `incomplete` | No blocking failure, but a routed worker or the entire evidence gate was skipped | 1 |
+| `pass` | All routed workers passed, at least one check ran, and no required check failed | 0 |
+| `fail` | A blocking check, worker or runtime guard failed | 1 |
+| `incomplete` | No blocking failure, but required work was skipped | 1 |
 
-`--no-checks`, missing providers, and empty or entirely skipped check lists cannot
-produce a pass. Individual not-applicable checks may skip when another check ran;
-optional check failures remain nonblocking. Configure checks as `required: true`
-when they must gate completion. A pass reflects the configured gates, not proof
-of production readiness.
+Detected stack checks are **optional by default**. Optional failures do not block
+a pass; make essential tests and security checks required. Syntax or whitespace
+checks alone are not meaningful application acceptance tests.
 
-The CLI lists incomplete stages; `result.json`, state history, and reports retain
-the outcome. Incomplete runs do not earn successful-remediation learning credit.
-`status`, `inspect`, and `replay` are read-only commands: successful inspection
-returns 0 even when the stored run failed or is incomplete.
+## Supported Checks
 
-## Deterministic Tools
+MoreGAN detects project files and proposes/enables applicable commands. It does
+not install tools, configure build plugins, or guarantee coverage.
 
-Configure deterministic checks in `.moregan/tools.yaml`:
+| Stack | Examples of detected checks |
+|---|---|
+| Python | pytest, Ruff, mypy, Bandit, pip-audit |
+| Node | npm test, lint/typecheck scripts, npm audit |
+| Java / Spring Boot | Maven/Gradle tests, configured Checkstyle, SpotBugs, PMD, OWASP Dependency-Check |
+| Ruby / Rails | RSpec, RuboCop, Brakeman, bundler-audit |
+| Go | go test, go vet, staticcheck |
+| Rust | cargo test, cargo clippy, cargo audit |
 
-```yaml
-version: 1
-commands:
-  - name: git_diff_check
-    builtin: git_diff_check
-    category: git
-    required: true
-    remediation: "Fix whitespace or conflict-marker issues reported by git diff --check."
+Any trusted command can be configured with argument lists. Check deadlines,
+bounded logs and required/optional semantics are documented in
+[tool execution](https://github.com/suyesh/moregan/blob/main/docs/tool-execution.md).
 
-  - name: unit_tests
-    builtin: unit_tests
-    category: tests
-    required: true
-    remediation: "Fix failing tests or update tests only when requirements changed intentionally."
-```
+## Codex And Claude Skills
 
-MoreGAN can also run explicit commands:
-
-```yaml
-version: 1
-commands:
-  - name: npm_test
-    command: ["npm", "test"]
-    category: tests
-    required: true
-    timeout_seconds: 300
-    max_output_bytes: 4000
-    remediation: "Fix failing npm tests."
-```
-
-Every deterministic command defaults to a 300-second deadline and a 4,000-byte
-tail per output stream. Timeouts, launch failures, byte counts, and truncation are
-recorded in the run evidence. On POSIX, MoreGAN also cleans up the check's process
-group. These limits apply to builtins and detected presets, including Java checks;
-configure a longer deadline for slow Maven/Gradle builds or dependency audits.
-See [check execution limits](docs/tool-execution.md) for settings and platform limits.
-
-Optional checks record findings without blocking the run:
-
-```yaml
-required: false
-```
-
-`moregan init` detects common stacks and writes optional enabled presets when matching project files exist:
-
-- Python: `pytest`, `ruff`, `mypy`, `bandit`, `pip-audit`
-- Node: `npm test`, `npm run lint`, `npm run typecheck`, `npm audit`
-- Java/Spring Boot: Maven or Gradle tests, Checkstyle, SpotBugs, PMD, OWASP Dependency-Check
-- Rails/Ruby: `rspec`, `rubocop`, `brakeman`, `bundle-audit`
-- Go: `go test`, `go vet`, `staticcheck`
-- Rust: `cargo test`, `cargo clippy`, `cargo audit`
-
-Optional presets skip cleanly when their executable is not installed.
-
-## Trace Artifacts
-
-Each run writes a directory like this. The exact `stages/*.json` files depend on the risk route:
-
-```text
-.moregan/runs/<run-id>/
-  request.json
-  plan.json
-  risk.json
-  risk.initial.json
-  risk.attempt1.json
-  risk_history.json
-  state.json
-  states.jsonl
-  tool_suggestions.json
-  context/
-    manifest.json
-    base.json
-    stages/
-      generator.attempt1.json
-      evaluator.attempt1.json
-  stages/
-    risk_classifier.json
-    risk_reassessment.attempt1.json
-    generator.json
-    generator.attempt1.json
-    generator.attempt2.json
-    deterministic_evidence.json
-    deterministic_evidence.attempt1.json
-    deterministic_evidence.attempt2.json
-    evaluator.json
-    ...
-  events.jsonl
-  result.json
-  final_report.md
-```
-
-Replay is read-only:
+Skill installation is optional for CLI use:
 
 ```bash
-moregan replay latest
+moregan setup --target codex
+# Or: moregan setup --target claude
 ```
 
-It reconstructs state transitions, stage results, findings, and deterministic evidence from existing files. It does not rerun providers or tests.
+Ask Codex to `Use MoreGAN to fix checkout validation`, or invoke the Claude skill
+with `/moregan "Fix checkout validation"`.
 
-When a required deterministic check or routed worker fails after generation, MoreGAN transitions through `remediation`, passes a structured remediation context to the generator, and retries from deterministic evidence when practical. The default limit is three remediation attempts.
+The intended path is **skill -> same Python runtime -> configured workers**.
+The skill does not remove the Python/provider requirements or reuse the current
+chat as a worker automatically. Provider environment variables must be available
+to the agent's terminal process. The prompt-only fallback is not equivalent to
+runtime enforcement, and older fallback instructions still need alignment with
+adaptive routing. See the [capability assessment](https://github.com/suyesh/moregan/blob/main/docs/product-status.md).
 
-Remediation runs also write `remediation.json` plus attempt-specific stage files such as `generator.attempt2.json`.
+## Evidence And Safety
 
-Context packs are capped JSON summaries designed to preserve useful context without spending tokens on full trace history. `context/manifest.json` records every pack path, byte size, and approximate token count.
+Runs live in `.moregan/runs/<run-id>/`: `result.json`, `final_report.md`, stage and
+attempt files, risk history, state/events logs, context packs and `learning.json`.
+`inspect` and `replay` read saved artifacts without invoking providers again.
+Replay is **not resume**. Learning stores run-backed observations, not trained weights.
 
-Learning is evidence-backed. Each run writes `learning.json`; failures and remediations append observations to `.moregan/learning/observations.jsonl`, and aggregate confidence stats are written to `.moregan/learning/patterns.json`. Clean runs do not invent lessons.
+Review workers normally use disposable snapshots. MoreGAN compares the original
+checkout before/after no-write workers without reverting user work. Provider JSON
+and prompt limits default to 1 MiB; deterministic check tails default to 4,000
+bytes. Ordinary POSIX descendants are cleaned up before workspace verification.
 
-## Skill Usage
+These controls are **not a sandbox**. Commands can access credentials, network and
+files with your permissions. Escaped POSIX groups and Windows descendants remain
+limitations. Traces may contain sensitive output. Snapshot exclusions, scan limits
+and cleanup-failure policy are in [worker workspaces](https://github.com/suyesh/moregan/blob/main/docs/worker-workspaces.md)
+and [provider execution](https://github.com/suyesh/moregan/blob/main/docs/provider-execution.md).
 
-Claude Code:
+## Learn More
 
-```bash
-/moregan "Add user authentication with JWT"
-/moregan update
-/moregan doctor
-```
-
-Codex:
-
-```text
-Use MoreGAN to add user authentication with JWT
-Use MoreGAN to update
-Use MoreGAN to run doctor
-```
-
-Maintenance:
-
-- `moregan setup update` downloads the latest MoreGAN archive from GitHub and reinstalls existing targets.
-- `moregan setup doctor --check` reports duplicate installs, stale persona files, registry duplication, and missing files.
-- `/moregan update` and `/moregan doctor` remain available as Claude Code skill commands.
-
-## Skill vs Runtime
-
-MoreGAN has two execution modes:
-
-- Skill-only mode: Codex or Claude reads `SKILL.md` and the persona files, then follows the MoreGAN workflow inside the agent session. Personas are used automatically in this mode, but enforcement depends on the agent following the instructions.
-- Runtime mode: `moregan run ...` enforces routing, state, traces, retries, deterministic checks, context packs, and learning artifacts in Python. Persona stages execute only when `.moregan/workers.yaml` points at a provider command.
-
-To make runtime persona stages execute through Codex or Claude:
-
-```bash
-moregan adapters codex --activate
-export MOREGAN_CODEX_COMMAND='<command that reads prompt stdin and returns StageResult JSON>'
-moregan run "Add OAuth login"
-```
-
-Without a provider command, runtime stages produce honest `SKIP` results instead of pretending a persona ran.
-
-## PyPI Trusted Publishing
-
-This repository includes a GitHub Actions trusted-publishing workflow:
-
-```text
-.github/workflows/workflow.yml
-```
-
-Use these values in PyPI:
-
-```text
-Owner: suyesh
-Repository name: moregan
-Workflow filename: workflow.yml
-Environment name: pypi
-PyPI project name: moregan
-```
-
-The package name in `pyproject.toml` is `moregan`. The workflow uses GitHub OIDC with `id-token: write` and `pypa/gh-action-pypi-publish`.
-
-## Benchmarks
-
-After configuring a provider, compare its generator alone with the MoreGAN route:
-
-```bash
-moregan benchmark init
-moregan benchmark run --mode baseline
-moregan benchmark run --mode moregan
-moregan benchmark compare <baseline-run-id> <moregan-run-id>
-moregan benchmark inspect latest
-```
-
-Six small Python fixtures cover bugs, features, refactors, security, migrations,
-and regressions. Each task uses a fresh temporary workspace and independent
-acceptance tests. Git is required to initialize fixture repositories. Missing
-workers and provider errors remain unmeasured. Reports
-show coverage and leave unavailable token/cost metrics null. These starter tasks
-do not establish production effectiveness.
-
-See [the benchmark guide](docs/benchmarks.md) for custom suites, external baseline
-imports, artifacts, and comparison rules.
-
-## Current Limitations
-
-MoreGAN is alpha. Risk routing uses path, size, and keyword heuristics, not semantic
-proof; projects without Git fall back to request-only classification.
-Deterministic checks and providers have bounded output and deadlines, with process-group cleanup
-on POSIX. Worker snapshots have cleanup and content-based no-write checks, but do
-not contain processes or protect files outside the documented scan scope. Windows
-child-tree cleanup, escaped POSIX groups, and stronger process isolation still
-need work. Provider results are validated structurally;
-validation cannot establish whether a model's claims are true. See
-[the review and next fixes](docs/review-2026-09-27.md).
-
-## Roadmap
-
-Implemented in this repository:
-
-- Full rename to MoreGAN and `.moregan/`
-- `moregan init`
-- structured runtime schemas
-- state machine
-- deterministic tool layer
-- provider-backed worker command contract
-- bounded remediation loop
-- compact context packs for token-aware worker execution
-- empirical learning observations and pattern statistics
-- diff-aware adaptive routing
-- stack-aware deterministic tool presets
-- run replay
-- Codex and Claude adapter templates
-- PyPI trusted-publishing workflow
-- PyPI-ready package metadata
-- `moregan setup` installer bridge
-- isolated benchmark runner, baseline execution, and paired comparisons
-- truthful incomplete outcomes and strict shared provider validation
-- post-generation risk escalation and attempt-correct replay
-- bounded deterministic checks and worker snapshot cleanup/integrity verification
-- bounded provider JSON, prompt delivery, and nested POSIX process supervision
-
-Next production-readiness work:
-
-- larger benchmark suites and repeated live-agent measurements
-- supported-version CI, package checks, and release gates
-- Windows child-tree cleanup and platform validation
-- stronger sandboxing for provider-backed workers
-- stricter config validation and doctor checks
-- competitive generator mode
-- first release publishing and `uvx` smoke testing
-
-See [ROADMAP.md](ROADMAP.md) for the detailed plan.
+- [Getting started and troubleshooting](https://github.com/suyesh/moregan/blob/main/docs/getting-started.md)
+- [Current capabilities, gaps and priorities](https://github.com/suyesh/moregan/blob/main/docs/product-status.md)
+- [Worker JSON contract](https://github.com/suyesh/moregan/blob/main/docs/worker-contract.md)
+- [Benchmarks and measurement limits](https://github.com/suyesh/moregan/blob/main/docs/benchmarks.md)
+- [Roadmap and original ten-item tracker](https://github.com/suyesh/moregan/blob/main/ROADMAP.md)
+- [Release status and PyPI publishing](https://github.com/suyesh/moregan/blob/main/docs/releases.md)
 
 ## Development
 
-Run tests:
-
 ```bash
-python3 -m unittest discover -s tests -v
-```
-
-Compile Python files:
-
-```bash
-python3 -m py_compile install.py tests/test_install.py tests/test_moregan_runtime.py moregan/*.py
-```
-
-Check diff hygiene:
-
-```bash
+uv sync
+uv run python -m unittest discover -s tests -q
+uv run python -m compileall -q install.py moregan tests
 git diff --check
 ```
 
-Dogfood the runtime:
-
-```bash
-uv run moregan run "Verify MoreGAN runtime"
-uv run moregan replay latest
-```
+Runtime tests use local subprocesses and simulated providers. No measured
+improvement over standalone agents is claimed. Competitive generators, native
+provider bridges, release CI and stronger containment remain work to do.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
-## References
-
-- [Anthropic: Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
-- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
-- [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/)
-- [PyPI Trusted Publisher Setup](https://docs.pypi.org/trusted-publishers/adding-a-publisher/)
+MIT. See [LICENSE](https://github.com/suyesh/moregan/blob/main/LICENSE).
