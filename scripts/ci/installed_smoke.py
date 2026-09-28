@@ -83,6 +83,8 @@ def verify(checkout):
 
 
 def main():
+    sys.stdout.reconfigure(errors="backslashreplace")
+    sys.stderr.reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dist", type=Path)
     parser.add_argument("--verify", action="store_true")
