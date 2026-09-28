@@ -460,15 +460,33 @@ completed_work:
     limitations:
       - "Risk remains heuristic; non-Git workspaces use request-only classification."
       - "No live provider effectiveness measurement or full OS/Python support-matrix validation."
+  - id: bounded-deterministic-tool-execution
+    package_version: "1.13.0"
+    original_list_numbers: [3]
+    status: done_with_platform_limits
+    acceptance_criteria:
+      - "Configured deterministic commands have validated timeouts and bounded output tails."
+      - "Timeouts and launch errors become structured evidence, including in remediation context."
+      - "POSIX process groups are killed on exit, timeout and interruption; direct child is reaped."
+      - "Builtin Python discovery is bounded and never compiles truncated file lists."
+      - "Traces, reports and replay expose timeouts and truncation."
+    verification:
+      - "135 tests passed on macOS with Python 3.12.11 and 3.14.0, including 20 new execution tests."
+      - "16 MiB combined command output captured with bounded retained memory; real hung children cleaned up."
+      - "Wheel and sdist built; installed Codex/Claude adapter smoke verified timeout remediation and outcomes."
+    limitations:
+      - "Windows only terminates the direct child; no Windows execution was verified."
+      - "Escaped POSIX sessions and provider output bounds require further work."
 current_work:
-  id: bounded-deterministic-tool-execution
-  original_list_numbers: [3]
+  id: worker-snapshot-cleanup-and-no-write
+  original_list_numbers: [1, 2]
   status: next
   acceptance_criteria:
-    - "Configured deterministic commands have validated timeouts and bounded output."
-    - "Timeouts and launch errors become structured command evidence with truthful verdicts."
-    - "Timed-out processes and their children are cleaned up on supported platforms."
-    - "Tests cover hung/noisy commands, required versus optional failures and remediation."
+    - "Temporary worker snapshots are removed on success, failure, timeout and interruption."
+    - "No-write checks detect content changes even in already-dirty files."
+    - "Preexisting user changes are preserved and violations are structured failures."
+    - "Tests cover cleanup and repository content integrity across execution outcomes."
   follow_up:
-    - snapshot_cleanup
+    - provider_output_bounds_and_process_supervision
+    - windows_child_tree_cleanup
     - release_ci_and_supported_python_matrix

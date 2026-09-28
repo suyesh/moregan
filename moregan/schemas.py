@@ -75,6 +75,14 @@ class CommandEvidence:
     reason: Optional[str] = None
     stdout_tail: str = ""
     stderr_tail: str = ""
+    timed_out: bool = False
+    error_kind: Optional[str] = None
+    timeout_seconds: Optional[int] = None
+    max_output_bytes: Optional[int] = None
+    stdout_bytes: int = 0
+    stderr_bytes: int = 0
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
 
 
 @dataclass

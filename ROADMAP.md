@@ -11,6 +11,8 @@ The project is alpha. Completed foundations are not a claim of production readin
 - Local command workers and Codex/Claude adapter templates.
 - Deterministic checks and stack detection for Python, Node, Java/Spring Boot,
   Rails/Ruby, Go, and Rust.
+- Per-check deadlines, bounded output tails, structured execution failures, and
+  POSIX process-group cleanup.
 - Intake and post-generation diff risk classification with monotonic escalation.
 - Post-generation catch-up reviews and attempt-correct replay.
 - Compact context packs, local learning observations, traces, and read-only replay.
@@ -20,14 +22,15 @@ The project is alpha. Completed foundations are not a claim of production readin
 
 ## Next
 
-1. Deterministic tool timeouts, bounded output, and process cleanup.
-2. Snapshot cleanup and stronger no-write checks.
+1. Snapshot cleanup and stronger no-write checks.
+2. Provider output bounds and process cleanup; Windows child-tree supervision.
 3. Supported-version CI, package checks, and release gates.
 4. Representative benchmark tasks, repeated live-agent runs, token/cost collection,
    and independent human evaluation.
 
 Details and code pointers: [September review](docs/review-2026-09-27.md).
 Benchmark usage and limitations: [Benchmark guide](docs/benchmarks.md).
+Check limits and platform scope: [Tool execution](docs/tool-execution.md).
 
 ## Later
 
@@ -43,7 +46,7 @@ Benchmark usage and limitations: [Benchmark guide](docs/benchmarks.md).
 |---|---|---|
 | 1 | Real runtime | Implemented; truthful completion added in 1.11.0 |
 | 2 | Structured persona output | Shared strict provider validation implemented in 1.11.0 |
-| 3 | Deterministic evidence | Implemented with stack presets; timeouts pending |
+| 3 | Deterministic evidence | Stack presets, deadlines and bounded output in 1.13.0; Windows child-tree cleanup pending |
 | 4 | Execution trace | Implemented; replay attempt fidelity repaired in 1.12.0 |
 | 5 | Empirical learning | Foundation implemented; calibration pending |
 | 6 | Adaptive routing | Intake and post-generation escalation implemented in 1.12.0; heuristic tuning remains |

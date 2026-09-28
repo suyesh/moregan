@@ -9,6 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from moregan.processes import (
+    DEFAULT_MAX_OUTPUT_BYTES, DEFAULT_TIMEOUT_SECONDS, MAX_OUTPUT_BYTES, MAX_TIMEOUT_SECONDS,
+)
+
 
 @dataclass
 class ToolCommand:
@@ -20,6 +24,8 @@ class ToolCommand:
     command: Optional[List[str]] = None
     builtin: Optional[str] = None
     enabled: bool = True
+    timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS
+    max_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES
 
 
 @dataclass
@@ -77,23 +83,39 @@ class ToolConfigLoader:
         if not path.exists():
             return list(self.DEFAULT_TOOLS)
 
-        payload = self._parse_minimal_yaml(path.read_text(encoding="utf-8"))
+        try:
+            payload = self._parse_minimal_yaml(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError) as exc:
+            raise ToolConfigError(f"could not read {self.CONFIG_PATH}: {exc}") from exc
         raw_commands = payload.get("commands")
         if not isinstance(raw_commands, list):
             raise ToolConfigError(f"{self.CONFIG_PATH} must define a commands list")
 
         commands = [self._coerce_command(item) for item in raw_commands]
+        if len({command.name for command in commands}) != len(commands):
+            raise ToolConfigError("tool command names must be unique")
         return [command for command in commands if command.enabled]
 
     def _coerce_command(self, payload: Dict[str, object]) -> ToolCommand:
-        name = str(payload.get("name", "")).strip()
-        if not name:
+        if not isinstance(payload, dict):
+            raise ToolConfigError("each tool command must be an object")
+        name = payload.get("name", "")
+        if not isinstance(name, str) or not name.strip():
             raise ToolConfigError("each tool command needs a name")
+        name = name.strip()
+
+        allowed = {"name", "command", "builtin", "category", "required", "enabled", "remediation",
+                   "source", "reason", "timeout_seconds", "max_output_bytes"}
+        unknown = set(payload) - allowed
+        if unknown:
+            raise ToolConfigError(f"{name} has unknown fields: {', '.join(sorted(map(str, unknown)))}")
 
         command = payload.get("command")
         builtin = payload.get("builtin")
-        if command is None and builtin is None:
-            raise ToolConfigError(f"{name} needs either command or builtin")
+        if (command is None) == (builtin is None):
+            raise ToolConfigError(f"{name} needs exactly one of command or builtin")
+        if builtin is not None and (not isinstance(builtin, str) or not builtin.strip()):
+            raise ToolConfigError(f"{name} builtin must be a non-empty string")
 
         coerced_command = self._coerce_command_value(command) if command is not None else None
         return ToolCommand(
@@ -105,14 +127,26 @@ class ToolConfigLoader:
             enabled=self._coerce_bool(payload.get("enabled", True)),
             remediation=str(payload.get("remediation", "Inspect the command output and fix the failed check.")),
             source=str(self.CONFIG_PATH),
+            timeout_seconds=self._bounded_integer(payload, "timeout_seconds", DEFAULT_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS),
+            max_output_bytes=self._bounded_integer(payload, "max_output_bytes", DEFAULT_MAX_OUTPUT_BYTES, MAX_OUTPUT_BYTES),
         )
 
+    def _bounded_integer(self, payload: Dict[str, object], name: str, default: int, maximum: int) -> int:
+        value = payload.get(name, default)
+        if type(value) is not int or not 1 <= value <= maximum:
+            raise ToolConfigError(f"{name} must be an integer between 1 and {maximum}")
+        return value
+
     def _coerce_command_value(self, value: object) -> List[str]:
-        if isinstance(value, list):
-            return [str(item) for item in value]
         if isinstance(value, str):
-            return shlex.split(value)
-        raise ToolConfigError("command must be a string or list")
+            try:
+                value = shlex.split(value)
+            except ValueError as exc:
+                raise ToolConfigError(f"invalid command: {exc}") from exc
+        if (not isinstance(value, list) or not value or
+                any(not isinstance(item, str) or "\x00" in item for item in value) or not value[0].strip()):
+            raise ToolConfigError("command must be a non-empty string or string list without NUL bytes")
+        return value
 
     def _coerce_bool(self, value: object) -> bool:
         if isinstance(value, bool):
@@ -123,7 +157,7 @@ class ToolConfigLoader:
                 return True
             if lowered in {"false", "no", "off", "0"}:
                 return False
-        return bool(value)
+        raise ToolConfigError("required and enabled must be booleans")
 
     def _parse_minimal_yaml(self, text: str) -> Dict[str, object]:
         data: Dict[str, object] = {}
@@ -156,6 +190,8 @@ class ToolConfigLoader:
 
             if current_section == "commands" and current_item is not None:
                 key, value = self._split_key_value(stripped)
+                if key in current_item:
+                    raise ToolConfigError(f"duplicate command field: {key}")
                 current_item[key] = self._parse_scalar(value)
                 continue
 

@@ -1,15 +1,15 @@
 # MoreGAN Session Handoff
 
-Updated: 2026-09-27 after post-generation risk reassessment and replay repair.
-Benchmark, completion/provider hardening, and adaptive routing milestones are
+Updated: 2026-09-27 after bounded deterministic execution.
+Benchmark, completion/provider hardening, adaptive routing and check execution milestones are
 implemented and tested; production hardening continues.
 
 ## Repository And Decisions
 
 - Checkout: `/Users/suyesh/Desktop/hooligan-harness` (the directory name is historical).
 - Branch: `main`; remote: `git@github.com:suyesh/moregan.git`.
-- Previous pushed milestone: `927094e Harden runtime outcomes and shared provider validation`, version 1.11.0.
-- Current feature version: 1.12.0, post-generation routing and attempt-correct replay.
+- Previous pushed milestone: `40de23c Reassess generated patch risk and preserve review attempts`, version 1.12.0.
+- Current feature version: 1.13.0, bounded deterministic tool execution.
 - Commit and push each completed milestone to main, as requested by the user.
 - Bump package versions for features. Keep all version constants and uv.lock aligned.
 - PyPI publishing is paused. A push to main does not trigger the existing release workflow.
@@ -86,25 +86,50 @@ configured Checkstyle, SpotBugs, PMD, and OWASP Dependency-Check integrations.
   and replay show risk changes and CLI announces escalation.
 - Added 22 routing/replay tests. No new personas or paid provider calls.
 
+## Completed In 1.13.0
+
+- Added processes.py for continuously drained, bounded per-stream output tails.
+  Defaults: 300 seconds and 4,000 bytes; limits validated, cannot be disabled.
+- POSIX process groups are killed on completion, timeout, capture error and
+  interruption; direct child reaped. Deadline includes inherited output pipes.
+- Windows uses bounded daemon readers and only immediate-child termination.
+  No Windows verification or child-tree containment claim. Escaped POSIX sessions
+  remain outside supervision; this is not a sandbox.
+- Structured timeout/launch/capture/cleanup evidence, byte counts and truncation
+  flags reach JSON, reports, replay, generator remediation and stage context.
+- Required timeouts fail and can remediate; optional failures remain advisory;
+  missing optional commands skip. Ordinary command exit codes are preserved.
+- Tool config rejects malformed commands, duplicate names/fields, unknown fields,
+  invalid limits and ambiguous boolean values. Init and presets include defaults.
+- Python compilation's Git discovery is bounded to 30 seconds / 1 MiB, uses NUL
+  delimiters, and fails closed on truncated results. Non-Git traversal is unchanged.
+- Added 20 real-process/config/runtime tests, including 16 MiB noisy output with
+  bounded capture memory, inherited-pipe timeout, child cleanup, interruption and
+  fail-then-pass remediation. Provider execution remains on its old capture path.
+- Bumped package/skill/installer/lock to 1.13.0; added docs/tool-execution.md.
+
 ## Review Findings And Next Work
 
 Read `docs/review-2026-09-27.md` first for concrete code references and impact.
 
-The next milestone is bounded deterministic tool execution (original item 3).
-DeterministicEvidenceRunner._run still uses unbounded subprocess.run
-with no timeout. Add validated timeout settings, bounded captured output and
-structured timeout/launch failure evidence, with cleanup of child processes.
-Test hung/noisy processes, missing executables, required/optional policies and
-remediation. Provider commands also still buffer output without a bound; consider
-sharing a small execution helper where it genuinely removes duplication.
+The next milestone is worker snapshot cleanup and stronger no-write checks.
+CommandWorker._execution_root still leaves temporary copies behind. Repository
+no-write mode compares Git status text and misses edits to already-dirty files.
+Read workers.py and its tests, clean up snapshots in finally paths, and detect
+content changes without reverting preexisting user changes. Test success, failure,
+timeout, interruption, tracked/untracked changes and already-dirty files. Snapshots
+are not a sandbox; describe the actual protection without overclaiming.
 
 After that:
 
-1. Clean up worker snapshots and improve no-write enforcement.
-2. Add release CI and verify or adjust the advertised Python 3.8+ support.
-3. Expand fixtures to representative real repositories and collect actual
+1. Bound provider output and supervise worker processes. Deterministic execution
+   now has a small processes.py helper; extending it to JSON providers needs
+   bounded stdin, explicit oversized-result failures and nested-process handling.
+2. Add Windows child-tree cleanup and validate the OS matrix.
+3. Add release CI and verify or adjust the advertised Python 3.8+ support.
+4. Expand fixtures to representative real repositories and collect actual
    provider token/cost measurements before running effectiveness studies.
-4. Introduce competitive generators only after this evidence and hardening.
+5. Introduce competitive generators only after this evidence and hardening.
 
 Risk policy and remaining limits are documented in docs/risk-routing.md. Routing
 is heuristic and request-only outside Git. Fixed-baseline evidence includes
@@ -125,7 +150,7 @@ validation cannot establish that the provider's claims are true.
 |---|---|---|
 | 1 | Runtime | Implemented; truthful outcomes in 1.11.0 |
 | 2 | Structured persona output | Shared strict provider validation in 1.11.0 |
-| 3 | Deterministic evidence | Stack presets implemented; timeouts pending |
+| 3 | Deterministic evidence | Presets, deadlines, bounded output and POSIX cleanup in 1.13.0; Windows tree cleanup pending |
 | 4 | Execution trace | Implemented; replay attempt fidelity fixed in 1.12.0 |
 | 5 | Empirical learning | Foundation implemented |
 | 6 | Adaptive routing | Post-generation escalation implemented in 1.12.0; heuristics need calibration |
@@ -136,15 +161,15 @@ validation cannot establish that the provider's claims are true.
 
 ## Verification And Limits
 
-- Full unittest suite passed 115 tests on macOS under Python 3.12.11 and 3.14.0.
+- Full unittest suite passed 135 tests on macOS under Python 3.12.11 and 3.14.0.
 - Build: `uv build --clear --default-index https://pypi.org/simple`.
 - Lock validation: `uv lock --check --default-index https://pypi.org/simple`.
-- Wheel smoke environment: `/private/tmp/moregan-1.12.0-smoke.FqxNGc/venv`.
-- Smoke script: `/private/tmp/moregan-1.12.0-smoke.FqxNGc/smoke.py`.
+- Wheel smoke environment: `/private/tmp/moregan-1.13.0-smoke.GZLlHk/venv`.
+- Smoke script: `/private/tmp/moregan-1.13.0-smoke.GZLlHk/smoke.py`.
 - Installed CLI exercised outside checkout: init, incomplete exit 1, both provider
-  adapters, low-to-critical escalation, architecture rejection, remediation that
-  removes the risky change, retained critical route, inspect and attempt-correct
-  replay. These used simulated provider commands, not live models.
+  adapters, noisy output, timeout remediation, required failure exit 1, advisory
+  optional timeout, inspect and attempt-correct replay. These used simulated
+  provider commands, not live models.
 - Fixture verifiers tested against both broken source and known repaired source.
 - No paid Codex/Claude benchmark run or PyPI publication was performed.
 - The full supported Python/OS matrix is not yet certified. Source review found

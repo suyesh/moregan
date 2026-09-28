@@ -989,3 +989,31 @@ execution_note: "Validation used real local Git changes and simulated provider c
 next: "Original item 3: deterministic command timeouts, bounded output and process cleanup."
 publishing: "PyPI remains paused; no release tag or workflow dispatch."
 ---
+
+---
+timestamp: "2026-09-27"
+status: SUCCESS
+task_nickname: moregan-bounded-check-execution
+summary: "Hardened original item 3 deterministic evidence in 1.13.0, with explicit platform limits."
+branch: "main"
+updates:
+  - file: "moregan/processes.py, moregan/runtime.py"
+    action: "Added streaming bounded capture, deadlines, POSIX group cleanup, structured execution failures and bounded Python file discovery."
+  - file: "moregan/tools.py, moregan/init.py, .moregan/tools.yaml"
+    action: "Validate execution settings and command config; scaffold defaults for builtins and detected stack presets."
+  - file: "moregan/schemas.py, moregan/context.py, moregan/replay.py"
+    action: "Expose timeout, truncation and byte-count metadata in artifacts, context, remediation, reports and replay."
+  - file: "tests/test_processes.py"
+    action: "Added 20 tests for bounded memory, noisy/hung commands, children, interruption, config validation, policies and remediation."
+  - file: "README.md, docs/tool-execution.md, docs/review-2026-09-27.md, ROADMAP.md, SESSION_HANDOFF.md, .moregan/roadmap.yaml"
+    action: "Documented limits and verified behavior; set snapshot cleanup and no-write integrity next."
+  - file: "pyproject.toml, moregan/__init__.py, install.py, SKILL.md, uv.lock"
+    action: "Bumped package version to 1.13.0 and aligned the lock."
+verification_evidence:
+  - "135 tests passed on Python 3.12.11 and 3.14.0 on macOS."
+  - "Built wheel and sdist; installed-wheel CLI smoke passed outside checkout for both Codex and Claude adapter templates."
+  - "Smoke verified timeout remediation, bounded output, required failure exit, optional advisory timeout, inspect and replay."
+execution_note: "Simulated providers only. Windows child-tree cleanup, escaped POSIX sessions, provider output bounds and full support-matrix validation remain open. No sandbox or production-readiness claim."
+next: "Worker snapshot cleanup and content-based no-write enforcement without reverting user changes."
+publishing: "PyPI remains paused; no release tag or workflow dispatch."
+---

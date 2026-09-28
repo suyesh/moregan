@@ -391,8 +391,17 @@ commands:
     command: ["npm", "test"]
     category: tests
     required: true
+    timeout_seconds: 300
+    max_output_bytes: 4000
     remediation: "Fix failing npm tests."
 ```
+
+Every deterministic command defaults to a 300-second deadline and a 4,000-byte
+tail per output stream. Timeouts, launch failures, byte counts, and truncation are
+recorded in the run evidence. On POSIX, MoreGAN also cleans up the check's process
+group. These limits apply to builtins and detected presets, including Java checks;
+configure a longer deadline for slow Maven/Gradle builds or dependency audits.
+See [check execution limits](docs/tool-execution.md) for settings and platform limits.
 
 Optional checks record findings without blocking the run:
 
@@ -551,8 +560,9 @@ imports, artifacts, and comparison rules.
 
 MoreGAN is alpha. Risk routing uses path, size, and keyword heuristics, not semantic
 proof; projects without Git fall back to request-only classification.
-Deterministic command timeouts, bounded subprocess output, snapshot cleanup, and
-stronger process isolation still need work. Provider results are validated structurally;
+Deterministic checks have bounded output and deadlines, with process-group cleanup
+on POSIX. Windows child-tree cleanup, provider output bounds, snapshot cleanup,
+and stronger process isolation still need work. Provider results are validated structurally;
 validation cannot establish whether a model's claims are true. See
 [the review and next fixes](docs/review-2026-09-27.md).
 

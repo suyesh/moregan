@@ -12,13 +12,14 @@ import re
 import subprocess
 import sys
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from moregan.context import ContextPackWriter
 from moregan.learning import EmpiricalLearningStore
+from moregan.processes import MAX_OUTPUT_BYTES, run_bounded
 from moregan.schemas import (
     CommandEvidence,
     EvidenceReference,
@@ -399,6 +400,8 @@ class TraceWriter:
         for item in result.evidence:
             status = "SKIP" if item.skipped else "PASS" if item.passed else "FAIL"
             detail = item.reason or " ".join(item.command)
+            if item.stdout_truncated or item.stderr_truncated:
+                detail += f"; output truncated to {item.max_output_bytes} bytes per stream"
             required = "required" if item.required else "optional"
             lines.append(
                 f"- {status}: {item.name} "
@@ -433,6 +436,11 @@ class TraceWriter:
         except json.JSONDecodeError:
             return None
         return payload if isinstance(payload, dict) else None
+
+
+class _DiscoveryFailure(Exception):
+    def __init__(self, evidence: CommandEvidence):
+        self.evidence = evidence
 
 
 class DeterministicEvidenceRunner:
@@ -505,7 +513,16 @@ class DeterministicEvidenceRunner:
         return self._run(tool, ["git", "diff", "--check"])
 
     def _python_compile_check(self, tool: ToolCommand) -> CommandEvidence:
-        python_files = list(self._python_files())
+        try:
+            python_files = list(self._python_files(tool))
+        except _DiscoveryFailure as exc:
+            return exc.evidence
+        except OSError as exc:
+            return CommandEvidence(
+                name=tool.name, command=[], passed=False, exit_code=125, category=tool.category,
+                required=tool.required, source=tool.source, remediation=tool.remediation,
+                error_kind="discovery_error", reason=f"Could not discover Python files: {exc}",
+            )
         if not python_files:
             return self._skip(tool, "no Python files found")
         return self._run(tool, [sys.executable, "-m", "py_compile", *python_files])
@@ -515,12 +532,20 @@ class DeterministicEvidenceRunner:
             return self._skip(tool, "tests/ not found")
         return self._run(tool, [sys.executable, "-m", "unittest", "discover", "-s", "tests"])
 
-    def _python_files(self) -> Iterable[str]:
+    def _python_files(self, tool: Optional[ToolCommand] = None) -> Iterable[str]:
         if (self.root / ".git").exists():
-            tracked = self._git_file_list(["git", "ls-files", "*.py"])
-            untracked = self._git_file_list(["git", "ls-files", "--others", "--exclude-standard", "*.py"])
-            if tracked is not None and untracked is not None:
-                return sorted(set(tracked + untracked))
+            tool = tool or ToolConfigLoader.DEFAULT_TOOLS[1]
+            discovery = replace(tool, timeout_seconds=min(tool.timeout_seconds, 30), max_output_bytes=MAX_OUTPUT_BYTES)
+            evidence = self._run(discovery, ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "*.py"])
+            if not evidence.passed or evidence.skipped or evidence.stdout_truncated:
+                evidence.passed = False
+                evidence.skipped = False
+                if evidence.stdout_truncated:
+                    evidence.exit_code = 125
+                    evidence.error_kind = "discovery_output_limit"
+                    evidence.reason = "Python file list exceeded the 1 MiB discovery limit; configure an explicit check command."
+                raise _DiscoveryFailure(evidence)
+            return sorted(set(path for path in evidence.stdout_tail.split("\x00") if path))
 
         ignored_parts = {".git", ".venv", "venv", "__pycache__", "build", "dist"}
         return [
@@ -529,43 +554,32 @@ class DeterministicEvidenceRunner:
             if not ignored_parts.intersection(path.relative_to(self.root).parts)
         ]
 
-    def _git_file_list(self, command: Sequence[str]) -> Optional[List[str]]:
-        result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
-        if result.returncode != 0:
-            return None
-        return [line for line in result.stdout.splitlines() if line]
-
     def _run(self, tool: ToolCommand, command: Sequence[str]) -> CommandEvidence:
         started = time.perf_counter()
-        try:
-            result = subprocess.run(command, cwd=self.root, check=False, capture_output=True, text=True)
-        except FileNotFoundError as exc:
-            return CommandEvidence(
-                name=tool.name,
-                command=list(command),
-                passed=not tool.required,
-                exit_code=127,
-                category=tool.category,
-                required=tool.required,
-                duration_ms=self._duration_ms(started),
-                remediation=tool.remediation,
-                source=tool.source,
-                skipped=not tool.required,
-                reason=f"command not found: {command[0]}" if command else "command not found",
-                stderr_tail=str(exc),
-            )
+        result = run_bounded(command, self.root, timeout_seconds=tool.timeout_seconds, max_output_bytes=tool.max_output_bytes)
+        skipped = result.error_kind == "not_found" and not tool.required
         return CommandEvidence(
             name=tool.name,
             command=list(command),
-            passed=result.returncode == 0,
-            exit_code=result.returncode,
+            passed=result.exit_code == 0 or skipped,
+            exit_code=result.exit_code,
             category=tool.category,
             required=tool.required,
             duration_ms=self._duration_ms(started),
             remediation=tool.remediation,
             source=tool.source,
-            stdout_tail=self._tail(result.stdout),
-            stderr_tail=self._tail(result.stderr),
+            skipped=skipped,
+            reason=result.reason,
+            stdout_tail=result.stdout_tail,
+            stderr_tail=result.stderr_tail,
+            timed_out=result.timed_out,
+            error_kind=result.error_kind,
+            timeout_seconds=tool.timeout_seconds,
+            max_output_bytes=tool.max_output_bytes,
+            stdout_bytes=result.stdout_bytes,
+            stderr_bytes=result.stderr_bytes,
+            stdout_truncated=result.stdout_truncated,
+            stderr_truncated=result.stderr_truncated,
         )
 
     def _skip(self, tool: ToolCommand, reason: str) -> CommandEvidence:
@@ -581,9 +595,6 @@ class DeterministicEvidenceRunner:
             skipped=True,
             reason=reason,
         )
-
-    def _tail(self, value: str, limit: int = 4000) -> str:
-        return value[-limit:] if len(value) > limit else value
 
     def _duration_ms(self, started: float) -> int:
         return int((time.perf_counter() - started) * 1000)
@@ -1042,6 +1053,12 @@ class MoreGANRuntime:
             "category": item.category,
             "required": item.required,
             "exit_code": item.exit_code,
+            "reason": item.reason,
+            "timed_out": item.timed_out,
+            "error_kind": item.error_kind,
+            "timeout_seconds": item.timeout_seconds,
+            "stdout_truncated": item.stdout_truncated,
+            "stderr_truncated": item.stderr_truncated,
             "remediation": item.remediation,
             "stdout_tail": item.stdout_tail[-1000:],
             "stderr_tail": item.stderr_tail[-1000:],
@@ -1109,6 +1126,10 @@ class MoreGANRuntime:
         else:
             required = "required" if item.required else "optional"
             summary = f"{'PASS' if item.passed else 'FAIL'}: exit code {item.exit_code} ({required}, {item.duration_ms}ms)"
+            if item.reason:
+                summary += f"; {item.reason}"
+        if item.stdout_truncated or item.stderr_truncated:
+            summary += f"; output truncated to {item.max_output_bytes} bytes per stream"
         return EvidenceReference(
             kind="command",
             name=item.name,
@@ -1119,6 +1140,8 @@ class MoreGANRuntime:
     def _finding_from_command(self, item: CommandEvidence) -> Finding:
         details = item.stderr_tail.strip() or item.stdout_tail.strip()
         description = f"`{item.name}` failed with exit code {item.exit_code}."
+        if item.reason:
+            description += f" {item.reason}"
         if details:
             description = f"{description} Last output: {details[-500:]}"
 

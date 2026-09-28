@@ -92,6 +92,8 @@ class RunReplay:
             status = "SKIP" if item.get("skipped") else "PASS" if item.get("passed") else "FAIL"
             command = " ".join(item.get("command") or [])
             detail = item.get("reason") or command or item.get("stderr_tail") or item.get("stdout_tail") or "no detail"
+            if item.get("stdout_truncated") or item.get("stderr_truncated"):
+                detail += f"; output truncated to {item.get('max_output_bytes')} bytes per stream"
             lines.append(f"- {status}: {item.get('name')} ({item.get('category')}) - {detail}")
 
         lines.extend(["", "## Learning", ""])

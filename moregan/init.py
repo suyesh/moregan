@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 from moregan.tools import StackToolDetector, ToolSuggestion
+from moregan.processes import DEFAULT_MAX_OUTPUT_BYTES, DEFAULT_TIMEOUT_SECONDS
 
 
 DEFAULT_TOOLS = [
@@ -146,6 +147,8 @@ class MoreGANInitializer:
                     f"    builtin: {tool['builtin']}",
                     f"    category: {tool['category']}",
                     f"    required: {str(tool['required']).lower()}",
+                    f"    timeout_seconds: {DEFAULT_TIMEOUT_SECONDS}",
+                    f"    max_output_bytes: {DEFAULT_MAX_OUTPUT_BYTES}",
                     f"    remediation: {self._quote(str(tool['remediation']))}",
                 ]
             )
@@ -166,6 +169,8 @@ class MoreGANInitializer:
                         f"    category: {suggestion.category}",
                         f"    required: {str(suggestion.required).lower()}",
                         f"    enabled: {str(suggestion.enabled).lower()}",
+                        f"    timeout_seconds: {DEFAULT_TIMEOUT_SECONDS}",
+                        f"    max_output_bytes: {DEFAULT_MAX_OUTPUT_BYTES}",
                         f"    reason: {self._quote(suggestion.reason)}",
                         f"    remediation: {self._quote(suggestion.remediation)}",
                     ]
