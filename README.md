@@ -12,9 +12,13 @@
   Generator builds. Reviewers challenge. Tools check. Python controls the loop.
 </p>
 
-MoreGAN is a local Python runtime for orchestrating coding-agent commands. It
-selects review stages from task and patch risk, runs your tests and checks, feeds
-blocking findings back to the generator, and preserves a trace for human review.
+MoreGAN is a local Python runtime for orchestrating coding-agent commands. Its
+name draws on **Generative Adversarial Networks (GANs)**, where a generator learns
+to create output that a discriminator cannot distinguish from real data. MoreGAN
+borrows that adversarial idea for code generation and review, without training a
+neural network. It selects review stages from task and patch risk, runs your tests
+and checks, feeds blocking findings back to the generator, and preserves a trace
+for human review.
 
 **Status: alpha.** The runtime is executable and tested; provider setup is still
 manual. Installing MoreGAN does not automatically connect Codex or Claude, and a
@@ -37,9 +41,7 @@ PyPI. See [release status](https://github.com/suyesh/moregan/blob/main/docs/rele
 | Evaluate the extra overhead | Six starter benchmark fixtures and paired generator-only versus MoreGAN reports |
 
 Roles run **sequentially** today. Separate worker invocations do not guarantee
-independent reasoning or different models. MoreGAN does not train a model:
-**GAN means Generative Adversarial Network**, and the name borrows the adversarial
-idea, not GAN training.
+independent reasoning or different models.
 
 ## Install
 
